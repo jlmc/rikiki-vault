@@ -1,7 +1,7 @@
 package io.github.jlmc.rikikivault.core.application.usecase;
 
 import io.github.jlmc.rikikivault.core.adapters.encryption.format.RvEncryptedFileFormatCodec;
-import io.github.jlmc.rikikivault.core.domain.exception.MachineIdentityAlreadyExistsException;
+import io.github.jlmc.rikikivault.core.domain.exception.PrivateKeyNotFoundException;
 import io.github.jlmc.rikikivault.core.domain.model.EncryptedFile;
 import io.github.jlmc.rikikivault.core.domain.model.FileHash;
 import io.github.jlmc.rikikivault.core.domain.model.KeyFingerprint;
@@ -55,7 +55,7 @@ class CloneVaultServiceTest {
                 new ManifestEntry("notes.md.enc", "notes.md", FileHash.of("notes content".getBytes(StandardCharsets.UTF_8)), "RV01")));
         FakeManifestPort manifestPort = new FakeManifestPort(manifest);
         FakeGitRepositoryPort gitRepositoryPort = new FakeGitRepositoryPort();
-        FakeInitializeMachineIdentityUseCase identityUseCase = new FakeInitializeMachineIdentityUseCase(identity);
+        FakeLoadMachineIdentityUseCase identityUseCase = new FakeLoadMachineIdentityUseCase(identity);
         CloneVaultService service = new CloneVaultService(
                 identityUseCase, decryptFileUseCase, localFiles, documentsFiles, manifestPort, gitRepositoryPort);
 
@@ -75,7 +75,7 @@ class CloneVaultServiceTest {
         FakeDecryptFileUseCase decryptFileUseCase = new FakeDecryptFileUseCase();
         FakeManifestPort manifestPort = new FakeManifestPort();
         FakeGitRepositoryPort gitRepositoryPort = new FakeGitRepositoryPort();
-        FakeInitializeMachineIdentityUseCase identityUseCase = new FakeInitializeMachineIdentityUseCase(someIdentity());
+        FakeLoadMachineIdentityUseCase identityUseCase = new FakeLoadMachineIdentityUseCase(someIdentity());
         CloneVaultService service = new CloneVaultService(
                 identityUseCase, decryptFileUseCase, localFiles, documentsFiles, manifestPort, gitRepositoryPort);
 
@@ -87,9 +87,9 @@ class CloneVaultServiceTest {
     }
 
     @Test
-    void propagatesAndShortCircuitsWhenTheIdentityAlreadyExists() {
-        FakeInitializeMachineIdentityUseCase identityUseCase = new FakeInitializeMachineIdentityUseCase(
-                new MachineIdentityAlreadyExistsException("already exists"));
+    void propagatesAndShortCircuitsWhenThisMachineHasNoIdentityYet() {
+        FakeLoadMachineIdentityUseCase identityUseCase = new FakeLoadMachineIdentityUseCase(
+                new PrivateKeyNotFoundException("no identity stored"));
         FakeFileStoragePort localFiles = new FakeFileStoragePort();
         FakeFileStoragePort documentsFiles = new FakeFileStoragePort();
         FakeDecryptFileUseCase decryptFileUseCase = new FakeDecryptFileUseCase();
@@ -98,7 +98,7 @@ class CloneVaultServiceTest {
         CloneVaultService service = new CloneVaultService(
                 identityUseCase, decryptFileUseCase, localFiles, documentsFiles, manifestPort, gitRepositoryPort);
 
-        assertThrows(MachineIdentityAlreadyExistsException.class,
+        assertThrows(PrivateKeyNotFoundException.class,
                 () -> service.clone(new CloneVaultCommand("file:///some/remote.git")));
 
         assertNull(gitRepositoryPort.clonedRemoteUri);

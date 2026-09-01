@@ -10,7 +10,7 @@ import io.github.jlmc.rikikivault.core.ports.in.CloneVaultCommand;
 import io.github.jlmc.rikikivault.core.ports.in.CloneVaultUseCase;
 import io.github.jlmc.rikikivault.core.ports.in.DecryptFileCommand;
 import io.github.jlmc.rikikivault.core.ports.in.DecryptFileUseCase;
-import io.github.jlmc.rikikivault.core.ports.in.InitializeMachineIdentityUseCase;
+import io.github.jlmc.rikikivault.core.ports.in.LoadMachineIdentityUseCase;
 import io.github.jlmc.rikikivault.core.ports.out.FileStoragePort;
 import io.github.jlmc.rikikivault.core.ports.out.GitRepositoryPort;
 import io.github.jlmc.rikikivault.core.ports.out.ManifestPort;
@@ -18,15 +18,17 @@ import io.github.jlmc.rikikivault.core.ports.out.ManifestPort;
 import java.util.Objects;
 
 /**
- * Composes a brand-new machine joining an existing vault (Plan.md §10): generate this machine's
- * identity, clone the encrypted repository, then decrypt every manifest entry into {@code local/}.
- * Loading the manifest doubles as "validate repository structure" (step 2) - it fails on its own
- * if the clone did not produce a readable one. Recipient authorization (step 5) is enforced by
+ * Composes a new machine joining an existing vault (Plan.md §10): load this machine's already
+ * generated identity (step 4 - the identity is expected to already exist, e.g. generated ahead of
+ * time so its public key could be shared with whoever manages recipient authorization), clone the
+ * encrypted repository, then decrypt every manifest entry into {@code local/}. Loading the
+ * manifest doubles as "validate repository structure" (step 2) - it fails on its own if the clone
+ * did not produce a readable one. Recipient authorization (step 5) is enforced by
  * {@link DecryptFileUseCase}, not duplicated here.
  */
 public final class CloneVaultService implements CloneVaultUseCase {
 
-    private final InitializeMachineIdentityUseCase initializeMachineIdentityUseCase;
+    private final LoadMachineIdentityUseCase loadMachineIdentityUseCase;
     private final DecryptFileUseCase decryptFileUseCase;
     private final FileStoragePort localFiles;
     private final FileStoragePort documentsFiles;
@@ -35,14 +37,14 @@ public final class CloneVaultService implements CloneVaultUseCase {
     private final RvEncryptedFileFormatCodec codec = new RvEncryptedFileFormatCodec();
 
     public CloneVaultService(
-            InitializeMachineIdentityUseCase initializeMachineIdentityUseCase,
+            LoadMachineIdentityUseCase loadMachineIdentityUseCase,
             DecryptFileUseCase decryptFileUseCase,
             FileStoragePort localFiles,
             FileStoragePort documentsFiles,
             ManifestPort manifestPort,
             GitRepositoryPort gitRepositoryPort) {
-        this.initializeMachineIdentityUseCase = Objects.requireNonNull(
-                initializeMachineIdentityUseCase, "initializeMachineIdentityUseCase must not be null");
+        this.loadMachineIdentityUseCase = Objects.requireNonNull(
+                loadMachineIdentityUseCase, "loadMachineIdentityUseCase must not be null");
         this.decryptFileUseCase = Objects.requireNonNull(decryptFileUseCase, "decryptFileUseCase must not be null");
         this.localFiles = Objects.requireNonNull(localFiles, "localFiles must not be null");
         this.documentsFiles = Objects.requireNonNull(documentsFiles, "documentsFiles must not be null");
@@ -54,7 +56,7 @@ public final class CloneVaultService implements CloneVaultUseCase {
     public MachineIdentity clone(CloneVaultCommand command) {
         Objects.requireNonNull(command, "command must not be null");
 
-        MachineIdentity identity = initializeMachineIdentityUseCase.initialize();
+        MachineIdentity identity = loadMachineIdentityUseCase.load();
 
         gitRepositoryPort.clone(command.remoteUri());
 
