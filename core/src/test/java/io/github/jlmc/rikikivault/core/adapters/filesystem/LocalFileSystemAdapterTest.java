@@ -85,4 +85,64 @@ class LocalFileSystemAdapterTest {
 
         assertThrows(IllegalArgumentException.class, () -> adapter.readFile("../secret.txt"));
     }
+
+    @Test
+    void writeFileCreatesNestedDirectoriesAndIsReadableBack(@TempDir Path tempDir) {
+        Path root = tempDir.resolve("documents");
+        LocalFileSystemAdapter adapter = new LocalFileSystemAdapter(root);
+        byte[] content = "cv content".getBytes(StandardCharsets.UTF_8);
+
+        adapter.writeFile("cv/cv.pdf.enc", content);
+
+        assertArrayEquals(content, adapter.readFile("cv/cv.pdf.enc"));
+    }
+
+    @Test
+    void writeFileOverwritesExistingContent(@TempDir Path tempDir) {
+        Path root = tempDir.resolve("documents");
+        LocalFileSystemAdapter adapter = new LocalFileSystemAdapter(root);
+
+        adapter.writeFile("notes.md.enc", "old".getBytes(StandardCharsets.UTF_8));
+        adapter.writeFile("notes.md.enc", "new".getBytes(StandardCharsets.UTF_8));
+
+        assertArrayEquals("new".getBytes(StandardCharsets.UTF_8), adapter.readFile("notes.md.enc"));
+    }
+
+    @Test
+    void deleteFileRemovesAnExistingFile(@TempDir Path tempDir) {
+        Path root = tempDir.resolve("documents");
+        LocalFileSystemAdapter adapter = new LocalFileSystemAdapter(root);
+        adapter.writeFile("notes.md.enc", "content".getBytes(StandardCharsets.UTF_8));
+
+        adapter.deleteFile("notes.md.enc");
+
+        assertTrue(adapter.listFiles().isEmpty());
+    }
+
+    @Test
+    void deleteFileOnAMissingPathIsASafeNoOp(@TempDir Path tempDir) {
+        Path root = tempDir.resolve("documents");
+        LocalFileSystemAdapter adapter = new LocalFileSystemAdapter(root);
+
+        adapter.deleteFile("never-existed.txt");
+    }
+
+    @Test
+    void writeFileRejectsAPathThatEscapesTheRoot(@TempDir Path tempDir) throws IOException {
+        Path root = tempDir.resolve("documents");
+        Files.createDirectories(root);
+        LocalFileSystemAdapter adapter = new LocalFileSystemAdapter(root);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> adapter.writeFile("../escape.txt", "x".getBytes(StandardCharsets.UTF_8)));
+    }
+
+    @Test
+    void deleteFileRejectsAPathThatEscapesTheRoot(@TempDir Path tempDir) throws IOException {
+        Path root = tempDir.resolve("documents");
+        Files.createDirectories(root);
+        LocalFileSystemAdapter adapter = new LocalFileSystemAdapter(root);
+
+        assertThrows(IllegalArgumentException.class, () -> adapter.deleteFile("../escape.txt"));
+    }
 }

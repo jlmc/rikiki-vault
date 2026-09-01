@@ -43,16 +43,46 @@ public final class LocalFileSystemAdapter implements FileStoragePort {
 
     @Override
     public byte[] readFile(String relativePath) {
-        Objects.requireNonNull(relativePath, "relativePath must not be null");
-        Path resolved = rootDirectory.resolve(relativePath).normalize();
-        if (!resolved.startsWith(rootDirectory)) {
-            throw new IllegalArgumentException("relativePath escapes the root directory: " + relativePath);
-        }
+        Path resolved = resolveWithinRoot(relativePath);
         try {
             return Files.readAllBytes(resolved);
         } catch (IOException e) {
             throw new UncheckedIOException("Failed to read file at " + resolved, e);
         }
+    }
+
+    @Override
+    public void writeFile(String relativePath, byte[] content) {
+        Objects.requireNonNull(content, "content must not be null");
+        Path resolved = resolveWithinRoot(relativePath);
+        try {
+            Path parent = resolved.getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
+            Files.write(resolved, content);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to write file at " + resolved, e);
+        }
+    }
+
+    @Override
+    public void deleteFile(String relativePath) {
+        Path resolved = resolveWithinRoot(relativePath);
+        try {
+            Files.deleteIfExists(resolved);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to delete file at " + resolved, e);
+        }
+    }
+
+    private Path resolveWithinRoot(String relativePath) {
+        Objects.requireNonNull(relativePath, "relativePath must not be null");
+        Path resolved = rootDirectory.resolve(relativePath).normalize();
+        if (!resolved.startsWith(rootDirectory)) {
+            throw new IllegalArgumentException("relativePath escapes the root directory: " + relativePath);
+        }
+        return resolved;
     }
 
     private String toRelativeSlashPath(Path file) {

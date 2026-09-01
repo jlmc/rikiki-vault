@@ -7,4 +7,8 @@ public interface FileStoragePort {
     List<String> listFiles();
 
     byte[] readFile(String relativePath);
+
+    void writeFile(String relativePath, byte[] content);
+
+    void deleteFile(String relativePath);
 }

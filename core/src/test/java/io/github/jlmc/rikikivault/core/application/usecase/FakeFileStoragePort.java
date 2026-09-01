@@ -29,4 +29,14 @@ final class FakeFileStoragePort implements FileStoragePort {
         }
         return content;
     }
+
+    @Override
+    public void writeFile(String relativePath, byte[] content) {
+        filesByPath.put(relativePath, content);
+    }
+
+    @Override
+    public void deleteFile(String relativePath) {
+        filesByPath.remove(relativePath);
+    }
 }
