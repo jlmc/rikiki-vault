@@ -21,8 +21,6 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CloneVaultServiceTest {
@@ -41,7 +39,7 @@ class CloneVaultServiceTest {
     }
 
     @Test
-    void decryptsEveryManifestEntryIntoLocal() throws Exception {
+    void decryptsEveryManifestEntryIntoLocalUsingTheExistingIdentity() throws Exception {
         MachineIdentity identity = someIdentity();
         FakeFileStoragePort localFiles = new FakeFileStoragePort();
         FakeFileStoragePort documentsFiles = new FakeFileStoragePort();
@@ -55,13 +53,16 @@ class CloneVaultServiceTest {
                 new ManifestEntry("notes.md.enc", "notes.md", FileHash.of("notes content".getBytes(StandardCharsets.UTF_8)), "RV01")));
         FakeManifestPort manifestPort = new FakeManifestPort(manifest);
         FakeGitRepositoryPort gitRepositoryPort = new FakeGitRepositoryPort();
-        FakeLoadMachineIdentityUseCase identityUseCase = new FakeLoadMachineIdentityUseCase(identity);
+        FakeLoadMachineIdentityUseCase loadIdentityUseCase = new FakeLoadMachineIdentityUseCase(identity);
+        FakeInitializeMachineIdentityUseCase initializeIdentityUseCase = new FakeInitializeMachineIdentityUseCase(someIdentity());
         CloneVaultService service = new CloneVaultService(
-                identityUseCase, decryptFileUseCase, localFiles, documentsFiles, manifestPort, gitRepositoryPort);
+                loadIdentityUseCase, initializeIdentityUseCase, decryptFileUseCase,
+                localFiles, documentsFiles, manifestPort, gitRepositoryPort);
 
         MachineIdentity result = service.clone(new CloneVaultCommand("file:///some/remote.git"));
 
         assertEquals(identity, result);
+        assertEquals(0, initializeIdentityUseCase.initializeCallCount);
         assertEquals("file:///some/remote.git", gitRepositoryPort.clonedRemoteUri);
         assertArrayEquals("cv content".getBytes(StandardCharsets.UTF_8), localFiles.readFile("cv.pdf"));
         assertArrayEquals("notes content".getBytes(StandardCharsets.UTF_8), localFiles.readFile("notes.md"));
@@ -75,9 +76,11 @@ class CloneVaultServiceTest {
         FakeDecryptFileUseCase decryptFileUseCase = new FakeDecryptFileUseCase();
         FakeManifestPort manifestPort = new FakeManifestPort();
         FakeGitRepositoryPort gitRepositoryPort = new FakeGitRepositoryPort();
-        FakeLoadMachineIdentityUseCase identityUseCase = new FakeLoadMachineIdentityUseCase(someIdentity());
+        FakeLoadMachineIdentityUseCase loadIdentityUseCase = new FakeLoadMachineIdentityUseCase(someIdentity());
+        FakeInitializeMachineIdentityUseCase initializeIdentityUseCase = new FakeInitializeMachineIdentityUseCase(someIdentity());
         CloneVaultService service = new CloneVaultService(
-                identityUseCase, decryptFileUseCase, localFiles, documentsFiles, manifestPort, gitRepositoryPort);
+                loadIdentityUseCase, initializeIdentityUseCase, decryptFileUseCase,
+                localFiles, documentsFiles, manifestPort, gitRepositoryPort);
 
         service.clone(new CloneVaultCommand("file:///some/remote.git"));
 
@@ -87,20 +90,24 @@ class CloneVaultServiceTest {
     }
 
     @Test
-    void propagatesAndShortCircuitsWhenThisMachineHasNoIdentityYet() {
-        FakeLoadMachineIdentityUseCase identityUseCase = new FakeLoadMachineIdentityUseCase(
-                new PrivateKeyNotFoundException("no identity stored"));
+    void whenNoIdentityExistsYetOneIsGeneratedAndThenUsedToClone() throws Exception {
+        MachineIdentity generatedIdentity = someIdentity();
+        FakeLoadMachineIdentityUseCase loadIdentityUseCase = new FakeLoadMachineIdentityUseCase(
+                new PrivateKeyNotFoundException("no identity stored yet"));
+        FakeInitializeMachineIdentityUseCase initializeIdentityUseCase = new FakeInitializeMachineIdentityUseCase(generatedIdentity);
         FakeFileStoragePort localFiles = new FakeFileStoragePort();
         FakeFileStoragePort documentsFiles = new FakeFileStoragePort();
         FakeDecryptFileUseCase decryptFileUseCase = new FakeDecryptFileUseCase();
         FakeManifestPort manifestPort = new FakeManifestPort();
         FakeGitRepositoryPort gitRepositoryPort = new FakeGitRepositoryPort();
         CloneVaultService service = new CloneVaultService(
-                identityUseCase, decryptFileUseCase, localFiles, documentsFiles, manifestPort, gitRepositoryPort);
+                loadIdentityUseCase, initializeIdentityUseCase, decryptFileUseCase,
+                localFiles, documentsFiles, manifestPort, gitRepositoryPort);
 
-        assertThrows(PrivateKeyNotFoundException.class,
-                () -> service.clone(new CloneVaultCommand("file:///some/remote.git")));
+        MachineIdentity result = service.clone(new CloneVaultCommand("file:///some/remote.git"));
 
-        assertNull(gitRepositoryPort.clonedRemoteUri);
+        assertEquals(generatedIdentity, result);
+        assertEquals(1, initializeIdentityUseCase.initializeCallCount);
+        assertEquals("file:///some/remote.git", gitRepositoryPort.clonedRemoteUri);
     }
 }
