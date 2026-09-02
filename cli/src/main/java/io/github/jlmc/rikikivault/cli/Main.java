@@ -9,6 +9,7 @@ import io.github.jlmc.rikikivault.core.adapters.hashing.Sha256HashAdapter;
 import io.github.jlmc.rikikivault.core.adapters.keystore.LocalKeyStoreAdapter;
 import io.github.jlmc.rikikivault.core.adapters.manifest.JsonManifestFileAdapter;
 import io.github.jlmc.rikikivault.core.adapters.recipients.JsonRecipientRegistryFileAdapter;
+import io.github.jlmc.rikikivault.core.application.usecase.AuthorizeMachineService;
 import io.github.jlmc.rikikivault.core.application.usecase.CloneVaultService;
 import io.github.jlmc.rikikivault.core.application.usecase.DecryptFileService;
 import io.github.jlmc.rikikivault.core.application.usecase.InitializeMachineIdentityService;
@@ -16,18 +17,22 @@ import io.github.jlmc.rikikivault.core.application.usecase.InitializeVaultServic
 import io.github.jlmc.rikikivault.core.application.usecase.LoadMachineIdentityService;
 import io.github.jlmc.rikikivault.core.application.usecase.PublishVaultService;
 import io.github.jlmc.rikikivault.core.application.usecase.PullVaultService;
+import io.github.jlmc.rikikivault.core.application.usecase.RevokeMachineService;
 import io.github.jlmc.rikikivault.core.application.usecase.ScanChangesService;
 import io.github.jlmc.rikikivault.core.configuration.VaultConfig;
 import io.github.jlmc.rikikivault.core.configuration.VaultPaths;
 import io.github.jlmc.rikikivault.core.domain.exception.PrivateKeyNotFoundException;
 import io.github.jlmc.rikikivault.core.domain.exception.RikikiVaultException;
+import io.github.jlmc.rikikivault.core.domain.model.KeyFingerprint;
 import io.github.jlmc.rikikivault.core.domain.model.MachineIdentity;
 import io.github.jlmc.rikikivault.core.domain.model.PullResult;
 import io.github.jlmc.rikikivault.core.domain.model.VaultChange;
 import io.github.jlmc.rikikivault.core.domain.model.VaultConflict;
+import io.github.jlmc.rikikivault.core.ports.in.AuthorizeMachineCommand;
 import io.github.jlmc.rikikivault.core.ports.in.CloneVaultCommand;
 import io.github.jlmc.rikikivault.core.ports.in.InitializeVaultCommand;
 import io.github.jlmc.rikikivault.core.ports.in.PublishVaultCommand;
+import io.github.jlmc.rikikivault.core.ports.in.RevokeMachineCommand;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -92,6 +97,8 @@ public final class Main {
             case "status" -> runStatus(ctx);
             case "publish" -> runPublish(ctx, rest);
             case "pull" -> runPull(ctx);
+            case "authorize" -> runAuthorize(ctx, rest);
+            case "revoke" -> runRevoke(ctx, rest);
             default -> {
                 System.err.println("Comando desconhecido: " + command);
                 printUsage();
@@ -251,6 +258,39 @@ public final class Main {
         }
     }
 
+    private static void runAuthorize(VaultContext ctx, String[] rest) {
+        if (rest.length < 2) {
+            System.err.println("Uso: authorize <label> <ficheiro-chave-pública>");
+            System.exit(1);
+            return;
+        }
+        String label = rest[0];
+        PublicKey publicKey = readPublicKeyFile(Path.of(rest[1]));
+
+        AuthorizeMachineService service = new AuthorizeMachineService(
+                ctx.recipientRegistryPort(), ctx.localFiles(), ctx.documentsFiles(),
+                ctx.manifestPort(), ctx.encryptionPort(), ctx.gitRepositoryPort());
+        service.authorize(new AuthorizeMachineCommand(label, publicKey));
+
+        System.out.println("Máquina '" + label + "' autorizada e publicada.");
+    }
+
+    private static void runRevoke(VaultContext ctx, String[] rest) {
+        if (rest.length < 1) {
+            System.err.println("Uso: revoke <fingerprint-hex>");
+            System.exit(1);
+            return;
+        }
+        KeyFingerprint fingerprint = new KeyFingerprint(rest[0]);
+
+        RevokeMachineService service = new RevokeMachineService(
+                ctx.recipientRegistryPort(), ctx.localFiles(), ctx.documentsFiles(),
+                ctx.manifestPort(), ctx.encryptionPort(), ctx.gitRepositoryPort());
+        service.revoke(new RevokeMachineCommand(fingerprint));
+
+        System.out.println("Máquina " + fingerprint + " revogada e alterações publicadas.");
+    }
+
     private static IdentityResolution loadOrCreateIdentity(VaultContext ctx) {
         LoadMachineIdentityService loadMachineIdentityService = new LoadMachineIdentityService(ctx.keyStorePort());
         try {
@@ -262,7 +302,7 @@ public final class Main {
         }
     }
 
-    static PublicKey readPublicKeyFile(Path file) {
+    private static PublicKey readPublicKeyFile(Path file) {
         try {
             String base64 = Files.readString(file, StandardCharsets.UTF_8).strip();
             byte[] bytes = Base64.getDecoder().decode(base64);
