@@ -8,6 +8,7 @@ import io.github.jlmc.rikikivault.core.adapters.hashing.Sha256HashAdapter;
 import io.github.jlmc.rikikivault.core.adapters.keystore.LocalKeyStoreAdapter;
 import io.github.jlmc.rikikivault.core.adapters.manifest.JsonManifestFileAdapter;
 import io.github.jlmc.rikikivault.core.adapters.recipients.JsonRecipientRegistryFileAdapter;
+import io.github.jlmc.rikikivault.core.application.usecase.AuthorizeMachineService;
 import io.github.jlmc.rikikivault.core.application.usecase.CloneVaultService;
 import io.github.jlmc.rikikivault.core.application.usecase.DecryptFileService;
 import io.github.jlmc.rikikivault.core.application.usecase.InitializeMachineIdentityService;
@@ -17,12 +18,10 @@ import io.github.jlmc.rikikivault.core.application.usecase.PublishVaultService;
 import io.github.jlmc.rikikivault.core.application.usecase.PullVaultService;
 import io.github.jlmc.rikikivault.core.application.usecase.ScanChangesService;
 import io.github.jlmc.rikikivault.core.configuration.EncryptionSettings;
-import io.github.jlmc.rikikivault.core.domain.model.KeyFingerprint;
 import io.github.jlmc.rikikivault.core.domain.model.MachineIdentity;
 import io.github.jlmc.rikikivault.core.domain.model.PullResult;
-import io.github.jlmc.rikikivault.core.domain.model.Recipient;
-import io.github.jlmc.rikikivault.core.domain.model.RecipientRegistry;
 import io.github.jlmc.rikikivault.core.domain.model.VaultChange;
+import io.github.jlmc.rikikivault.core.ports.in.AuthorizeMachineCommand;
 import io.github.jlmc.rikikivault.core.ports.in.CloneVaultCommand;
 import io.github.jlmc.rikikivault.core.ports.in.InitializeVaultCommand;
 import io.github.jlmc.rikikivault.core.ports.in.PublishVaultCommand;
@@ -47,8 +46,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * is used as test scaffolding for Machine A too (same reason as in {@code EndToEndPublishTest}:
  * the Git port has no "add remote" operation yet). Machine B generates its identity before
  * cloning - matching {@code CloneVaultService}'s corrected contract (Plan.md §10 step 4 loads an
- * existing key, it does not generate one) - so Machine A can list it as a recipient up front;
- * real multi-machine authorization workflows are Phase 6 and out of scope here.
+ * existing key, it does not generate one) - and Machine A authorizes it via
+ * {@link AuthorizeMachineService} before publishing, so it can decrypt what gets published.
  */
 class EndToEndClonePullTest {
 
@@ -72,17 +71,16 @@ class EndToEndClonePullTest {
                 new X25519KeyPairGeneratorAdapter(), machineB.keyStorePort).initialize();
 
         // Machine A: init (wired to "origin" via the clone-as-scaffolding trick), then authorize
-        // Machine B before publishing anything - the real AuthorizeMachineService lands in a later
-        // milestone step; a direct registry write stands in for it here since publish always
-        // resolves recipients from the registry (Milestone 6 retrofit).
+        // Machine B before publishing anything, so it can decrypt what's about to be published.
         machineA.gitRepositoryPort.clone(remoteUri);
-        MachineIdentity identityA = new InitializeVaultService(
+        new InitializeVaultService(
                 new InitializeMachineIdentityService(new X25519KeyPairGeneratorAdapter(), machineA.keyStorePort),
                 new LocalFileSystemAdapter(machineA.vaultRoot), machineA.manifestPort, machineA.recipientRegistryPort, machineA.gitRepositoryPort)
                 .initialize(new InitializeVaultCommand(false, "machine-a"));
-        machineA.recipientRegistryPort.save(new RecipientRegistry(1, List.of(
-                new Recipient("machine-a", identityA.id(), identityA.publicKey()),
-                new Recipient("machine-b", KeyFingerprint.of(identityB.publicKey()), identityB.publicKey()))));
+        new AuthorizeMachineService(
+                machineA.recipientRegistryPort, machineA.localFiles, machineA.documentsFiles,
+                machineA.manifestPort, encryptionPort, machineA.gitRepositoryPort)
+                .authorize(new AuthorizeMachineCommand("machine-b", identityB.publicKey()));
 
         Files.createDirectories(machineA.vaultRoot.resolve("local"));
         writeLocalFile(machineA, "cv.pdf", "cv content v1");
