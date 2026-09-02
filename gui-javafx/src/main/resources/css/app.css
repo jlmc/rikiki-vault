@@ -1,1 +1,177 @@
-/* Placeholder - fleshed out with the real design pass later in this milestone. */
+/*
+ * Rikiki Vault - stylesheet applied to every scene.
+ * Palette: neutral greys for chrome, a single indigo accent for primary actions,
+ * and a semantic colour per file status (added/modified/deleted/synced).
+ */
+
+.root {
+    -fx-accent: #3A5CE0;
+    -fx-base-bg: #F5F6FA;
+    -fx-card-bg: #FFFFFF;
+    -fx-border-subtle: #E1E3EA;
+    -fx-text-primary: #1F2430;
+    -fx-text-secondary: #6B7080;
+
+    -fx-font-family: "Helvetica Neue", "Segoe UI", Arial, sans-serif;
+    -fx-font-size: 13px;
+    -fx-background-color: -fx-base-bg;
+    -fx-text-fill: -fx-text-primary;
+}
+
+/* --- Typography --- */
+
+.title {
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -fx-text-primary;
+}
+
+.subtitle {
+    -fx-font-size: 13px;
+    -fx-text-fill: -fx-text-secondary;
+}
+
+.section-title {
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -fx-text-primary;
+}
+
+.conflict-title {
+    -fx-text-fill: #B54708;
+}
+
+.status-label {
+    -fx-text-fill: -fx-text-secondary;
+    -fx-font-size: 12px;
+}
+
+.fingerprint-label {
+    -fx-text-fill: -fx-text-secondary;
+    -fx-font-family: "Menlo", "Consolas", monospace;
+    -fx-font-size: 11px;
+}
+
+.toolbar-title {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+
+/* --- Buttons --- */
+
+.button {
+    -fx-background-color: -fx-card-bg;
+    -fx-border-color: -fx-border-subtle;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-padding: 7px 16px;
+    -fx-text-fill: -fx-text-primary;
+    -fx-cursor: hand;
+}
+
+.button:hover {
+    -fx-background-color: derive(-fx-card-bg, -4%);
+}
+
+.button:disabled {
+    -fx-opacity: 0.55;
+}
+
+.primary-button {
+    -fx-background-color: -fx-accent;
+    -fx-border-color: transparent;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+.primary-button:hover {
+    -fx-background-color: derive(-fx-accent, -10%);
+}
+
+/* --- Welcome screen --- */
+
+.welcome-view {
+    -fx-background-color: -fx-base-bg;
+}
+
+/* --- Init/Clone and dialogs --- */
+
+.init-or-clone-view,
+.change-review-view,
+.pull-result-view,
+.manage-access-view {
+    -fx-background-color: -fx-card-bg;
+}
+
+.text-field {
+    -fx-background-color: -fx-base-bg;
+    -fx-border-color: -fx-border-subtle;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-padding: 6px 10px;
+}
+
+.text-field:focused {
+    -fx-border-color: -fx-accent;
+}
+
+/* --- Toolbar --- */
+
+.toolbar {
+    -fx-background-color: -fx-card-bg;
+    -fx-border-color: transparent transparent -fx-border-subtle transparent;
+    -fx-border-width: 0 0 1px 0;
+}
+
+/* --- Tables and lists --- */
+
+.table-view,
+.list-view {
+    -fx-background-color: -fx-card-bg;
+    -fx-border-color: -fx-border-subtle;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: -fx-base-bg;
+    -fx-background-radius: 6px 6px 0 0;
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: -fx-text-secondary;
+    -fx-font-weight: bold;
+    -fx-font-size: 11px;
+}
+
+.table-row-cell {
+    -fx-border-color: transparent transparent -fx-border-subtle transparent;
+}
+
+.table-row-cell:selected {
+    -fx-background-color: derive(-fx-accent, 85%);
+}
+
+/* --- Status badges --- */
+
+.status-badge {
+    -fx-alignment: CENTER;
+    -fx-font-weight: bold;
+    -fx-font-size: 11px;
+}
+
+.status-synced {
+    -fx-text-fill: #1E7A34;
+}
+
+.status-added {
+    -fx-text-fill: #1565C0;
+}
+
+.status-modified {
+    -fx-text-fill: #B54708;
+}
+
+.status-deleted {
+    -fx-text-fill: #C42B2B;
+}
