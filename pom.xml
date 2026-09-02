@@ -10,6 +10,7 @@
   </properties>
   <modules>
     <module>core</module>
+    <module>cli</module>
     <module>gui-javafx</module>
   </modules>
 </project>
