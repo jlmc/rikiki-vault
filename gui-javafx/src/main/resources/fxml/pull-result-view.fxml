@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="io.github.jlmc.rikikivault.gui.PullResultController"
+      styleClass="pull-result-view" spacing="16">
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+    <Label text="Resultado do Pull" styleClass="title"/>
+    <Label fx:id="emptyLabel" text="Já estás atualizado." managed="false" visible="false"/>
+    <VBox fx:id="uncommittedSection" spacing="6">
+        <Label text="Alterações locais por publicar" styleClass="section-title"/>
+        <ListView fx:id="uncommittedList" prefHeight="70"/>
+    </VBox>
+    <VBox fx:id="updatedSection" spacing="6">
+        <Label text="Atualizados" styleClass="section-title"/>
+        <ListView fx:id="updatedList" prefHeight="70"/>
+    </VBox>
+    <VBox fx:id="deletedSection" spacing="6">
+        <Label text="Removidos" styleClass="section-title"/>
+        <ListView fx:id="deletedList" prefHeight="70"/>
+    </VBox>
+    <VBox fx:id="conflictsSection" spacing="6">
+        <Label text="Conflitos — ficheiro local mantido, versão remota não aplicada" styleClass="section-title conflict-title"/>
+        <ListView fx:id="conflictsList" prefHeight="90"/>
+    </VBox>
+    <HBox alignment="CENTER_RIGHT">
+        <Button text="OK" styleClass="primary-button" onAction="#onClose"/>
+    </HBox>
+</VBox>

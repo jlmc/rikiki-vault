@@ -1,8 +1,11 @@
 package io.github.jlmc.rikikivault.gui;
 
+import io.github.jlmc.rikikivault.core.application.usecase.DecryptFileService;
 import io.github.jlmc.rikikivault.core.application.usecase.LoadMachineIdentityService;
+import io.github.jlmc.rikikivault.core.application.usecase.PullVaultService;
 import io.github.jlmc.rikikivault.core.application.usecase.ScanChangesService;
 import io.github.jlmc.rikikivault.core.domain.model.MachineIdentity;
+import io.github.jlmc.rikikivault.core.domain.model.PullResult;
 import io.github.jlmc.rikikivault.core.domain.model.VaultChange;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -41,6 +44,23 @@ public final class MainWindowController {
     @FXML
     private void onRefresh() {
         refresh();
+    }
+
+    @FXML
+    private void onPull() {
+        BackgroundTask.run(
+                () -> new PullVaultService(
+                        new LoadMachineIdentityService(ctx.keyStorePort()),
+                        new DecryptFileService(ctx.encryptionPort()),
+                        new ScanChangesService(ctx.localFiles(), ctx.hashPort(), ctx.manifestPort()),
+                        ctx.localFiles(), ctx.documentsFiles(), ctx.manifestPort(), ctx.gitRepositoryPort())
+                        .pull(),
+                (PullResult result) -> {
+                    Stage owner = (Stage) fileTable.getScene().getWindow();
+                    PullResultController.open(owner, result);
+                    refresh();
+                },
+                Dialogs::showError);
     }
 
     @FXML
