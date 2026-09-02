@@ -64,6 +64,12 @@ public final class MainWindowController {
     }
 
     @FXML
+    private void onManageAccess() {
+        Stage owner = (Stage) fileTable.getScene().getWindow();
+        ManageAccessController.open(owner, ctx, this::refresh);
+    }
+
+    @FXML
     private void onPublish() {
         BackgroundTask.run(
                 () -> new ScanChangesService(ctx.localFiles(), ctx.hashPort(), ctx.manifestPort()).scan(),
