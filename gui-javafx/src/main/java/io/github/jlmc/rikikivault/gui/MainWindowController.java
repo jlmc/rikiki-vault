@@ -9,17 +9,13 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
-import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.stage.Stage;
 
 import java.util.List;
 
 public final class MainWindowController {
-
-    private static final List<String> STATUS_STYLE_CLASSES = List.of(
-            FileStatus.SYNCED.styleClass(), FileStatus.ADDED.styleClass(),
-            FileStatus.MODIFIED.styleClass(), FileStatus.DELETED.styleClass());
 
     @FXML private Label vaultPathLabel;
     @FXML private Label fingerprintLabel;
@@ -36,7 +32,7 @@ public final class MainWindowController {
         fingerprintLabel.setText("Identidade: " + identity.id());
 
         statusColumn.setCellValueFactory(data -> new SimpleObjectProperty<>(data.getValue()));
-        statusColumn.setCellFactory(column -> new StatusBadgeCell());
+        statusColumn.setCellFactory(column -> new StatusBadgeCell<>(FileEntry::status));
         pathColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().path()));
 
         refresh();
@@ -45,6 +41,21 @@ public final class MainWindowController {
     @FXML
     private void onRefresh() {
         refresh();
+    }
+
+    @FXML
+    private void onPublish() {
+        BackgroundTask.run(
+                () -> new ScanChangesService(ctx.localFiles(), ctx.hashPort(), ctx.manifestPort()).scan(),
+                changes -> {
+                    if (changes.isEmpty()) {
+                        Dialogs.showInfo("Publicar", "Não há alterações para publicar.");
+                        return;
+                    }
+                    Stage owner = (Stage) fileTable.getScene().getWindow();
+                    ChangeReviewController.open(owner, ctx, changes, this::refresh);
+                },
+                Dialogs::showError);
     }
 
     private void refresh() {
@@ -57,20 +68,5 @@ public final class MainWindowController {
                 },
                 entries -> fileTable.setItems(FXCollections.observableArrayList(entries)),
                 Dialogs::showError);
-    }
-
-    private static final class StatusBadgeCell extends TableCell<FileEntry, FileEntry> {
-        @Override
-        protected void updateItem(FileEntry entry, boolean empty) {
-            super.updateItem(entry, empty);
-            getStyleClass().removeAll(STATUS_STYLE_CLASSES);
-            getStyleClass().add("status-badge");
-            if (empty || entry == null) {
-                setText(null);
-            } else {
-                setText(entry.status().symbol());
-                getStyleClass().add(entry.status().styleClass());
-            }
-        }
     }
 }

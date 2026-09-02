@@ -1,6 +1,8 @@
 package io.github.jlmc.rikikivault.gui;
 
-/** Status badge shown per file in the browser (Plan.md §13). */
+import io.github.jlmc.rikikivault.core.domain.model.VaultChange;
+
+/** Status badge shown per file in the browser (Plan.md §13) and in the change review list. */
 enum FileStatus {
 
     SYNCED("✓", "status-synced"),
@@ -22,5 +24,13 @@ enum FileStatus {
 
     String styleClass() {
         return styleClass;
+    }
+
+    static FileStatus from(VaultChange.ChangeType type) {
+        return switch (type) {
+            case ADDED -> ADDED;
+            case MODIFIED -> MODIFIED;
+            case DELETED -> DELETED;
+        };
     }
 }

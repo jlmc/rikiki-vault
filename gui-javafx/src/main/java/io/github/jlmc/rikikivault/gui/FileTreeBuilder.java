@@ -25,19 +25,11 @@ final class FileTreeBuilder {
             statusByPath.put(path, FileStatus.SYNCED);
         }
         for (VaultChange change : changes) {
-            statusByPath.put(change.path(), toFileStatus(change.type()));
+            statusByPath.put(change.path(), FileStatus.from(change.type()));
         }
         return statusByPath.entrySet().stream()
                 .map(entry -> new FileEntry(entry.getKey(), entry.getValue()))
                 .sorted(Comparator.comparing(FileEntry::path))
                 .toList();
-    }
-
-    private static FileStatus toFileStatus(VaultChange.ChangeType type) {
-        return switch (type) {
-            case ADDED -> FileStatus.ADDED;
-            case MODIFIED -> FileStatus.MODIFIED;
-            case DELETED -> FileStatus.DELETED;
-        };
     }
 }

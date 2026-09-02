@@ -19,6 +19,7 @@
             <Region HBox.hgrow="ALWAYS"/>
             <Label fx:id="fingerprintLabel" styleClass="fingerprint-label"/>
             <Button fx:id="refreshButton" text="Atualizar" onAction="#onRefresh"/>
+            <Button fx:id="publishButton" text="Publicar..." styleClass="primary-button" onAction="#onPublish"/>
         </HBox>
     </top>
     <center>
