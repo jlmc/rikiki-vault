@@ -9,17 +9,25 @@ import io.github.jlmc.rikikivault.core.adapters.hashing.Sha256HashAdapter;
 import io.github.jlmc.rikikivault.core.adapters.keystore.LocalKeyStoreAdapter;
 import io.github.jlmc.rikikivault.core.adapters.manifest.JsonManifestFileAdapter;
 import io.github.jlmc.rikikivault.core.adapters.recipients.JsonRecipientRegistryFileAdapter;
+import io.github.jlmc.rikikivault.core.application.usecase.CloneVaultService;
+import io.github.jlmc.rikikivault.core.application.usecase.DecryptFileService;
 import io.github.jlmc.rikikivault.core.application.usecase.InitializeMachineIdentityService;
 import io.github.jlmc.rikikivault.core.application.usecase.InitializeVaultService;
 import io.github.jlmc.rikikivault.core.application.usecase.LoadMachineIdentityService;
+import io.github.jlmc.rikikivault.core.application.usecase.PublishVaultService;
+import io.github.jlmc.rikikivault.core.application.usecase.PullVaultService;
 import io.github.jlmc.rikikivault.core.application.usecase.ScanChangesService;
 import io.github.jlmc.rikikivault.core.configuration.VaultConfig;
 import io.github.jlmc.rikikivault.core.configuration.VaultPaths;
 import io.github.jlmc.rikikivault.core.domain.exception.PrivateKeyNotFoundException;
 import io.github.jlmc.rikikivault.core.domain.exception.RikikiVaultException;
 import io.github.jlmc.rikikivault.core.domain.model.MachineIdentity;
+import io.github.jlmc.rikikivault.core.domain.model.PullResult;
 import io.github.jlmc.rikikivault.core.domain.model.VaultChange;
+import io.github.jlmc.rikikivault.core.domain.model.VaultConflict;
+import io.github.jlmc.rikikivault.core.ports.in.CloneVaultCommand;
 import io.github.jlmc.rikikivault.core.ports.in.InitializeVaultCommand;
+import io.github.jlmc.rikikivault.core.ports.in.PublishVaultCommand;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -80,7 +88,10 @@ public final class Main {
             case "init" -> runInit(ctx, rest);
             case "whoami" -> runWhoami(ctx);
             case "export-key" -> runExportKey(ctx, rest);
+            case "clone" -> runClone(ctx, rest);
             case "status" -> runStatus(ctx);
+            case "publish" -> runPublish(ctx, rest);
+            case "pull" -> runPull(ctx);
             default -> {
                 System.err.println("Comando desconhecido: " + command);
                 printUsage();
@@ -162,6 +173,84 @@ public final class Main {
         }
     }
 
+    private static void runClone(VaultContext ctx, String[] rest) {
+        if (rest.length < 1) {
+            System.err.println("Uso: clone <remote-uri>");
+            System.exit(1);
+            return;
+        }
+        String remoteUri = rest[0];
+
+        CloneVaultService service = new CloneVaultService(
+                new LoadMachineIdentityService(ctx.keyStorePort()),
+                new InitializeMachineIdentityService(new X25519KeyPairGeneratorAdapter(), ctx.keyStorePort()),
+                new DecryptFileService(ctx.encryptionPort()),
+                ctx.localFiles(), ctx.documentsFiles(), ctx.manifestPort(), ctx.gitRepositoryPort());
+
+        MachineIdentity identity = service.clone(new CloneVaultCommand(remoteUri));
+
+        System.out.println("Vault clonado em " + ctx.vaultRoot());
+        System.out.println("Identidade desta máquina: " + identity.id());
+    }
+
+    private static void runPublish(VaultContext ctx, String[] rest) {
+        String message = null;
+        for (int i = 0; i < rest.length; i++) {
+            if (rest[i].equals("-m") && i + 1 < rest.length) {
+                message = rest[i + 1];
+            }
+        }
+        if (message == null) {
+            System.err.println("Uso: publish -m \"<mensagem>\"");
+            System.exit(1);
+            return;
+        }
+
+        ScanChangesService scanChangesService = new ScanChangesService(ctx.localFiles(), ctx.hashPort(), ctx.manifestPort());
+        List<VaultChange> changes = scanChangesService.scan();
+        if (changes.isEmpty()) {
+            System.out.println("Nada para publicar.");
+            return;
+        }
+
+        PublishVaultService service = new PublishVaultService(
+                ctx.localFiles(), ctx.documentsFiles(), ctx.encryptionPort(), ctx.hashPort(),
+                ctx.manifestPort(), ctx.recipientRegistryPort(), ctx.gitRepositoryPort());
+        service.publish(new PublishVaultCommand(changes, message));
+
+        System.out.println("Publicadas " + changes.size() + " alterações.");
+    }
+
+    private static void runPull(VaultContext ctx) {
+        PullVaultService service = new PullVaultService(
+                new LoadMachineIdentityService(ctx.keyStorePort()),
+                new DecryptFileService(ctx.encryptionPort()),
+                new ScanChangesService(ctx.localFiles(), ctx.hashPort(), ctx.manifestPort()),
+                ctx.localFiles(), ctx.documentsFiles(), ctx.manifestPort(), ctx.gitRepositoryPort());
+
+        PullResult result = service.pull();
+
+        if (!result.uncommittedLocalChangesAtStart().isEmpty()) {
+            System.out.println("Aviso: tens alterações locais por publicar:");
+            for (VaultChange change : result.uncommittedLocalChangesAtStart()) {
+                System.out.println("  " + change.type() + " " + change.path());
+            }
+        }
+        for (String path : result.updatedPaths()) {
+            System.out.println("Atualizado: " + path);
+        }
+        for (String path : result.deletedPaths()) {
+            System.out.println("Removido: " + path);
+        }
+        for (VaultConflict conflict : result.conflicts()) {
+            System.out.println("Conflito em " + conflict.plaintextPath()
+                    + " (local=" + conflict.localChangeType() + ", remoto=" + conflict.remoteChangeType() + ") - ficheiro local não foi tocado.");
+        }
+        if (result.updatedPaths().isEmpty() && result.deletedPaths().isEmpty() && !result.hasConflicts()) {
+            System.out.println("Já estás atualizado.");
+        }
+    }
+
     private static IdentityResolution loadOrCreateIdentity(VaultContext ctx) {
         LoadMachineIdentityService loadMachineIdentityService = new LoadMachineIdentityService(ctx.keyStorePort());
         try {
@@ -208,7 +297,7 @@ public final class Main {
                   init [--git] <machine-label>
                   whoami
                   export-key <output-file>
-                  clone <remote-uri>
+                  clone <remote-uri>       (entrar num vault já existente - a primeira máquina usa 'init')
                   status
                   publish -m "<message>"
                   pull
