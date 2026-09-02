@@ -1,7 +1,10 @@
 package io.github.jlmc.rikikivault.core.application.usecase;
 
 import io.github.jlmc.rikikivault.core.adapters.hashing.Sha256HashAdapter;
+import io.github.jlmc.rikikivault.core.domain.model.KeyFingerprint;
 import io.github.jlmc.rikikivault.core.domain.model.ManifestEntry;
+import io.github.jlmc.rikikivault.core.domain.model.Recipient;
+import io.github.jlmc.rikikivault.core.domain.model.RecipientRegistry;
 import io.github.jlmc.rikikivault.core.domain.model.VaultChange;
 import io.github.jlmc.rikikivault.core.domain.model.VaultChange.ChangeType;
 import io.github.jlmc.rikikivault.core.domain.model.VaultManifest;
@@ -16,15 +19,19 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PublishVaultServiceTest {
 
-    private static PublicKey someRecipient() throws Exception {
+    private static PublicKey someRecipientKey() throws Exception {
         KeyPairGenerator generator = KeyPairGenerator.getInstance("X25519");
         generator.initialize(NamedParameterSpec.X25519, new SecureRandom());
         return generator.generateKeyPair().getPublic();
+    }
+
+    private static FakeRecipientRegistryPort registryWithOneRecipient(PublicKey publicKey) {
+        return new FakeRecipientRegistryPort(new RecipientRegistry(1, List.of(
+                new Recipient("machine-a", KeyFingerprint.of(publicKey), publicKey))));
     }
 
     private static Optional<ManifestEntry> entryFor(VaultManifest manifest, String plaintextPath) {
@@ -39,10 +46,10 @@ class PublishVaultServiceTest {
         FakeManifestPort manifestPort = new FakeManifestPort();
         FakeGitRepositoryPort gitRepositoryPort = new FakeGitRepositoryPort();
         PublishVaultService service = new PublishVaultService(
-                localFiles, documentsFiles, encryptionPort, new Sha256HashAdapter(), manifestPort, gitRepositoryPort);
+                localFiles, documentsFiles, encryptionPort, new Sha256HashAdapter(), manifestPort,
+                registryWithOneRecipient(someRecipientKey()), gitRepositoryPort);
 
-        service.publish(new PublishVaultCommand(
-                List.of(new VaultChange(ChangeType.ADDED, "cv.pdf")), List.of(someRecipient()), "publish cv.pdf"));
+        service.publish(new PublishVaultCommand(List.of(new VaultChange(ChangeType.ADDED, "cv.pdf")), "publish cv.pdf"));
 
         assertEquals(1, encryptionPort.encryptCallCount);
         assertTrue(documentsFiles.listFiles().contains("cv.pdf.enc"));
@@ -60,10 +67,10 @@ class PublishVaultServiceTest {
         FakeManifestPort manifestPort = new FakeManifestPort(new VaultManifest(1, List.of(existing)));
         FakeGitRepositoryPort gitRepositoryPort = new FakeGitRepositoryPort();
         PublishVaultService service = new PublishVaultService(
-                localFiles, documentsFiles, new FakeEncryptionPort(), new Sha256HashAdapter(), manifestPort, gitRepositoryPort);
+                localFiles, documentsFiles, new FakeEncryptionPort(), new Sha256HashAdapter(), manifestPort,
+                registryWithOneRecipient(someRecipientKey()), gitRepositoryPort);
 
-        service.publish(new PublishVaultCommand(
-                List.of(new VaultChange(ChangeType.MODIFIED, "notes.md")), List.of(someRecipient()), "publish notes.md"));
+        service.publish(new PublishVaultCommand(List.of(new VaultChange(ChangeType.MODIFIED, "notes.md")), "publish notes.md"));
 
         VaultManifest updated = manifestPort.load();
         assertEquals(1, updated.files().size());
@@ -79,10 +86,10 @@ class PublishVaultServiceTest {
         FakeManifestPort manifestPort = new FakeManifestPort(new VaultManifest(1, List.of(existing)));
         FakeGitRepositoryPort gitRepositoryPort = new FakeGitRepositoryPort();
         PublishVaultService service = new PublishVaultService(
-                localFiles, documentsFiles, new FakeEncryptionPort(), new Sha256HashAdapter(), manifestPort, gitRepositoryPort);
+                localFiles, documentsFiles, new FakeEncryptionPort(), new Sha256HashAdapter(), manifestPort,
+                registryWithOneRecipient(someRecipientKey()), gitRepositoryPort);
 
-        service.publish(new PublishVaultCommand(
-                List.of(new VaultChange(ChangeType.DELETED, "old.pdf")), List.of(someRecipient()), "remove old.pdf"));
+        service.publish(new PublishVaultCommand(List.of(new VaultChange(ChangeType.DELETED, "old.pdf")), "remove old.pdf"));
 
         assertTrue(manifestPort.load().files().isEmpty());
         assertTrue(documentsFiles.listFiles().isEmpty());
@@ -101,14 +108,14 @@ class PublishVaultServiceTest {
         FakeManifestPort manifestPort = new FakeManifestPort(new VaultManifest(1, List.of(modifiedEntry, deletedEntry)));
         FakeGitRepositoryPort gitRepositoryPort = new FakeGitRepositoryPort();
         PublishVaultService service = new PublishVaultService(
-                localFiles, documentsFiles, new FakeEncryptionPort(), new Sha256HashAdapter(), manifestPort, gitRepositoryPort);
+                localFiles, documentsFiles, new FakeEncryptionPort(), new Sha256HashAdapter(), manifestPort,
+                registryWithOneRecipient(someRecipientKey()), gitRepositoryPort);
 
         service.publish(new PublishVaultCommand(
                 List.of(
                         new VaultChange(ChangeType.ADDED, "added.txt"),
                         new VaultChange(ChangeType.MODIFIED, "modified.txt"),
                         new VaultChange(ChangeType.DELETED, "deleted.txt")),
-                List.of(someRecipient()),
                 "batch publish"));
 
         assertEquals(1, gitRepositoryPort.addedPathBatches.size());
@@ -122,8 +129,22 @@ class PublishVaultServiceTest {
     }
 
     @Test
-    void emptyRecipientsIsRejectedByTheCommand() {
-        assertThrows(IllegalArgumentException.class, () -> new PublishVaultCommand(
-                List.of(new VaultChange(ChangeType.ADDED, "x.txt")), List.of(), "message"));
+    void recipientsAreResolvedFromTheRegistryNotFromTheCommand() throws Exception {
+        FakeFileStoragePort localFiles = new FakeFileStoragePort().withFile("cv.pdf", "cv content");
+        FakeFileStoragePort documentsFiles = new FakeFileStoragePort();
+        FakeEncryptionPort encryptionPort = new FakeEncryptionPort();
+        PublicKey machineA = someRecipientKey();
+        PublicKey machineB = someRecipientKey();
+        FakeRecipientRegistryPort recipientRegistryPort = new FakeRecipientRegistryPort(new RecipientRegistry(1, List.of(
+                new Recipient("machine-a", KeyFingerprint.of(machineA), machineA),
+                new Recipient("machine-b", KeyFingerprint.of(machineB), machineB))));
+        PublishVaultService service = new PublishVaultService(
+                localFiles, documentsFiles, encryptionPort, new Sha256HashAdapter(), new FakeManifestPort(),
+                recipientRegistryPort, new FakeGitRepositoryPort());
+
+        service.publish(new PublishVaultCommand(List.of(new VaultChange(ChangeType.ADDED, "cv.pdf")), "publish cv.pdf"));
+
+        assertEquals(1, encryptionPort.receivedRecipients.size());
+        assertEquals(List.of(machineA, machineB), List.copyOf(encryptionPort.receivedRecipients.get(0)));
     }
 }

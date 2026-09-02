@@ -4,6 +4,7 @@ import io.github.jlmc.rikikivault.core.adapters.encryption.format.RvEncryptedFil
 import io.github.jlmc.rikikivault.core.domain.model.EncryptedFile;
 import io.github.jlmc.rikikivault.core.domain.model.ManifestEntry;
 import io.github.jlmc.rikikivault.core.domain.model.PlaintextFile;
+import io.github.jlmc.rikikivault.core.domain.model.Recipient;
 import io.github.jlmc.rikikivault.core.domain.model.VaultChange;
 import io.github.jlmc.rikikivault.core.domain.model.VaultManifest;
 import io.github.jlmc.rikikivault.core.ports.in.PublishVaultCommand;
@@ -13,6 +14,7 @@ import io.github.jlmc.rikikivault.core.ports.out.FileStoragePort;
 import io.github.jlmc.rikikivault.core.ports.out.GitRepositoryPort;
 import io.github.jlmc.rikikivault.core.ports.out.HashPort;
 import io.github.jlmc.rikikivault.core.ports.out.ManifestPort;
+import io.github.jlmc.rikikivault.core.ports.out.RecipientRegistryPort;
 
 import java.security.PublicKey;
 import java.util.LinkedHashMap;
@@ -23,7 +25,9 @@ import java.util.Objects;
 /**
  * Composes the "encrypt & push" flow (Plan.md §17) for a batch of already-approved changes -
  * the two user-confirmation gates in that flow are a CLI/UI concern for a later milestone; this
- * service is what runs after both have been granted.
+ * service is what runs after both have been granted. Recipients are resolved from the vault's
+ * {@link RecipientRegistryPort} (Plan.md §4) rather than supplied by the caller, so a publish can
+ * never accidentally omit an authorized machine.
  */
 public final class PublishVaultService implements PublishVaultUseCase {
 
@@ -32,6 +36,7 @@ public final class PublishVaultService implements PublishVaultUseCase {
     private final EncryptionPort encryptionPort;
     private final HashPort hashPort;
     private final ManifestPort manifestPort;
+    private final RecipientRegistryPort recipientRegistryPort;
     private final GitRepositoryPort gitRepositoryPort;
     private final RvEncryptedFileFormatCodec codec = new RvEncryptedFileFormatCodec();
 
@@ -41,18 +46,22 @@ public final class PublishVaultService implements PublishVaultUseCase {
             EncryptionPort encryptionPort,
             HashPort hashPort,
             ManifestPort manifestPort,
+            RecipientRegistryPort recipientRegistryPort,
             GitRepositoryPort gitRepositoryPort) {
         this.localFiles = Objects.requireNonNull(localFiles, "localFiles must not be null");
         this.documentsFiles = Objects.requireNonNull(documentsFiles, "documentsFiles must not be null");
         this.encryptionPort = Objects.requireNonNull(encryptionPort, "encryptionPort must not be null");
         this.hashPort = Objects.requireNonNull(hashPort, "hashPort must not be null");
         this.manifestPort = Objects.requireNonNull(manifestPort, "manifestPort must not be null");
+        this.recipientRegistryPort = Objects.requireNonNull(recipientRegistryPort, "recipientRegistryPort must not be null");
         this.gitRepositoryPort = Objects.requireNonNull(gitRepositoryPort, "gitRepositoryPort must not be null");
     }
 
     @Override
     public void publish(PublishVaultCommand command) {
         Objects.requireNonNull(command, "command must not be null");
+
+        List<PublicKey> recipients = recipientRegistryPort.load().recipients().stream().map(Recipient::publicKey).toList();
 
         VaultManifest manifest = manifestPort.load();
         Map<String, ManifestEntry> entriesByPlaintextPath = new LinkedHashMap<>();
@@ -63,7 +72,7 @@ public final class PublishVaultService implements PublishVaultUseCase {
         for (VaultChange change : command.approvedChanges()) {
             switch (change.type()) {
                 case ADDED, MODIFIED -> entriesByPlaintextPath.put(
-                        change.path(), encryptAndStore(change.path(), command.recipients()));
+                        change.path(), encryptAndStore(change.path(), recipients));
                 case DELETED -> {
                     ManifestEntry removed = entriesByPlaintextPath.remove(change.path());
                     if (removed != null) {

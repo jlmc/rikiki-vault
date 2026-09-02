@@ -8,6 +8,7 @@ import io.github.jlmc.rikikivault.core.adapters.git.JGitRepositoryAdapter;
 import io.github.jlmc.rikikivault.core.adapters.hashing.Sha256HashAdapter;
 import io.github.jlmc.rikikivault.core.adapters.keystore.LocalKeyStoreAdapter;
 import io.github.jlmc.rikikivault.core.adapters.manifest.JsonManifestFileAdapter;
+import io.github.jlmc.rikikivault.core.adapters.recipients.JsonRecipientRegistryFileAdapter;
 import io.github.jlmc.rikikivault.core.application.usecase.InitializeMachineIdentityService;
 import io.github.jlmc.rikikivault.core.application.usecase.InitializeVaultService;
 import io.github.jlmc.rikikivault.core.application.usecase.PublishVaultService;
@@ -55,6 +56,7 @@ class EndToEndPublishTest {
         Path localRoot = vaultRoot.resolve("local");
         Path documentsRoot = vaultRoot.resolve("documents");
         Path manifestFile = vaultRoot.resolve("vault").resolve("manifest.json");
+        Path recipientsFile = vaultRoot.resolve("vault").resolve("recipients.json");
         Path identityDirectory = tempDir.resolve("identity");
 
         JGitRepositoryAdapter gitRepositoryPort = new JGitRepositoryAdapter(vaultRoot);
@@ -62,13 +64,15 @@ class EndToEndPublishTest {
 
         LocalKeyStoreAdapter keyStorePort = new LocalKeyStoreAdapter(identityDirectory);
         JsonManifestFileAdapter manifestPort = new JsonManifestFileAdapter(manifestFile);
+        JsonRecipientRegistryFileAdapter recipientRegistryPort = new JsonRecipientRegistryFileAdapter(recipientsFile);
         InitializeVaultService initializeVaultService = new InitializeVaultService(
                 new InitializeMachineIdentityService(new X25519KeyPairGeneratorAdapter(), keyStorePort),
                 new LocalFileSystemAdapter(vaultRoot),
                 manifestPort,
+                recipientRegistryPort,
                 gitRepositoryPort);
 
-        MachineIdentity identity = initializeVaultService.initialize(new InitializeVaultCommand(false));
+        MachineIdentity identity = initializeVaultService.initialize(new InitializeVaultCommand(false, "machine-a"));
 
         assertArrayEquals("local/\n".getBytes(StandardCharsets.UTF_8), Files.readAllBytes(vaultRoot.resolve(".gitignore")));
         assertEquals(VaultManifest.empty(), manifestPort.load());
@@ -86,9 +90,9 @@ class EndToEndPublishTest {
 
         JceHybridEncryptionAdapter encryptionPort = new JceHybridEncryptionAdapter(EncryptionSettings.defaults());
         PublishVaultService publishVaultService = new PublishVaultService(
-                localFiles, documentsFiles, encryptionPort, hashPort, manifestPort, gitRepositoryPort);
+                localFiles, documentsFiles, encryptionPort, hashPort, manifestPort, recipientRegistryPort, gitRepositoryPort);
 
-        publishVaultService.publish(new PublishVaultCommand(changes, List.of(identity.publicKey()), "publish cv.pdf"));
+        publishVaultService.publish(new PublishVaultCommand(changes, "publish cv.pdf"));
 
         // The .enc file on disk round-trips back to the original plaintext bytes.
         byte[] encodedBytes = Files.readAllBytes(documentsRoot.resolve("cv.pdf.enc"));
