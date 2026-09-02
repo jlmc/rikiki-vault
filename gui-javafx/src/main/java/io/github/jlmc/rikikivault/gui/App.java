@@ -1,4 +1,4 @@
-package io.github.jlmc.gui;
+package io.github.jlmc.rikikivault.gui;
 
 import javafx.application.Application;
 import javafx.scene.Scene;
