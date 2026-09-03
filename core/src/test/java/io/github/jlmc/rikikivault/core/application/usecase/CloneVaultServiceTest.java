@@ -2,12 +2,15 @@ package io.github.jlmc.rikikivault.core.application.usecase;
 
 import io.github.jlmc.rikikivault.core.adapters.encryption.format.RvEncryptedFileFormatCodec;
 import io.github.jlmc.rikikivault.core.domain.exception.PrivateKeyNotFoundException;
+import io.github.jlmc.rikikivault.core.domain.exception.UninitializedVaultException;
 import io.github.jlmc.rikikivault.core.domain.model.EncryptedFile;
 import io.github.jlmc.rikikivault.core.domain.model.FileHash;
 import io.github.jlmc.rikikivault.core.domain.model.KeyFingerprint;
 import io.github.jlmc.rikikivault.core.domain.model.MachineIdentity;
 import io.github.jlmc.rikikivault.core.domain.model.ManifestEntry;
 import io.github.jlmc.rikikivault.core.domain.model.PlaintextFile;
+import io.github.jlmc.rikikivault.core.domain.model.Recipient;
+import io.github.jlmc.rikikivault.core.domain.model.RecipientRegistry;
 import io.github.jlmc.rikikivault.core.domain.model.VaultManifest;
 import io.github.jlmc.rikikivault.core.ports.in.CloneVaultCommand;
 import org.junit.jupiter.api.Test;
@@ -21,6 +24,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CloneVaultServiceTest {
@@ -36,6 +40,11 @@ class CloneVaultServiceTest {
 
     private static byte[] someEncodedEncryptedFile(String fileName) {
         return CODEC.encode(new EncryptedFile("RV01", 1, 1, fileName, List.of(), new byte[12], new byte[]{1, 2, 3}));
+    }
+
+    private static FakeRecipientRegistryPort registryWithOneRecipient(MachineIdentity identity) {
+        return new FakeRecipientRegistryPort(new RecipientRegistry(1, List.of(
+                new Recipient("machine-a", identity.id(), identity.publicKey()))));
     }
 
     @Test
@@ -57,7 +66,7 @@ class CloneVaultServiceTest {
         FakeInitializeMachineIdentityUseCase initializeIdentityUseCase = new FakeInitializeMachineIdentityUseCase(someIdentity());
         CloneVaultService service = new CloneVaultService(
                 loadIdentityUseCase, initializeIdentityUseCase, decryptFileUseCase,
-                localFiles, documentsFiles, manifestPort, gitRepositoryPort);
+                localFiles, documentsFiles, manifestPort, registryWithOneRecipient(identity), gitRepositoryPort);
 
         MachineIdentity result = service.clone(new CloneVaultCommand("file:///some/remote.git"));
 
@@ -76,11 +85,12 @@ class CloneVaultServiceTest {
         FakeDecryptFileUseCase decryptFileUseCase = new FakeDecryptFileUseCase();
         FakeManifestPort manifestPort = new FakeManifestPort();
         FakeGitRepositoryPort gitRepositoryPort = new FakeGitRepositoryPort();
-        FakeLoadMachineIdentityUseCase loadIdentityUseCase = new FakeLoadMachineIdentityUseCase(someIdentity());
+        MachineIdentity identity = someIdentity();
+        FakeLoadMachineIdentityUseCase loadIdentityUseCase = new FakeLoadMachineIdentityUseCase(identity);
         FakeInitializeMachineIdentityUseCase initializeIdentityUseCase = new FakeInitializeMachineIdentityUseCase(someIdentity());
         CloneVaultService service = new CloneVaultService(
                 loadIdentityUseCase, initializeIdentityUseCase, decryptFileUseCase,
-                localFiles, documentsFiles, manifestPort, gitRepositoryPort);
+                localFiles, documentsFiles, manifestPort, registryWithOneRecipient(identity), gitRepositoryPort);
 
         service.clone(new CloneVaultCommand("file:///some/remote.git"));
 
@@ -102,12 +112,33 @@ class CloneVaultServiceTest {
         FakeGitRepositoryPort gitRepositoryPort = new FakeGitRepositoryPort();
         CloneVaultService service = new CloneVaultService(
                 loadIdentityUseCase, initializeIdentityUseCase, decryptFileUseCase,
-                localFiles, documentsFiles, manifestPort, gitRepositoryPort);
+                localFiles, documentsFiles, manifestPort, registryWithOneRecipient(someIdentity()), gitRepositoryPort);
 
         MachineIdentity result = service.clone(new CloneVaultCommand("file:///some/remote.git"));
 
         assertEquals(generatedIdentity, result);
         assertEquals(1, initializeIdentityUseCase.initializeCallCount);
         assertEquals("file:///some/remote.git", gitRepositoryPort.clonedRemoteUri);
+    }
+
+    @Test
+    void cloningAnUninitializedRemoteWithNoRecipientsFails() throws Exception {
+        FakeFileStoragePort localFiles = new FakeFileStoragePort();
+        FakeFileStoragePort documentsFiles = new FakeFileStoragePort();
+        FakeDecryptFileUseCase decryptFileUseCase = new FakeDecryptFileUseCase();
+        FakeManifestPort manifestPort = new FakeManifestPort();
+        FakeGitRepositoryPort gitRepositoryPort = new FakeGitRepositoryPort();
+        FakeLoadMachineIdentityUseCase loadIdentityUseCase = new FakeLoadMachineIdentityUseCase(someIdentity());
+        FakeInitializeMachineIdentityUseCase initializeIdentityUseCase = new FakeInitializeMachineIdentityUseCase(someIdentity());
+        CloneVaultService service = new CloneVaultService(
+                loadIdentityUseCase, initializeIdentityUseCase, decryptFileUseCase,
+                localFiles, documentsFiles, manifestPort, new FakeRecipientRegistryPort(), gitRepositoryPort);
+
+        assertThrows(UninitializedVaultException.class,
+                () -> service.clone(new CloneVaultCommand("file:///some/remote.git")));
+
+        assertEquals("file:///some/remote.git", gitRepositoryPort.clonedRemoteUri, "the clone itself should still have been attempted");
+        assertTrue(decryptFileUseCase.receivedCommands.isEmpty());
+        assertTrue(localFiles.listFiles().isEmpty());
     }
 }

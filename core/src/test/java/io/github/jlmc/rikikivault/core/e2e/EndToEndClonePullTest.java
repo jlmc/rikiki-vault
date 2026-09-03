@@ -95,7 +95,7 @@ class EndToEndClonePullTest {
                 new LoadMachineIdentityService(machineB.keyStorePort),
                 new InitializeMachineIdentityService(new X25519KeyPairGeneratorAdapter(), machineB.keyStorePort),
                 new DecryptFileService(encryptionPort),
-                machineB.localFiles, machineB.documentsFiles, machineB.manifestPort, machineB.gitRepositoryPort)
+                machineB.localFiles, machineB.documentsFiles, machineB.manifestPort, machineB.recipientRegistryPort, machineB.gitRepositoryPort)
                 .clone(new CloneVaultCommand(remoteUri));
 
         assertEquals(identityB, clonedIdentity);

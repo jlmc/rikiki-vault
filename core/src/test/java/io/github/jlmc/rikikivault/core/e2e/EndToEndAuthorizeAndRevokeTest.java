@@ -99,7 +99,7 @@ class EndToEndAuthorizeAndRevokeTest {
                 new LoadMachineIdentityService(machineB.keyStorePort),
                 new InitializeMachineIdentityService(new X25519KeyPairGeneratorAdapter(), machineB.keyStorePort),
                 decryptFileService,
-                machineB.localFiles, machineB.documentsFiles, machineB.manifestPort, machineB.gitRepositoryPort)
+                machineB.localFiles, machineB.documentsFiles, machineB.manifestPort, machineB.recipientRegistryPort, machineB.gitRepositoryPort)
                 .clone(new CloneVaultCommand(remoteUri));
 
         assertArrayEquals(plaintextV1, Files.readAllBytes(machineB.vaultRoot.resolve("local").resolve("cv.pdf")));
