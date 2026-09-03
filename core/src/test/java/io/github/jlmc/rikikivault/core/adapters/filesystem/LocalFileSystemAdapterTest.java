@@ -1,5 +1,6 @@
 package io.github.jlmc.rikikivault.core.adapters.filesystem;
 
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -7,7 +8,11 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFileAttributeView;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -120,6 +125,33 @@ class LocalFileSystemAdapterTest {
         adapter.writeFile("notes.md.enc", "new".getBytes(StandardCharsets.UTF_8));
 
         assertArrayEquals("new".getBytes(StandardCharsets.UTF_8), adapter.readFile("notes.md.enc"));
+    }
+
+    @Test
+    void writeFileProducesAnOwnerOnlyFileOnPosixFilesystems(@TempDir Path tempDir) throws IOException {
+        Assumptions.assumeTrue(Files.getFileAttributeView(tempDir, PosixFileAttributeView.class) != null,
+                "POSIX permissions are not supported on this filesystem");
+        Path root = tempDir.resolve("local");
+        LocalFileSystemAdapter adapter = new LocalFileSystemAdapter(root);
+
+        adapter.writeFile("notes.md", "content".getBytes(StandardCharsets.UTF_8));
+
+        Set<PosixFilePermission> permissions = Files.getPosixFilePermissions(root.resolve("notes.md"));
+        assertEquals(PosixFilePermissions.fromString("rw-------"), permissions);
+    }
+
+    @Test
+    void writeFileLeavesNoTempFileBehind(@TempDir Path tempDir) throws IOException {
+        Path root = tempDir.resolve("local");
+        LocalFileSystemAdapter adapter = new LocalFileSystemAdapter(root);
+
+        adapter.writeFile("notes.md", "first".getBytes(StandardCharsets.UTF_8));
+        adapter.writeFile("notes.md", "second".getBytes(StandardCharsets.UTF_8));
+
+        try (var entries = Files.list(root)) {
+            List<String> fileNames = entries.map(p -> p.getFileName().toString()).toList();
+            assertEquals(List.of("notes.md"), fileNames);
+        }
     }
 
     @Test

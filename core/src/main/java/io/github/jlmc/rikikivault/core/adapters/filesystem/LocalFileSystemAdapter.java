@@ -4,8 +4,14 @@ import io.github.jlmc.rikikivault.core.ports.out.FileStoragePort;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.PosixFileAttributeView;
+import java.nio.file.attribute.PosixFilePermission;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -57,6 +63,10 @@ public final class LocalFileSystemAdapter implements FileStoragePort {
 
     @Override
     public void writeFile(String relativePath, byte[] content) {
+        // Written content may be decrypted plaintext (Plan.md §25): write to a sibling temp file,
+        // restrict its permissions, then atomically move it into place - a crash mid-write can
+        // never leave a truncated/partial file at the final path, and it's never briefly
+        // world-readable.
         Objects.requireNonNull(content, "content must not be null");
         Path resolved = resolveWithinRoot(relativePath);
         try {
@@ -64,7 +74,15 @@ public final class LocalFileSystemAdapter implements FileStoragePort {
             if (parent != null) {
                 Files.createDirectories(parent);
             }
-            Files.write(resolved, content);
+            Path tempFile = Files.createTempFile(parent, resolved.getFileName().toString(), ".tmp");
+            try {
+                Files.write(tempFile, content, StandardOpenOption.TRUNCATE_EXISTING);
+                restrictToOwnerOnly(tempFile);
+                moveIntoPlace(tempFile, resolved);
+            } catch (IOException | RuntimeException e) {
+                Files.deleteIfExists(tempFile);
+                throw e;
+            }
         } catch (IOException e) {
             throw new UncheckedIOException("Failed to write file at " + resolved, e);
         }
@@ -77,6 +95,30 @@ public final class LocalFileSystemAdapter implements FileStoragePort {
             Files.deleteIfExists(resolved);
         } catch (IOException e) {
             throw new UncheckedIOException("Failed to delete file at " + resolved, e);
+        }
+    }
+
+    private static void moveIntoPlace(Path tempFile, Path destination) throws IOException {
+        try {
+            Files.move(tempFile, destination, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        } catch (AtomicMoveNotSupportedException e) {
+            // Some filesystems (e.g. certain network mounts) can't rename atomically - falling
+            // back still avoids ever writing a truncated file directly at the destination.
+            Files.move(tempFile, destination, StandardCopyOption.REPLACE_EXISTING);
+        }
+    }
+
+    private static void restrictToOwnerOnly(Path file) throws IOException {
+        if (Files.getFileAttributeView(file, PosixFileAttributeView.class) != null) {
+            Set<PosixFilePermission> ownerReadWrite = EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
+            Files.setPosixFilePermissions(file, ownerReadWrite);
+        } else {
+            // Non-POSIX filesystem (e.g. Windows): best-effort fallback, not a full ACL solution.
+            java.io.File asFile = file.toFile();
+            asFile.setReadable(false, false);
+            asFile.setReadable(true, true);
+            asFile.setWritable(false, false);
+            asFile.setWritable(true, true);
         }
     }
 
