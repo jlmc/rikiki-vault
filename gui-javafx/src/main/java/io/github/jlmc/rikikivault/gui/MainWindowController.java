@@ -286,7 +286,7 @@ public final class MainWindowController {
                         new LoadMachineIdentityService(ctx.keyStorePort()),
                         new DecryptFileService(ctx.encryptionPort()),
                         new ScanChangesService(ctx.localFiles(), ctx.hashPort(), ctx.manifestPort()),
-                        ctx.localFiles(), ctx.documentsFiles(), ctx.manifestPort(), ctx.gitRepositoryPort())
+                        ctx.localFiles(), ctx.documentsFiles(), ctx.manifestPort(), ctx.gitRepositoryPort(), ctx.hashPort())
                         .pull(),
                 (PullResult result) -> {
                     Stage owner = (Stage) fileTable.getScene().getWindow();

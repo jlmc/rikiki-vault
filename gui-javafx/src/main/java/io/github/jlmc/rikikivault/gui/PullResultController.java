@@ -83,8 +83,16 @@ public final class PullResultController {
     }
 
     private String describe(VaultConflict conflict) {
-        return conflict.plaintextPath() + "  (local: " + conflict.localChangeType()
-                + ", remoto: " + conflict.remoteChangeType() + ")";
+        StringBuilder text = new StringBuilder(conflict.plaintextPath())
+                .append("  (local: ").append(conflict.localChangeType())
+                .append(", remoto: ").append(conflict.remoteChangeType()).append(")");
+        if (conflict.localHash() != null) {
+            text.append("\n  Local SHA-256: ").append(conflict.localHash());
+        }
+        if (conflict.remoteHash() != null) {
+            text.append("\n  Remoto SHA-256: ").append(conflict.remoteHash());
+        }
+        return text.toString();
     }
 
     @FXML

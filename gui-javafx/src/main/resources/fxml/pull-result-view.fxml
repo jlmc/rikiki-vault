@@ -28,7 +28,7 @@
     </VBox>
     <VBox fx:id="conflictsSection" spacing="6">
         <Label text="Conflitos — ficheiro local mantido, versão remota não aplicada" styleClass="section-title conflict-title"/>
-        <ListView fx:id="conflictsList" prefHeight="90"/>
+        <ListView fx:id="conflictsList" prefHeight="140"/>
     </VBox>
     <HBox alignment="CENTER_RIGHT">
         <Button text="OK" styleClass="primary-button" onAction="#onClose"/>
