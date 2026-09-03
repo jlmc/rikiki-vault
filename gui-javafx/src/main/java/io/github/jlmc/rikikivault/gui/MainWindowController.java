@@ -77,13 +77,21 @@ public final class MainWindowController {
     }
 
     private void showPreview(FolderTreeNode node) {
-        String newPath = node != null && !node.isFolder() ? node.fileEntry().path() : null;
-        String oldPath = currentNode != null && !currentNode.isFolder() ? currentNode.fileEntry().path() : null;
-        boolean sameFileReselectedWhileEditing = editMode && newPath != null && newPath.equals(oldPath);
-        currentNode = node;
-        if (sameFileReselectedWhileEditing) {
-            return;
+        if (editMode) {
+            // fileTable.setRoot(...) (refresh) clears the selection for a moment before the
+            // matching item is reselected on the rebuilt tree - that transient null, and a
+            // reselect of the very file being edited, must never bounce us out of edit mode.
+            // Only a genuine switch to a *different* file should do that.
+            String newPath = node != null && !node.isFolder() ? node.fileEntry().path() : null;
+            String oldPath = currentNode != null && !currentNode.isFolder() ? currentNode.fileEntry().path() : null;
+            if (newPath == null || newPath.equals(oldPath)) {
+                if (node != null) {
+                    currentNode = node;
+                }
+                return;
+            }
         }
+        currentNode = node;
         exitEditMode();
 
         if (node == null) {
