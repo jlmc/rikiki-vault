@@ -9,13 +9,13 @@ import io.github.jlmc.rikikivault.core.domain.model.PullResult;
 import io.github.jlmc.rikikivault.core.domain.model.VaultChange;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
-import javafx.beans.property.SimpleObjectProperty;
-import javafx.beans.property.SimpleStringProperty;
-import javafx.collections.FXCollections;
+import javafx.beans.property.ReadOnlyObjectWrapper;
+import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
+import javafx.scene.control.TreeItem;
+import javafx.scene.control.TreeTableColumn;
+import javafx.scene.control.TreeTableView;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 import javafx.util.Duration;
@@ -26,9 +26,9 @@ public final class MainWindowController {
 
     @FXML private Label vaultPathLabel;
     @FXML private Label fingerprintLabel;
-    @FXML private TableView<FileEntry> fileTable;
-    @FXML private TableColumn<FileEntry, FileEntry> statusColumn;
-    @FXML private TableColumn<FileEntry, String> pathColumn;
+    @FXML private TreeTableView<FolderTreeNode> fileTable;
+    @FXML private TreeTableColumn<FolderTreeNode, String> nameColumn;
+    @FXML private TreeTableColumn<FolderTreeNode, FolderTreeNode> statusColumn;
     @FXML private StackPane previewContainer;
 
     private VaultContext ctx;
@@ -39,12 +39,13 @@ public final class MainWindowController {
         vaultPathLabel.setText(ctx.vaultRoot().toString());
         fingerprintLabel.setText("Identidade: " + identity.id());
 
-        statusColumn.setCellValueFactory(data -> new SimpleObjectProperty<>(data.getValue()));
-        statusColumn.setCellFactory(column -> new StatusBadgeCell<>(FileEntry::status));
-        pathColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().path()));
+        nameColumn.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getValue().name()));
+        statusColumn.setCellValueFactory(data -> new ReadOnlyObjectWrapper<>(data.getValue().getValue()));
+        statusColumn.setCellFactory(column -> new StatusBadgeTreeCell<>(
+                node -> node.fileEntry() == null ? null : node.fileEntry().status()));
 
         fileTable.getSelectionModel().selectedItemProperty()
-                .addListener((observable, oldValue, newValue) -> showPreview(newValue));
+                .addListener((observable, oldValue, newValue) -> showPreview(newValue == null ? null : newValue.getValue()));
         showPreview(null);
 
         refresh();
@@ -59,11 +60,16 @@ public final class MainWindowController {
         timeline.play();
     }
 
-    private void showPreview(FileEntry entry) {
-        if (entry == null) {
+    private void showPreview(FolderTreeNode node) {
+        if (node == null) {
             previewContainer.getChildren().setAll(ViewerResultRenderer.renderUnsupported("Seleciona um ficheiro para pré-visualizar."));
             return;
         }
+        if (node.isFolder()) {
+            previewContainer.getChildren().setAll(ViewerResultRenderer.renderUnsupported("Selecionaste uma pasta."));
+            return;
+        }
+        FileEntry entry = node.fileEntry();
         if (entry.status() == FileStatus.DELETED) {
             previewContainer.getChildren().setAll(
                     ViewerResultRenderer.renderUnsupported("Ficheiro removido - sem conteúdo local para pré-visualizar."));
@@ -128,18 +134,57 @@ public final class MainWindowController {
     }
 
     private void refresh(boolean reportErrors) {
+        String previouslySelectedPath = currentSelectedPath();
         BackgroundTask.run(
                 () -> {
                     List<String> localPaths = ctx.localFiles().listFiles();
                     List<VaultChange> changes = new ScanChangesService(
                             ctx.localFiles(), ctx.hashPort(), ctx.manifestPort()).scan();
-                    return FileTreeBuilder.build(localPaths, changes);
+                    List<FileEntry> flat = FileTreeBuilder.build(localPaths, changes);
+                    return FolderTreeBuilder.build(flat);
                 },
-                entries -> fileTable.setItems(FXCollections.observableArrayList(entries)),
+                root -> {
+                    TreeItem<FolderTreeNode> rootItem = toTreeItem(root);
+                    fileTable.setRoot(rootItem);
+                    if (previouslySelectedPath != null) {
+                        reselect(rootItem, previouslySelectedPath);
+                    }
+                },
                 error -> {
                     if (reportErrors) {
                         Dialogs.showError(error);
                     }
                 });
+    }
+
+    private String currentSelectedPath() {
+        TreeItem<FolderTreeNode> selected = fileTable.getSelectionModel().getSelectedItem();
+        if (selected == null || selected.getValue().fileEntry() == null) {
+            return null;
+        }
+        return selected.getValue().fileEntry().path();
+    }
+
+    private boolean reselect(TreeItem<FolderTreeNode> item, String path) {
+        FileEntry entry = item.getValue().fileEntry();
+        if (entry != null && entry.path().equals(path)) {
+            fileTable.getSelectionModel().select(item);
+            return true;
+        }
+        for (TreeItem<FolderTreeNode> child : item.getChildren()) {
+            if (reselect(child, path)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static TreeItem<FolderTreeNode> toTreeItem(FolderTreeNode node) {
+        TreeItem<FolderTreeNode> item = new TreeItem<>(node);
+        item.setExpanded(true);
+        for (FolderTreeNode child : node.children()) {
+            item.getChildren().add(toTreeItem(child));
+        }
+        return item;
     }
 }

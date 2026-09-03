@@ -3,8 +3,8 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.SplitPane?>
-<?import javafx.scene.control.TableColumn?>
-<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TreeTableColumn?>
+<?import javafx.scene.control.TreeTableView?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
@@ -28,12 +28,12 @@
     </top>
     <center>
         <SplitPane dividerPositions="0.45">
-            <TableView fx:id="fileTable" styleClass="file-table">
+            <TreeTableView fx:id="fileTable" styleClass="file-table" showRoot="false">
                 <columns>
-                    <TableColumn fx:id="statusColumn" text="Estado" prefWidth="90"/>
-                    <TableColumn fx:id="pathColumn" text="Ficheiro" prefWidth="400"/>
+                    <TreeTableColumn fx:id="nameColumn" text="Ficheiro" prefWidth="330"/>
+                    <TreeTableColumn fx:id="statusColumn" text="Estado" prefWidth="90"/>
                 </columns>
-            </TableView>
+            </TreeTableView>
             <StackPane fx:id="previewContainer" styleClass="preview-container"/>
         </SplitPane>
     </center>
