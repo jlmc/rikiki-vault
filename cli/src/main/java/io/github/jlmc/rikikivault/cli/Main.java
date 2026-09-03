@@ -57,9 +57,21 @@ public final class Main {
         try {
             run(args);
         } catch (RikikiVaultException e) {
-            System.err.println("Erro: " + e.getMessage());
+            System.err.println("Erro: " + fullMessage(e));
             System.exit(1);
         }
+    }
+
+    private static String fullMessage(Throwable error) {
+        String topMessage = error.getMessage() != null ? error.getMessage() : error.toString();
+        Throwable rootCause = error;
+        while (rootCause.getCause() != null) {
+            rootCause = rootCause.getCause();
+        }
+        String rootMessage = rootCause.getMessage() != null ? rootCause.getMessage() : rootCause.toString();
+        return rootCause == error || rootMessage.equals(topMessage)
+                ? topMessage
+                : topMessage + " (causa: " + rootMessage + ")";
     }
 
     private static void run(String[] args) {
@@ -135,7 +147,8 @@ public final class Main {
         System.out.println("Vault inicializado em " + ctx.vaultRoot());
         System.out.println("Identidade desta máquina: " + identity.id());
         if (initGit) {
-            System.out.println("Repositório git local criado. Antes de publicar, associa um remoto com:");
+            System.out.println("Repositório git local criado. Já podes publicar (fica só local).");
+            System.out.println("Opcional - para sincronizar com outra máquina, associa um remoto com:");
             System.out.println("  git -C " + ctx.vaultRoot() + " remote add origin <url>");
         }
     }
@@ -223,9 +236,12 @@ public final class Main {
         PublishVaultService service = new PublishVaultService(
                 ctx.localFiles(), ctx.documentsFiles(), ctx.encryptionPort(), ctx.hashPort(),
                 ctx.manifestPort(), ctx.recipientRegistryPort(), ctx.gitRepositoryPort());
-        service.publish(new PublishVaultCommand(changes, message));
+        boolean pushed = service.publish(new PublishVaultCommand(changes, message));
 
         System.out.println("Publicadas " + changes.size() + " alterações.");
+        if (!pushed) {
+            System.out.println("(guardado localmente - sem remoto configurado)");
+        }
     }
 
     private static void runPull(VaultContext ctx) {
@@ -270,9 +286,12 @@ public final class Main {
         AuthorizeMachineService service = new AuthorizeMachineService(
                 ctx.recipientRegistryPort(), ctx.localFiles(), ctx.documentsFiles(),
                 ctx.manifestPort(), ctx.encryptionPort(), ctx.gitRepositoryPort());
-        service.authorize(new AuthorizeMachineCommand(label, publicKey));
+        boolean pushed = service.authorize(new AuthorizeMachineCommand(label, publicKey));
 
         System.out.println("Máquina '" + label + "' autorizada e publicada.");
+        if (!pushed) {
+            System.out.println("(guardado localmente - sem remoto configurado)");
+        }
     }
 
     private static void runRevoke(VaultContext ctx, String[] rest) {
@@ -286,9 +305,12 @@ public final class Main {
         RevokeMachineService service = new RevokeMachineService(
                 ctx.recipientRegistryPort(), ctx.localFiles(), ctx.documentsFiles(),
                 ctx.manifestPort(), ctx.encryptionPort(), ctx.gitRepositoryPort());
-        service.revoke(new RevokeMachineCommand(fingerprint));
+        boolean pushed = service.revoke(new RevokeMachineCommand(fingerprint));
 
         System.out.println("Máquina " + fingerprint + " revogada e alterações publicadas.");
+        if (!pushed) {
+            System.out.println("(guardado localmente - sem remoto configurado)");
+        }
     }
 
     private static IdentityResolution loadOrCreateIdentity(VaultContext ctx) {
