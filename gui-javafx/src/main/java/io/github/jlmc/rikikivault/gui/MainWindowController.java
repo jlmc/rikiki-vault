@@ -14,6 +14,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 
 import java.util.List;
@@ -25,6 +26,7 @@ public final class MainWindowController {
     @FXML private TableView<FileEntry> fileTable;
     @FXML private TableColumn<FileEntry, FileEntry> statusColumn;
     @FXML private TableColumn<FileEntry, String> pathColumn;
+    @FXML private StackPane previewContainer;
 
     private VaultContext ctx;
 
@@ -38,7 +40,32 @@ public final class MainWindowController {
         statusColumn.setCellFactory(column -> new StatusBadgeCell<>(FileEntry::status));
         pathColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().path()));
 
+        fileTable.getSelectionModel().selectedItemProperty()
+                .addListener((observable, oldValue, newValue) -> showPreview(newValue));
+        showPreview(null);
+
         refresh();
+    }
+
+    private void showPreview(FileEntry entry) {
+        if (entry == null) {
+            previewContainer.getChildren().setAll(ViewerResultRenderer.renderUnsupported("Seleciona um ficheiro para pré-visualizar."));
+            return;
+        }
+        if (entry.status() == FileStatus.DELETED) {
+            previewContainer.getChildren().setAll(
+                    ViewerResultRenderer.renderUnsupported("Ficheiro removido - sem conteúdo local para pré-visualizar."));
+            return;
+        }
+        BackgroundTask.run(
+                () -> {
+                    byte[] content = ctx.localFiles().readFile(entry.path());
+                    FileViewer viewer = FileViewerRegistry.select(entry.path());
+                    return viewer.view(content, entry.path());
+                },
+                result -> previewContainer.getChildren().setAll(ViewerResultRenderer.render(result)),
+                error -> previewContainer.getChildren().setAll(
+                        ViewerResultRenderer.renderUnsupported("Não foi possível pré-visualizar: " + error.getMessage())));
     }
 
     @FXML
