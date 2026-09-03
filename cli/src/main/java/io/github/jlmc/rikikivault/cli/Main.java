@@ -1,5 +1,6 @@
 package io.github.jlmc.rikikivault.cli;
 
+import io.github.jlmc.rikikivault.core.adapters.configuration.LocalGitAuthSettingsAdapter;
 import io.github.jlmc.rikikivault.core.adapters.configuration.YamlConfigFileAdapter;
 import io.github.jlmc.rikikivault.core.adapters.encryption.JceHybridEncryptionAdapter;
 import io.github.jlmc.rikikivault.core.adapters.encryption.X25519KeyPairGeneratorAdapter;
@@ -19,6 +20,7 @@ import io.github.jlmc.rikikivault.core.application.usecase.PublishVaultService;
 import io.github.jlmc.rikikivault.core.application.usecase.PullVaultService;
 import io.github.jlmc.rikikivault.core.application.usecase.RevokeMachineService;
 import io.github.jlmc.rikikivault.core.application.usecase.ScanChangesService;
+import io.github.jlmc.rikikivault.core.configuration.GitAuthSettings;
 import io.github.jlmc.rikikivault.core.configuration.VaultConfig;
 import io.github.jlmc.rikikivault.core.configuration.VaultPaths;
 import io.github.jlmc.rikikivault.core.domain.exception.PrivateKeyNotFoundException;
@@ -117,6 +119,7 @@ public final class Main {
             case "pull" -> runPull(ctx);
             case "authorize" -> runAuthorize(ctx, rest);
             case "revoke" -> runRevoke(ctx, rest);
+            case "git-auth" -> runGitAuth(ctx, rest);
             default -> {
                 System.err.println("Comando desconhecido: " + command);
                 printUsage();
@@ -325,6 +328,68 @@ public final class Main {
         }
     }
 
+    private static void runGitAuth(VaultContext ctx, String[] rest) {
+        if (rest.length < 1) {
+            System.err.println("Uso: git-auth show|set-ssh-key <path>|clear-ssh-key|set-token|clear-token");
+            System.exit(1);
+            return;
+        }
+        LocalGitAuthSettingsAdapter port = ctx.gitAuthSettingsPort();
+        switch (rest[0]) {
+            case "show" -> {
+                GitAuthSettings settings = port.load();
+                System.out.println("Chave SSH: " + (settings.sshPrivateKeyPath() != null ? settings.sshPrivateKeyPath() : "nenhuma"));
+                boolean hasToken = settings.githubToken() != null && !settings.githubToken().isBlank();
+                System.out.println("Token HTTPS: " + (hasToken ? "configurado" : "não configurado"));
+            }
+            case "set-ssh-key" -> {
+                if (rest.length < 2) {
+                    System.err.println("Uso: git-auth set-ssh-key <path>");
+                    System.exit(1);
+                    return;
+                }
+                GitAuthSettings current = port.load();
+                port.save(new GitAuthSettings(Path.of(rest[1]), current.githubToken()));
+                System.out.println("Chave SSH configurada.");
+            }
+            case "clear-ssh-key" -> {
+                GitAuthSettings current = port.load();
+                port.save(new GitAuthSettings(null, current.githubToken()));
+                System.out.println("Chave SSH removida.");
+            }
+            case "set-token" -> {
+                // Reads from stdin, never from an argument - an argument would land in shell
+                // history, exactly the mistake that prompted this command in the first place.
+                String token = readTokenFromStdin();
+                GitAuthSettings current = port.load();
+                port.save(new GitAuthSettings(current.sshPrivateKeyPath(), token));
+                System.out.println("Token guardado.");
+            }
+            case "clear-token" -> {
+                GitAuthSettings current = port.load();
+                port.save(new GitAuthSettings(current.sshPrivateKeyPath(), null));
+                System.out.println("Token removido.");
+            }
+            default -> {
+                System.err.println("Subcomando desconhecido: " + rest[0]);
+                System.exit(1);
+            }
+        }
+    }
+
+    private static String readTokenFromStdin() {
+        try {
+            java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(System.in, StandardCharsets.UTF_8));
+            String line = reader.readLine();
+            if (line == null || line.isBlank()) {
+                throw new IllegalArgumentException("Nenhum token recebido no stdin");
+            }
+            return line.strip();
+        } catch (IOException e) {
+            throw new UncheckedIOException("Falha ao ler o token do stdin", e);
+        }
+    }
+
     private static IdentityResolution loadOrCreateIdentity(VaultContext ctx) {
         LoadMachineIdentityService loadMachineIdentityService = new LoadMachineIdentityService(ctx.keyStorePort());
         try {
@@ -377,6 +442,7 @@ public final class Main {
                   pull
                   authorize <label> <public-key-file>
                   revoke <fingerprint-hex>
+                  git-auth show|set-ssh-key <path>|clear-ssh-key|set-token|clear-token
                 """);
     }
 
@@ -389,20 +455,23 @@ public final class Main {
             JGitRepositoryAdapter gitRepositoryPort,
             LocalKeyStoreAdapter keyStorePort,
             JceHybridEncryptionAdapter encryptionPort,
-            Sha256HashAdapter hashPort) {
+            Sha256HashAdapter hashPort,
+            LocalGitAuthSettingsAdapter gitAuthSettingsPort) {
 
         static VaultContext at(Path vaultRoot) {
             VaultConfig config = new YamlConfigFileAdapter(VaultPaths.defaultConfigFile()).load();
+            LocalGitAuthSettingsAdapter gitAuthSettingsPort = new LocalGitAuthSettingsAdapter(VaultPaths.defaultGitAuthDirectory());
             return new VaultContext(
                     vaultRoot,
                     new LocalFileSystemAdapter(vaultRoot.resolve("local")),
                     new LocalFileSystemAdapter(vaultRoot.resolve("documents")),
                     new JsonManifestFileAdapter(vaultRoot.resolve("vault").resolve("manifest.json")),
                     new JsonRecipientRegistryFileAdapter(vaultRoot.resolve("vault").resolve("recipients.json")),
-                    new JGitRepositoryAdapter(vaultRoot),
+                    new JGitRepositoryAdapter(vaultRoot, gitAuthSettingsPort),
                     new LocalKeyStoreAdapter(config.identityDirectory()),
                     new JceHybridEncryptionAdapter(config.encryptionSettings()),
-                    new Sha256HashAdapter());
+                    new Sha256HashAdapter(),
+                    gitAuthSettingsPort);
         }
     }
 }
