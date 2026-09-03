@@ -59,6 +59,12 @@ public final class Main {
         } catch (RikikiVaultException e) {
             System.err.println("Erro: " + fullMessage(e));
             System.exit(1);
+        } catch (RuntimeException e) {
+            // Anything not already a RikikiVaultException (e.g. an UncheckedIOException from a
+            // filesystem-level failure) still gets the same curated format instead of the JVM's
+            // default uncaught-exception stack trace.
+            System.err.println("Erro: " + fullMessage(e));
+            System.exit(1);
         }
     }
 
@@ -249,7 +255,7 @@ public final class Main {
                 new LoadMachineIdentityService(ctx.keyStorePort()),
                 new DecryptFileService(ctx.encryptionPort()),
                 new ScanChangesService(ctx.localFiles(), ctx.hashPort(), ctx.manifestPort()),
-                ctx.localFiles(), ctx.documentsFiles(), ctx.manifestPort(), ctx.gitRepositoryPort());
+                ctx.localFiles(), ctx.documentsFiles(), ctx.manifestPort(), ctx.gitRepositoryPort(), ctx.hashPort());
 
         PullResult result = service.pull();
 
@@ -268,6 +274,12 @@ public final class Main {
         for (VaultConflict conflict : result.conflicts()) {
             System.out.println("Conflito em " + conflict.plaintextPath()
                     + " (local=" + conflict.localChangeType() + ", remoto=" + conflict.remoteChangeType() + ") - ficheiro local não foi tocado.");
+            if (conflict.localHash() != null) {
+                System.out.println("  Local SHA-256: " + conflict.localHash());
+            }
+            if (conflict.remoteHash() != null) {
+                System.out.println("  Remoto SHA-256: " + conflict.remoteHash());
+            }
         }
         if (result.updatedPaths().isEmpty() && result.deletedPaths().isEmpty() && !result.hasConflicts()) {
             System.out.println("Já estás atualizado.");
