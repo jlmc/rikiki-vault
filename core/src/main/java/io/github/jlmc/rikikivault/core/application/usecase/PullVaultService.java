@@ -2,6 +2,7 @@ package io.github.jlmc.rikikivault.core.application.usecase;
 
 import io.github.jlmc.rikikivault.core.adapters.encryption.format.RvEncryptedFileFormatCodec;
 import io.github.jlmc.rikikivault.core.domain.model.EncryptedFile;
+import io.github.jlmc.rikikivault.core.domain.model.FileHash;
 import io.github.jlmc.rikikivault.core.domain.model.MachineIdentity;
 import io.github.jlmc.rikikivault.core.domain.model.ManifestEntry;
 import io.github.jlmc.rikikivault.core.domain.model.PlaintextFile;
@@ -17,6 +18,7 @@ import io.github.jlmc.rikikivault.core.ports.in.PullVaultUseCase;
 import io.github.jlmc.rikikivault.core.ports.in.ScanChangesUseCase;
 import io.github.jlmc.rikikivault.core.ports.out.FileStoragePort;
 import io.github.jlmc.rikikivault.core.ports.out.GitRepositoryPort;
+import io.github.jlmc.rikikivault.core.ports.out.HashPort;
 import io.github.jlmc.rikikivault.core.ports.out.ManifestPort;
 
 import java.util.ArrayList;
@@ -43,6 +45,7 @@ public final class PullVaultService implements PullVaultUseCase {
     private final FileStoragePort documentsFiles;
     private final ManifestPort manifestPort;
     private final GitRepositoryPort gitRepositoryPort;
+    private final HashPort hashPort;
     private final RvEncryptedFileFormatCodec codec = new RvEncryptedFileFormatCodec();
 
     public PullVaultService(
@@ -52,7 +55,8 @@ public final class PullVaultService implements PullVaultUseCase {
             FileStoragePort localFiles,
             FileStoragePort documentsFiles,
             ManifestPort manifestPort,
-            GitRepositoryPort gitRepositoryPort) {
+            GitRepositoryPort gitRepositoryPort,
+            HashPort hashPort) {
         this.loadMachineIdentityUseCase = Objects.requireNonNull(
                 loadMachineIdentityUseCase, "loadMachineIdentityUseCase must not be null");
         this.decryptFileUseCase = Objects.requireNonNull(decryptFileUseCase, "decryptFileUseCase must not be null");
@@ -61,6 +65,7 @@ public final class PullVaultService implements PullVaultUseCase {
         this.documentsFiles = Objects.requireNonNull(documentsFiles, "documentsFiles must not be null");
         this.manifestPort = Objects.requireNonNull(manifestPort, "manifestPort must not be null");
         this.gitRepositoryPort = Objects.requireNonNull(gitRepositoryPort, "gitRepositoryPort must not be null");
+        this.hashPort = Objects.requireNonNull(hashPort, "hashPort must not be null");
     }
 
     @Override
@@ -90,7 +95,8 @@ public final class PullVaultService implements PullVaultUseCase {
             }
             ChangeType localType = localChangeTypesByPath.get(path);
             if (localType != null) {
-                conflicts.add(new VaultConflict(path, localType, beforeEntry == null ? ChangeType.ADDED : ChangeType.MODIFIED));
+                conflicts.add(new VaultConflict(path, localType, beforeEntry == null ? ChangeType.ADDED : ChangeType.MODIFIED,
+                        hashLocalFileIfPresent(path, localType), afterEntry.hash()));
             } else {
                 decryptAndWrite(afterEntry, identity);
                 updatedPaths.add(path);
@@ -104,7 +110,8 @@ public final class PullVaultService implements PullVaultUseCase {
             }
             ChangeType localType = localChangeTypesByPath.get(path);
             if (localType != null) {
-                conflicts.add(new VaultConflict(path, localType, ChangeType.DELETED));
+                conflicts.add(new VaultConflict(path, localType, ChangeType.DELETED,
+                        hashLocalFileIfPresent(path, localType), null));
             } else {
                 localFiles.deleteFile(path);
                 deletedPaths.add(path);
@@ -112,6 +119,15 @@ public final class PullVaultService implements PullVaultUseCase {
         }
 
         return new PullResult(updatedPaths, deletedPaths, conflicts, localChanges);
+    }
+
+    private FileHash hashLocalFileIfPresent(String path, ChangeType localType) {
+        // A DELETED local change means there's no local content left to hash (Plan.md §32 only
+        // asks for a hash of whichever side still has a version to compare).
+        if (localType == ChangeType.DELETED) {
+            return null;
+        }
+        return hashPort.hash(localFiles.readFile(path));
     }
 
     private void decryptAndWrite(ManifestEntry entry, MachineIdentity identity) {

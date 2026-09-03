@@ -4,9 +4,15 @@ import java.util.Objects;
 
 /**
  * A path that changed both locally (since the last sync) and remotely (in the same {@code pull}),
- * per Plan.md §11/§32 - the file was never touched, this only reports the fact.
+ * per Plan.md §11/§32 - the file was never touched, this only reports the fact. {@code localHash}/
+ * {@code remoteHash} are {@code null} when that side is a deletion (no content left to hash).
  */
-public record VaultConflict(String plaintextPath, VaultChange.ChangeType localChangeType, VaultChange.ChangeType remoteChangeType) {
+public record VaultConflict(
+        String plaintextPath,
+        VaultChange.ChangeType localChangeType,
+        VaultChange.ChangeType remoteChangeType,
+        FileHash localHash,
+        FileHash remoteHash) {
 
     public VaultConflict {
         Objects.requireNonNull(plaintextPath, "plaintextPath must not be null");

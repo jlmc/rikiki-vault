@@ -1,6 +1,7 @@
 package io.github.jlmc.rikikivault.core.application.usecase;
 
 import io.github.jlmc.rikikivault.core.adapters.encryption.format.RvEncryptedFileFormatCodec;
+import io.github.jlmc.rikikivault.core.adapters.hashing.Sha256HashAdapter;
 import io.github.jlmc.rikikivault.core.domain.model.EncryptedFile;
 import io.github.jlmc.rikikivault.core.domain.model.FileHash;
 import io.github.jlmc.rikikivault.core.domain.model.KeyFingerprint;
@@ -31,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class PullVaultServiceTest {
 
     private static final RvEncryptedFileFormatCodec CODEC = new RvEncryptedFileFormatCodec();
+    private static final Sha256HashAdapter HASH_PORT = new Sha256HashAdapter();
 
     private static MachineIdentity someIdentity() throws Exception {
         KeyPairGenerator generator = KeyPairGenerator.getInstance("X25519");
@@ -80,7 +82,7 @@ class PullVaultServiceTest {
         FakeGitRepositoryPort gitRepositoryPort = new FakeGitRepositoryPort();
         PullVaultService service = new PullVaultService(
                 new FakeLoadMachineIdentityUseCase(someIdentity()), decryptFileUseCase, () -> List.of(),
-                localFiles, documentsFiles, manifestPort, gitRepositoryPort);
+                localFiles, documentsFiles, manifestPort, gitRepositoryPort, HASH_PORT);
 
         PullResult result = service.pull();
 
@@ -101,7 +103,7 @@ class PullVaultServiceTest {
         FakeGitRepositoryPort gitRepositoryPort = new FakeGitRepositoryPort();
         PullVaultService service = new PullVaultService(
                 new FakeLoadMachineIdentityUseCase(someIdentity()), new FakeDecryptFileUseCase(), () -> List.of(),
-                localFiles, documentsFiles, manifestPort, gitRepositoryPort);
+                localFiles, documentsFiles, manifestPort, gitRepositoryPort, HASH_PORT);
 
         PullResult result = service.pull();
 
@@ -123,11 +125,15 @@ class PullVaultServiceTest {
         ScanChangesUseCase scanChangesUseCase = () -> List.of(new VaultChange(ChangeType.MODIFIED, "cv.pdf"));
         PullVaultService service = new PullVaultService(
                 new FakeLoadMachineIdentityUseCase(someIdentity()), new FakeDecryptFileUseCase(), scanChangesUseCase,
-                localFiles, documentsFiles, manifestPort, new FakeGitRepositoryPort());
+                localFiles, documentsFiles, manifestPort, new FakeGitRepositoryPort(), HASH_PORT);
 
         PullResult result = service.pull();
 
-        assertEquals(List.of(new VaultConflict("cv.pdf", ChangeType.MODIFIED, ChangeType.MODIFIED)), result.conflicts());
+        FileHash localHash = HASH_PORT.hash("locally edited content".getBytes(StandardCharsets.UTF_8));
+        FileHash remoteHash = HASH_PORT.hash("new remote content".getBytes(StandardCharsets.UTF_8));
+        assertEquals(
+                List.of(new VaultConflict("cv.pdf", ChangeType.MODIFIED, ChangeType.MODIFIED, localHash, remoteHash)),
+                result.conflicts());
         assertTrue(result.updatedPaths().isEmpty());
         assertArrayEquals("locally edited content".getBytes(StandardCharsets.UTF_8), localFiles.readFile("cv.pdf"));
     }
@@ -142,7 +148,7 @@ class PullVaultServiceTest {
         TwoStageManifestPort manifestPort = new TwoStageManifestPort(manifest, manifest);
         PullVaultService service = new PullVaultService(
                 new FakeLoadMachineIdentityUseCase(someIdentity()), new FakeDecryptFileUseCase(), () -> List.of(),
-                localFiles, documentsFiles, manifestPort, new FakeGitRepositoryPort());
+                localFiles, documentsFiles, manifestPort, new FakeGitRepositoryPort(), HASH_PORT);
 
         PullResult result = service.pull();
 
@@ -159,11 +165,86 @@ class PullVaultServiceTest {
         List<VaultChange> localChanges = List.of(new VaultChange(ChangeType.ADDED, "draft.txt"));
         PullVaultService service = new PullVaultService(
                 new FakeLoadMachineIdentityUseCase(someIdentity()), new FakeDecryptFileUseCase(), () -> localChanges,
-                new FakeFileStoragePort(), new FakeFileStoragePort(), manifestPort, new FakeGitRepositoryPort());
+                new FakeFileStoragePort(), new FakeFileStoragePort(), manifestPort, new FakeGitRepositoryPort(), HASH_PORT);
 
         PullResult result = service.pull();
 
         assertEquals(localChanges, result.uncommittedLocalChangesAtStart());
         assertFalse(result.hasConflicts());
+    }
+
+    @Test
+    void modifiedLocallyAndDeletedRemotelyIsReportedAsAConflictWithOnlyALocalHash() throws Exception {
+        FakeFileStoragePort localFiles = new FakeFileStoragePort().withFile("cv.pdf", "locally edited content");
+        FakeFileStoragePort documentsFiles = new FakeFileStoragePort();
+        TwoStageManifestPort manifestPort = new TwoStageManifestPort(
+                new VaultManifest(1, List.of(new ManifestEntry(
+                        "cv.pdf.enc", "cv.pdf", FileHash.of("old remote content".getBytes(StandardCharsets.UTF_8)), "RV01"))),
+                VaultManifest.empty());
+        ScanChangesUseCase scanChangesUseCase = () -> List.of(new VaultChange(ChangeType.MODIFIED, "cv.pdf"));
+        PullVaultService service = new PullVaultService(
+                new FakeLoadMachineIdentityUseCase(someIdentity()), new FakeDecryptFileUseCase(), scanChangesUseCase,
+                localFiles, documentsFiles, manifestPort, new FakeGitRepositoryPort(), HASH_PORT);
+
+        PullResult result = service.pull();
+
+        FileHash localHash = HASH_PORT.hash("locally edited content".getBytes(StandardCharsets.UTF_8));
+        assertEquals(
+                List.of(new VaultConflict("cv.pdf", ChangeType.MODIFIED, ChangeType.DELETED, localHash, null)),
+                result.conflicts());
+        assertTrue(result.deletedPaths().isEmpty());
+        assertArrayEquals("locally edited content".getBytes(StandardCharsets.UTF_8), localFiles.readFile("cv.pdf"));
+    }
+
+    @Test
+    void deletedLocallyAndModifiedRemotelyIsReportedAsAConflictWithNoLocalHash() throws Exception {
+        FakeFileStoragePort localFiles = new FakeFileStoragePort();
+        FakeFileStoragePort documentsFiles = new FakeFileStoragePort();
+        documentsFiles.writeFile("cv.pdf.enc", someEncodedEncryptedFile("cv.pdf"));
+        TwoStageManifestPort manifestPort = new TwoStageManifestPort(
+                new VaultManifest(1, List.of(new ManifestEntry(
+                        "cv.pdf.enc", "cv.pdf", FileHash.of("old remote content".getBytes(StandardCharsets.UTF_8)), "RV01"))),
+                new VaultManifest(1, List.of(new ManifestEntry(
+                        "cv.pdf.enc", "cv.pdf", FileHash.of("new remote content".getBytes(StandardCharsets.UTF_8)), "RV01"))));
+        ScanChangesUseCase scanChangesUseCase = () -> List.of(new VaultChange(ChangeType.DELETED, "cv.pdf"));
+        PullVaultService service = new PullVaultService(
+                new FakeLoadMachineIdentityUseCase(someIdentity()), new FakeDecryptFileUseCase(), scanChangesUseCase,
+                localFiles, documentsFiles, manifestPort, new FakeGitRepositoryPort(), HASH_PORT);
+
+        PullResult result = service.pull();
+
+        FileHash remoteHash = HASH_PORT.hash("new remote content".getBytes(StandardCharsets.UTF_8));
+        assertEquals(
+                List.of(new VaultConflict("cv.pdf", ChangeType.DELETED, ChangeType.MODIFIED, null, remoteHash)),
+                result.conflicts());
+        assertTrue(result.updatedPaths().isEmpty());
+        assertTrue(localFiles.listFiles().isEmpty());
+    }
+
+    @Test
+    void multipleConflictsInTheSamePullAreAllReported() throws Exception {
+        FakeFileStoragePort localFiles = new FakeFileStoragePort()
+                .withFile("cv.pdf", "locally edited cv")
+                .withFile("notes.md", "locally edited notes");
+        FakeFileStoragePort documentsFiles = new FakeFileStoragePort();
+        TwoStageManifestPort manifestPort = new TwoStageManifestPort(
+                new VaultManifest(1, List.of(
+                        new ManifestEntry("cv.pdf.enc", "cv.pdf", FileHash.of("old cv".getBytes(StandardCharsets.UTF_8)), "RV01"),
+                        new ManifestEntry("notes.md.enc", "notes.md", FileHash.of("old notes".getBytes(StandardCharsets.UTF_8)), "RV01"))),
+                new VaultManifest(1, List.of(
+                        new ManifestEntry("cv.pdf.enc", "cv.pdf", FileHash.of("new cv".getBytes(StandardCharsets.UTF_8)), "RV01"),
+                        new ManifestEntry("notes.md.enc", "notes.md", FileHash.of("new notes".getBytes(StandardCharsets.UTF_8)), "RV01"))));
+        ScanChangesUseCase scanChangesUseCase = () -> List.of(
+                new VaultChange(ChangeType.MODIFIED, "cv.pdf"), new VaultChange(ChangeType.MODIFIED, "notes.md"));
+        PullVaultService service = new PullVaultService(
+                new FakeLoadMachineIdentityUseCase(someIdentity()), new FakeDecryptFileUseCase(), scanChangesUseCase,
+                localFiles, documentsFiles, manifestPort, new FakeGitRepositoryPort(), HASH_PORT);
+
+        PullResult result = service.pull();
+
+        assertEquals(2, result.conflicts().size());
+        assertTrue(result.conflicts().stream().anyMatch(c -> c.plaintextPath().equals("cv.pdf")));
+        assertTrue(result.conflicts().stream().anyMatch(c -> c.plaintextPath().equals("notes.md")));
+        assertTrue(result.updatedPaths().isEmpty());
     }
 }

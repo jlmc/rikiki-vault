@@ -150,7 +150,7 @@ class EndToEndClonePullTest {
         return new PullVaultService(
                 new LoadMachineIdentityService(machine.keyStorePort), new DecryptFileService(encryptionPort),
                 new ScanChangesService(machine.localFiles, hashPort, machine.manifestPort),
-                machine.localFiles, machine.documentsFiles, machine.manifestPort, machine.gitRepositoryPort);
+                machine.localFiles, machine.documentsFiles, machine.manifestPort, machine.gitRepositoryPort, hashPort);
     }
 
     private static final class Machine {
