@@ -166,6 +166,31 @@ class RvEncryptedFileFormatCodecTest {
     }
 
     @Test
+    void rejectsDeclaredLengthExceedingRemainingData() throws Exception {
+        RecipientKeyEntry recipient = new RecipientKeyEntry(randomFingerprint(), randomBytes(16));
+        byte[] sealedContent = randomBytes(16);
+        EncryptedFile original = new EncryptedFile(
+                RvEncryptedFileFormatCodec.FORMAT_VERSION,
+                RvEncryptedFileFormatCodec.SYMMETRIC_ALGORITHM_AES_GCM,
+                RvEncryptedFileFormatCodec.KEY_WRAP_X25519_HKDF_AES_GCM,
+                "x.txt",
+                List.of(recipient),
+                randomBytes(12),
+                sealedContent);
+        byte[] encoded = codec.encode(original);
+        // sealedContent's own 32-bit length prefix sits right before its bytes, at the very end
+        // of the stream: inflate the declared length far beyond what's actually left, without
+        // truncating the stream itself (distinct from rejectsTruncatedInput above).
+        int lengthPrefixOffset = encoded.length - sealedContent.length - 4;
+        encoded[lengthPrefixOffset] = (byte) 0x7F;
+        encoded[lengthPrefixOffset + 1] = (byte) 0xFF;
+        encoded[lengthPrefixOffset + 2] = (byte) 0xFF;
+        encoded[lengthPrefixOffset + 3] = (byte) 0xFF;
+
+        assertThrows(CorruptedEncryptedFileException.class, () -> codec.decode(encoded));
+    }
+
+    @Test
     void sealedContentAndNonceSurviveByteForByte() {
         byte[] nonce = randomBytes(12);
         byte[] sealed = randomBytes(500);
