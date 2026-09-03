@@ -75,7 +75,7 @@ class EndToEndPublishTest {
                 recipientRegistryPort,
                 gitRepositoryPort);
 
-        MachineIdentity identity = initializeVaultService.initialize(new InitializeVaultCommand(false, "machine-a"));
+        MachineIdentity identity = initializeVaultService.initialize(new InitializeVaultCommand(false, "machine-a", null));
 
         assertArrayEquals("local/\n".getBytes(StandardCharsets.UTF_8), Files.readAllBytes(vaultRoot.resolve(".gitignore")));
         assertEquals(VaultManifest.empty(), manifestPort.load());

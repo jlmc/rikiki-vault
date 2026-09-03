@@ -76,7 +76,7 @@ class EndToEndAuthorizeAndRevokeTest {
                 new LoadMachineIdentityService(machineA.keyStorePort),
                 new InitializeMachineIdentityService(new X25519KeyPairGeneratorAdapter(), machineA.keyStorePort),
                 new LocalFileSystemAdapter(machineA.vaultRoot), machineA.manifestPort, machineA.recipientRegistryPort, machineA.gitRepositoryPort)
-                .initialize(new InitializeVaultCommand(false, "machine-a"));
+                .initialize(new InitializeVaultCommand(false, "machine-a", null));
 
         Files.createDirectories(machineA.vaultRoot.resolve("local"));
         byte[] plaintextV1 = "cv content v1".getBytes(StandardCharsets.UTF_8);

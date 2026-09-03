@@ -76,6 +76,9 @@ public final class InitializeVaultService implements InitializeVaultUseCase {
 
         if (command.initializeGitRepository()) {
             gitRepositoryPort.init();
+            if (command.remoteUri() != null && !command.remoteUri().isBlank()) {
+                gitRepositoryPort.addRemote("origin", command.remoteUri());
+            }
         }
         vaultRootFiles.writeFile(".gitignore", GITIGNORE_CONTENT.getBytes(StandardCharsets.UTF_8));
         manifestPort.save(VaultManifest.empty());

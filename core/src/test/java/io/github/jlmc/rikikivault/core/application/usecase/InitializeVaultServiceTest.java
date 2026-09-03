@@ -47,7 +47,7 @@ class InitializeVaultServiceTest {
         InitializeVaultService service = new InitializeVaultService(
                 noIdentityYet(), identityUseCase, vaultRootFiles, manifestPort, recipientRegistryPort, gitRepositoryPort);
 
-        MachineIdentity result = service.initialize(new InitializeVaultCommand(true, "machine-a"));
+        MachineIdentity result = service.initialize(new InitializeVaultCommand(true, "machine-a", null));
 
         assertEquals(identity, result);
         assertEquals(1, gitRepositoryPort.initCallCount);
@@ -65,7 +65,7 @@ class InitializeVaultServiceTest {
         InitializeVaultService service = new InitializeVaultService(
                 noIdentityYet(), identityUseCase, vaultRootFiles, manifestPort, recipientRegistryPort, gitRepositoryPort);
 
-        service.initialize(new InitializeVaultCommand(false, "machine-a"));
+        service.initialize(new InitializeVaultCommand(false, "machine-a", null));
 
         assertEquals(0, gitRepositoryPort.initCallCount);
         assertArrayEquals("local/\n".getBytes(StandardCharsets.UTF_8), vaultRootFiles.readFile(".gitignore"));
@@ -81,7 +81,7 @@ class InitializeVaultServiceTest {
                 noIdentityYet(), identityUseCase, new FakeFileStoragePort(), new FakeManifestPort(),
                 recipientRegistryPort, new FakeGitRepositoryPort());
 
-        service.initialize(new InitializeVaultCommand(false, "machine-a"));
+        service.initialize(new InitializeVaultCommand(false, "machine-a", null));
 
         RecipientRegistry registry = recipientRegistryPort.load();
         assertEquals(1, registry.recipients().size());
@@ -101,12 +101,51 @@ class InitializeVaultServiceTest {
                 loadIdentityUseCase, initializeIdentityUseCase, new FakeFileStoragePort(), new FakeManifestPort(),
                 recipientRegistryPort, new FakeGitRepositoryPort());
 
-        MachineIdentity result = service.initialize(new InitializeVaultCommand(false, "second-vault"));
+        MachineIdentity result = service.initialize(new InitializeVaultCommand(false, "second-vault", null));
 
         assertEquals(existingIdentity, result);
         assertEquals(0, initializeIdentityUseCase.initializeCallCount);
         assertEquals(new Recipient("second-vault", existingIdentity.id(), existingIdentity.publicKey()),
                 recipientRegistryPort.load().recipients().get(0));
+    }
+
+    @Test
+    void withARemoteUriAndGitRequestedAddsTheRemote() throws Exception {
+        FakeInitializeMachineIdentityUseCase identityUseCase = new FakeInitializeMachineIdentityUseCase(someIdentity());
+        FakeGitRepositoryPort gitRepositoryPort = new FakeGitRepositoryPort();
+        InitializeVaultService service = new InitializeVaultService(
+                noIdentityYet(), identityUseCase, new FakeFileStoragePort(), new FakeManifestPort(),
+                new FakeRecipientRegistryPort(), gitRepositoryPort);
+
+        service.initialize(new InitializeVaultCommand(true, "machine-a", "git@github.com:me/my-vault.git"));
+
+        assertEquals("git@github.com:me/my-vault.git", gitRepositoryPort.addedRemotes.get("origin"));
+    }
+
+    @Test
+    void withARemoteUriButNoGitRequestedNeverAddsIt() throws Exception {
+        FakeInitializeMachineIdentityUseCase identityUseCase = new FakeInitializeMachineIdentityUseCase(someIdentity());
+        FakeGitRepositoryPort gitRepositoryPort = new FakeGitRepositoryPort();
+        InitializeVaultService service = new InitializeVaultService(
+                noIdentityYet(), identityUseCase, new FakeFileStoragePort(), new FakeManifestPort(),
+                new FakeRecipientRegistryPort(), gitRepositoryPort);
+
+        service.initialize(new InitializeVaultCommand(false, "machine-a", "git@github.com:me/my-vault.git"));
+
+        assertTrue(gitRepositoryPort.addedRemotes.isEmpty());
+    }
+
+    @Test
+    void withoutARemoteUriNeverAddsOne() throws Exception {
+        FakeInitializeMachineIdentityUseCase identityUseCase = new FakeInitializeMachineIdentityUseCase(someIdentity());
+        FakeGitRepositoryPort gitRepositoryPort = new FakeGitRepositoryPort();
+        InitializeVaultService service = new InitializeVaultService(
+                noIdentityYet(), identityUseCase, new FakeFileStoragePort(), new FakeManifestPort(),
+                new FakeRecipientRegistryPort(), gitRepositoryPort);
+
+        service.initialize(new InitializeVaultCommand(true, "machine-a", null));
+
+        assertTrue(gitRepositoryPort.addedRemotes.isEmpty());
     }
 
     @Test
@@ -122,7 +161,7 @@ class InitializeVaultServiceTest {
                 vaultRootFiles, manifestPort, recipientRegistryPort, gitRepositoryPort);
 
         assertThrows(VaultAlreadyInitializedException.class,
-                () -> service.initialize(new InitializeVaultCommand(true, "machine-a")));
+                () -> service.initialize(new InitializeVaultCommand(true, "machine-a", null)));
 
         assertEquals(0, gitRepositoryPort.initCallCount);
         assertTrue(vaultRootFiles.listFiles().isEmpty());

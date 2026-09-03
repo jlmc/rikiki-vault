@@ -78,7 +78,7 @@ class EndToEndClonePullTest {
                 new LoadMachineIdentityService(machineA.keyStorePort),
                 new InitializeMachineIdentityService(new X25519KeyPairGeneratorAdapter(), machineA.keyStorePort),
                 new LocalFileSystemAdapter(machineA.vaultRoot), machineA.manifestPort, machineA.recipientRegistryPort, machineA.gitRepositoryPort)
-                .initialize(new InitializeVaultCommand(false, "machine-a"));
+                .initialize(new InitializeVaultCommand(false, "machine-a", null));
         new AuthorizeMachineService(
                 machineA.recipientRegistryPort, machineA.localFiles, machineA.documentsFiles,
                 machineA.manifestPort, encryptionPort, machineA.gitRepositoryPort)
