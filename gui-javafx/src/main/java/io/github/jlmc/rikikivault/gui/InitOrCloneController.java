@@ -50,6 +50,7 @@ public final class InitOrCloneController {
         boolean initGit = gitCheckBox.isSelected();
         BackgroundTask.runVoid(
                 () -> new InitializeVaultService(
+                        new LoadMachineIdentityService(ctx.keyStorePort()),
                         new InitializeMachineIdentityService(new X25519KeyPairGeneratorAdapter(), ctx.keyStorePort()),
                         new LocalFileSystemAdapter(ctx.vaultRoot()),
                         ctx.manifestPort(), ctx.recipientRegistryPort(), ctx.gitRepositoryPort())
