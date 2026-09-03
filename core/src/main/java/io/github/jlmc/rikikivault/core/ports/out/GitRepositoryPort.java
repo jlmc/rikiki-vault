@@ -14,6 +14,13 @@ public interface GitRepositoryPort {
 
     void pull();
 
+    /**
+     * @return {@code true} if the remote has commits this local branch doesn't have yet (fetched
+     * but not merged in) - {@code false} when there's no remote configured, so callers don't need
+     * to special-case a local-only vault themselves.
+     */
+    boolean isRemoteAhead();
+
     GitStatus status();
 
     void add(List<String> relativePaths);

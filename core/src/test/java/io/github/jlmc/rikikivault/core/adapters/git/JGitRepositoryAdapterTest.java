@@ -113,6 +113,46 @@ class JGitRepositoryAdapterTest {
     }
 
     @Test
+    void isRemoteAheadIsFalseWithNoRemoteConfigured(@TempDir Path root) {
+        JGitRepositoryAdapter adapter = new JGitRepositoryAdapter(root, new FakeGitAuthSettingsPort());
+        adapter.init();
+
+        assertFalse(adapter.isRemoteAhead());
+    }
+
+    @Test
+    void isRemoteAheadIsFalseWhenNothingNewWasPushed(@TempDir Path bareRepoDir, @TempDir Path workDirs) throws Exception {
+        seedBareRepoWithOneCommit(bareRepoDir, "notes.md", "original");
+        JGitRepositoryAdapter adapter = new JGitRepositoryAdapter(workDirs.resolve("a"), new FakeGitAuthSettingsPort());
+        adapter.clone("file://" + bareRepoDir);
+
+        assertFalse(adapter.isRemoteAhead());
+    }
+
+    @Test
+    void isRemoteAheadIsTrueAfterAnotherCloneHasPushedAndThisOneHasNotPulled(
+            @TempDir Path bareRepoDir, @TempDir Path workDirs) throws Exception {
+        seedBareRepoWithOneCommit(bareRepoDir, "notes.md", "original");
+        Path dirA = workDirs.resolve("a");
+        Path dirB = workDirs.resolve("b");
+        JGitRepositoryAdapter adapterA = new JGitRepositoryAdapter(dirA, new FakeGitAuthSettingsPort());
+        JGitRepositoryAdapter adapterB = new JGitRepositoryAdapter(dirB, new FakeGitAuthSettingsPort());
+        adapterA.clone("file://" + bareRepoDir);
+        adapterB.clone("file://" + bareRepoDir);
+
+        Files.writeString(dirA.resolve("new.txt"), "added from A");
+        adapterA.add(List.of("new.txt"));
+        adapterA.commit("add new.txt");
+        adapterA.push();
+
+        assertTrue(adapterB.isRemoteAhead(), "B has not pulled A's new commit yet");
+
+        adapterB.pull();
+
+        assertFalse(adapterB.isRemoteAhead(), "after pulling, B is caught up");
+    }
+
+    @Test
     void pushOnARepositoryWithNoRemoteIsSkippedInsteadOfFailing(@TempDir Path root) throws IOException {
         JGitRepositoryAdapter adapter = new JGitRepositoryAdapter(root, new FakeGitAuthSettingsPort());
         adapter.init();

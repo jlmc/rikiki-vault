@@ -12,6 +12,7 @@ import org.eclipse.jgit.api.TransportConfigCallback;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.api.errors.JGitInternalException;
 import org.eclipse.jgit.diff.DiffFormatter;
+import org.eclipse.jgit.lib.BranchTrackingStatus;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.lib.Repository;
@@ -101,6 +102,24 @@ public final class JGitRepositoryAdapter implements GitRepositoryPort {
             }
         } catch (GitAPIException e) {
             throw new GitOperationException("Failed to pull in " + root, e);
+        }
+    }
+
+    @Override
+    public boolean isRemoteAhead() {
+        try (Git git = openGit()) {
+            if (git.remoteList().call().isEmpty()) {
+                return false;
+            }
+            git.fetch()
+                    .setCredentialsProvider(resolveCredentials())
+                    .setTransportConfigCallback(resolveSshTransportConfigCallback())
+                    .call();
+            String branch = git.getRepository().getBranch();
+            BranchTrackingStatus trackingStatus = BranchTrackingStatus.of(git.getRepository(), branch);
+            return trackingStatus != null && trackingStatus.getBehindCount() > 0;
+        } catch (GitAPIException | IOException e) {
+            throw new GitOperationException("Failed to check remote status of " + root, e);
         }
     }
 

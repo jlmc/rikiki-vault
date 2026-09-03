@@ -14,6 +14,7 @@ final class FakeGitRepositoryPort implements GitRepositoryPort {
     int initCallCount = 0;
     String clonedRemoteUri;
     int pullCallCount = 0;
+    boolean isRemoteAheadReturnValue = false;
     int pushCallCount = 0;
     boolean pushReturnValue = true;
     final Map<String, String> addedRemotes = new LinkedHashMap<>();
@@ -40,6 +41,11 @@ final class FakeGitRepositoryPort implements GitRepositoryPort {
     @Override
     public void pull() {
         pullCallCount++;
+    }
+
+    @Override
+    public boolean isRemoteAhead() {
+        return isRemoteAheadReturnValue;
     }
 
     @Override
