@@ -251,7 +251,11 @@ public final class Main {
         ScanChangesService scanChangesService = new ScanChangesService(ctx.localFiles(), ctx.hashPort(), ctx.manifestPort());
         List<VaultChange> changes = scanChangesService.scan();
         if (changes.isEmpty()) {
-            System.out.println("Nada para publicar.");
+            if (ctx.gitRepositoryPort().isRemoteAhead()) {
+                System.out.println("Nada para publicar localmente, mas o remoto tem alterações que ainda não fizeste pull - corre 'pull' primeiro.");
+            } else {
+                System.out.println("Nada para publicar.");
+            }
             return;
         }
 
