@@ -64,6 +64,7 @@ java -jar cli/target/rikiki-vault.jar -C /caminho/para/o/vault status
 | `pull` | Faz pull do estado cifrado mais recente e decifra o que mudou remotamente para `local/`. Nunca sobrescreve um ficheiro que também alteraste localmente — isso é reportado como conflito. |
 | `authorize <label> <ficheiro-chave-pública>` | Concede acesso a outra máquina: adiciona-a ao registo de destinatários e reencripta todos os ficheiros já publicados para o novo conjunto. |
 | `revoke <fingerprint-hex>` | Remove o acesso de uma máquina, reencriptando tudo para que a sua chave deixe de conseguir decifrar o que quer que seja de novo. |
+| `git-auth show\|set-ssh-key <caminho>\|clear-ssh-key\|set-token\|clear-token` | Configura autenticação Git explícita, substituindo a descoberta automática — ver "Autenticação Git explícita" abaixo. `set-token` lê o token do stdin, nunca de um argumento, para não ficar no histórico da shell. |
 
 ### Um exemplo completo
 
@@ -107,6 +108,25 @@ java -jar rikiki-vault.jar clone git@github.com:tu/o-meu-vault-cifrado.git
 Define `RIKIKI_VAULT_GITHUB_TOKEN` no teu ambiente antes de `publish`/`pull`/`clone` contra um
 remoto HTTPS que precise de token. Remotos SSH usam o agente/chaves SSH do teu sistema — sem
 configuração extra.
+
+### Autenticação Git explícita
+
+Se a descoberta automática não funcionar no teu ambiente (ex.: uma chave SSH com nome não-padrão
+que o agente não está a oferecer, ou preferes não exportar uma variável de ambiente), configura-a
+explicitamente — na app desktop através de "Definições de Git..." (no ecrã inicial e na toolbar da
+janela principal), ou na CLI:
+
+```
+rikiki-vault git-auth set-ssh-key ~/.ssh/id_jc
+echo "$O_TEU_TOKEN_GITHUB" | rikiki-vault git-auth set-token
+rikiki-vault git-auth show
+```
+
+Nunca passes um token como argumento do `set-token` — ficaria no histórico da shell. As duas
+definições ficam guardadas em `~/.rikiki-vault/git-auth/settings.json` com permissões só do dono
+(`rw-------`), tal como a chave privada. O esquema do URL do remoto decide sozinho qual se aplica:
+`git@`/`ssh://` usa a chave configurada (com fallback para a descoberta automática se nenhuma
+estiver definida), `https://` usa o token configurado (com fallback para `RIKIKI_VAULT_GITHUB_TOKEN`).
 
 ### Notas de robustez
 

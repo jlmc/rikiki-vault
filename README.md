@@ -61,6 +61,7 @@ java -jar cli/target/rikiki-vault.jar -C /path/to/vault status
 | `pull` | Pulls the latest encrypted state and decrypts what changed remotely into `local/`. Never overwrites a file you've also changed locally — that's reported as a conflict instead. |
 | `authorize <label> <public-key-file>` | Grants another machine access: adds it to the recipient registry and re-encrypts every already-published file for the updated set. |
 | `revoke <fingerprint-hex>` | Removes a machine's access, re-encrypting everything so its key is no longer able to decrypt anything new. |
+| `git-auth show\|set-ssh-key <path>\|clear-ssh-key\|set-token\|clear-token` | Configures explicit Git authentication, overriding implicit discovery - see "Explicit Git authentication" below. `set-token` reads the token from stdin, never an argument, to avoid it ending up in shell history. |
 
 ### A full walkthrough
 
@@ -104,6 +105,25 @@ java -jar rikiki-vault.jar clone git@github.com:you/my-vault-encrypted.git
 Set `RIKIKI_VAULT_GITHUB_TOKEN` in your environment before `publish`/`pull`/`clone` against an
 HTTPS remote that needs a token. SSH remotes fall back to your system's SSH agent/keys instead —
 no extra configuration needed.
+
+### Explicit Git authentication
+
+If implicit discovery doesn't work in your environment (e.g. an SSH key with a non-default
+filename that the agent isn't offering, or you'd rather not export an env var), configure it
+explicitly instead — in the desktop app via "Definições de Git..." (on the Welcome screen and in
+the main window's toolbar), or on the CLI:
+
+```
+rikiki-vault git-auth set-ssh-key ~/.ssh/id_jc
+echo "$MY_GITHUB_TOKEN" | rikiki-vault git-auth set-token
+rikiki-vault git-auth show
+```
+
+Never pass a token as a `set-token` argument — it would land in shell history. Both settings are
+stored in `~/.rikiki-vault/git-auth/settings.json` with owner-only (`rw-------`) permissions, same
+as the private key. The remote URL's own scheme decides which applies: `git@`/`ssh://` uses the
+configured key (falling back to automatic discovery when none is set), `https://` uses the
+configured token (falling back to `RIKIKI_VAULT_GITHUB_TOKEN`).
 
 ### Hardening notes
 
