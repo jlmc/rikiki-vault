@@ -99,7 +99,8 @@
 .init-or-clone-view,
 .change-review-view,
 .pull-result-view,
-.manage-access-view {
+.manage-access-view,
+.diff-result-view {
     -fx-background-color: -fx-card-bg;
 }
 
@@ -123,9 +124,10 @@
     -fx-border-width: 0 0 1px 0;
 }
 
-/* --- Tables and lists --- */
+/* --- Tables, trees and lists --- */
 
 .table-view,
+.tree-table-view,
 .list-view {
     -fx-background-color: -fx-card-bg;
     -fx-border-color: -fx-border-subtle;
@@ -133,22 +135,26 @@
     -fx-background-radius: 6px;
 }
 
-.table-view .column-header-background {
+.table-view .column-header-background,
+.tree-table-view .column-header-background {
     -fx-background-color: -fx-base-bg;
     -fx-background-radius: 6px 6px 0 0;
 }
 
-.table-view .column-header .label {
+.table-view .column-header .label,
+.tree-table-view .column-header .label {
     -fx-text-fill: -fx-text-secondary;
     -fx-font-weight: bold;
     -fx-font-size: 11px;
 }
 
-.table-row-cell {
+.table-row-cell,
+.tree-table-row-cell {
     -fx-border-color: transparent transparent -fx-border-subtle transparent;
 }
 
-.table-row-cell:selected {
+.table-row-cell:selected,
+.tree-table-row-cell:selected {
     -fx-background-color: derive(-fx-accent, 85%);
 }
 
@@ -206,4 +212,11 @@
     -fx-wrap-text: true;
     -fx-text-alignment: center;
     -fx-padding: 24px;
+}
+
+.editor-toolbar {
+    -fx-background-color: -fx-base-bg;
+    -fx-border-color: transparent transparent -fx-border-subtle transparent;
+    -fx-border-width: 0 0 1px 0;
+    -fx-background-radius: 6px 6px 0 0;
 }
