@@ -303,6 +303,12 @@ public final class MainWindowController {
     }
 
     @FXML
+    private void onOpenGitAuthSettings() {
+        Stage owner = (Stage) fileTable.getScene().getWindow();
+        GitAuthSettingsController.open(owner);
+    }
+
+    @FXML
     private void onPublish() {
         BackgroundTask.run(
                 () -> new ScanChangesService(ctx.localFiles(), ctx.hashPort(), ctx.manifestPort()).scan(),

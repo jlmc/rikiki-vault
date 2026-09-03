@@ -26,4 +26,9 @@ public final class WelcomeController {
             onVaultChosen.accept(VaultContext.at(chosen.toPath()));
         }
     }
+
+    @FXML
+    private void onOpenGitAuthSettings() {
+        GitAuthSettingsController.open(stage);
+    }
 }

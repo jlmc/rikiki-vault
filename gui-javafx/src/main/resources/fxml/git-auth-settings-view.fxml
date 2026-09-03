@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="io.github.jlmc.rikikivault.gui.GitAuthSettingsController"
+      styleClass="git-auth-settings-view" spacing="24">
+    <padding>
+        <Insets top="24" right="24" bottom="24" left="24"/>
+    </padding>
+    <Label text="Definições de Git" styleClass="title"/>
+    <Label text="Opcional - só é preciso se a descoberta automática (agente/chaves por omissão/RIKIKI_VAULT_GITHUB_TOKEN) não funcionar."
+           styleClass="subtitle" wrapText="true"/>
+    <HBox spacing="32" alignment="TOP_LEFT">
+        <VBox spacing="8">
+            <Label text="Chave SSH específica" styleClass="section-title"/>
+            <HBox spacing="8" alignment="CENTER_LEFT">
+                <TextField fx:id="sshKeyPathField" editable="false" prefWidth="240"/>
+                <Button text="Escolher..." onAction="#onChooseSshKey"/>
+            </HBox>
+            <Button text="Remover chave" onAction="#onClearSshKey"/>
+        </VBox>
+        <Separator orientation="VERTICAL"/>
+        <VBox spacing="8">
+            <Label text="Token GitHub (HTTPS)" styleClass="section-title"/>
+            <Label fx:id="tokenStatusLabel" styleClass="status-label"/>
+            <PasswordField fx:id="tokenField" promptText="novo token (deixa em branco para manter)" prefWidth="220"/>
+            <Button text="Remover token" onAction="#onClearToken"/>
+        </VBox>
+    </HBox>
+    <HBox spacing="8" alignment="CENTER_RIGHT">
+        <Label fx:id="statusLabel" styleClass="status-label"/>
+        <Button text="Fechar" onAction="#onClose"/>
+        <Button fx:id="saveButton" text="Guardar" styleClass="primary-button" onAction="#onSave"/>
+    </HBox>
+</VBox>
