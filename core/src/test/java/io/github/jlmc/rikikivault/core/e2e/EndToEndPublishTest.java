@@ -12,6 +12,7 @@ import io.github.jlmc.rikikivault.core.adapters.manifest.JsonManifestFileAdapter
 import io.github.jlmc.rikikivault.core.adapters.recipients.JsonRecipientRegistryFileAdapter;
 import io.github.jlmc.rikikivault.core.application.usecase.InitializeMachineIdentityService;
 import io.github.jlmc.rikikivault.core.application.usecase.InitializeVaultService;
+import io.github.jlmc.rikikivault.core.application.usecase.LoadMachineIdentityService;
 import io.github.jlmc.rikikivault.core.application.usecase.PublishVaultService;
 import io.github.jlmc.rikikivault.core.application.usecase.ScanChangesService;
 import io.github.jlmc.rikikivault.core.configuration.EncryptionSettings;
@@ -67,6 +68,7 @@ class EndToEndPublishTest {
         JsonManifestFileAdapter manifestPort = new JsonManifestFileAdapter(manifestFile);
         JsonRecipientRegistryFileAdapter recipientRegistryPort = new JsonRecipientRegistryFileAdapter(recipientsFile);
         InitializeVaultService initializeVaultService = new InitializeVaultService(
+                new LoadMachineIdentityService(keyStorePort),
                 new InitializeMachineIdentityService(new X25519KeyPairGeneratorAdapter(), keyStorePort),
                 new LocalFileSystemAdapter(vaultRoot),
                 manifestPort,

@@ -75,6 +75,7 @@ class EndToEndClonePullTest {
         // Machine B before publishing anything, so it can decrypt what's about to be published.
         machineA.gitRepositoryPort.clone(remoteUri);
         new InitializeVaultService(
+                new LoadMachineIdentityService(machineA.keyStorePort),
                 new InitializeMachineIdentityService(new X25519KeyPairGeneratorAdapter(), machineA.keyStorePort),
                 new LocalFileSystemAdapter(machineA.vaultRoot), machineA.manifestPort, machineA.recipientRegistryPort, machineA.gitRepositoryPort)
                 .initialize(new InitializeVaultCommand(false, "machine-a"));

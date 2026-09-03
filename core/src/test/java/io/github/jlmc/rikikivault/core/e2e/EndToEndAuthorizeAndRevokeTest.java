@@ -73,6 +73,7 @@ class EndToEndAuthorizeAndRevokeTest {
         // Machine A initializes (she is the sole recipient) and publishes cv.pdf v1.
         machineA.gitRepositoryPort.clone(remoteUri);
         new InitializeVaultService(
+                new LoadMachineIdentityService(machineA.keyStorePort),
                 new InitializeMachineIdentityService(new X25519KeyPairGeneratorAdapter(), machineA.keyStorePort),
                 new LocalFileSystemAdapter(machineA.vaultRoot), machineA.manifestPort, machineA.recipientRegistryPort, machineA.gitRepositoryPort)
                 .initialize(new InitializeVaultCommand(false, "machine-a"));

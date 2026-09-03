@@ -1,5 +1,7 @@
 package io.github.jlmc.rikikivault.core.application.usecase;
 
+import io.github.jlmc.rikikivault.core.domain.exception.PrivateKeyNotFoundException;
+import io.github.jlmc.rikikivault.core.domain.exception.VaultAlreadyInitializedException;
 import io.github.jlmc.rikikivault.core.domain.model.MachineIdentity;
 import io.github.jlmc.rikikivault.core.domain.model.Recipient;
 import io.github.jlmc.rikikivault.core.domain.model.RecipientRegistry;
@@ -7,6 +9,7 @@ import io.github.jlmc.rikikivault.core.domain.model.VaultManifest;
 import io.github.jlmc.rikikivault.core.ports.in.InitializeMachineIdentityUseCase;
 import io.github.jlmc.rikikivault.core.ports.in.InitializeVaultCommand;
 import io.github.jlmc.rikikivault.core.ports.in.InitializeVaultUseCase;
+import io.github.jlmc.rikikivault.core.ports.in.LoadMachineIdentityUseCase;
 import io.github.jlmc.rikikivault.core.ports.out.FileStoragePort;
 import io.github.jlmc.rikikivault.core.ports.out.GitRepositoryPort;
 import io.github.jlmc.rikikivault.core.ports.out.ManifestPort;
@@ -24,11 +27,18 @@ import java.util.Objects;
  * the first file lands in it, exactly like a real git repository behaves. The recipient registry
  * (Plan.md §4) is seeded with this machine as the sole authorized recipient - without it, the
  * first {@code publish} would have no one to encrypt for.
+ *
+ * <p>The machine identity is global to the machine, not to a single vault (Plan.md - it
+ * represents "this computer", not "this vault"), so it is loaded if it already exists rather than
+ * always created - a second, independent vault on a machine that already used Rikiki Vault before
+ * must not be blocked just because the identity already exists. "Already initialized" is instead
+ * checked directly against this vault's own recipient registry.</p>
  */
 public final class InitializeVaultService implements InitializeVaultUseCase {
 
     private static final String GITIGNORE_CONTENT = "local/\n";
 
+    private final LoadMachineIdentityUseCase loadMachineIdentityUseCase;
     private final InitializeMachineIdentityUseCase initializeMachineIdentityUseCase;
     private final FileStoragePort vaultRootFiles;
     private final ManifestPort manifestPort;
@@ -36,11 +46,14 @@ public final class InitializeVaultService implements InitializeVaultUseCase {
     private final GitRepositoryPort gitRepositoryPort;
 
     public InitializeVaultService(
+            LoadMachineIdentityUseCase loadMachineIdentityUseCase,
             InitializeMachineIdentityUseCase initializeMachineIdentityUseCase,
             FileStoragePort vaultRootFiles,
             ManifestPort manifestPort,
             RecipientRegistryPort recipientRegistryPort,
             GitRepositoryPort gitRepositoryPort) {
+        this.loadMachineIdentityUseCase = Objects.requireNonNull(
+                loadMachineIdentityUseCase, "loadMachineIdentityUseCase must not be null");
         this.initializeMachineIdentityUseCase = Objects.requireNonNull(
                 initializeMachineIdentityUseCase, "initializeMachineIdentityUseCase must not be null");
         this.vaultRootFiles = Objects.requireNonNull(vaultRootFiles, "vaultRootFiles must not be null");
@@ -53,9 +66,13 @@ public final class InitializeVaultService implements InitializeVaultUseCase {
     public MachineIdentity initialize(InitializeVaultCommand command) {
         Objects.requireNonNull(command, "command must not be null");
 
-        // Throws MachineIdentityAlreadyExistsException on a repeat call, which doubles as this
-        // vault's own "already initialized" guard - nothing below runs in that case.
-        MachineIdentity identity = initializeMachineIdentityUseCase.initialize();
+        if (!recipientRegistryPort.load().recipients().isEmpty()) {
+            throw new VaultAlreadyInitializedException(
+                    "This vault already has recipients - it looks already initialized. "
+                            + "Use 'clone' on another machine to join it instead of 'init' here again.");
+        }
+
+        MachineIdentity identity = loadOrCreateIdentity();
 
         if (command.initializeGitRepository()) {
             gitRepositoryPort.init();
@@ -66,5 +83,13 @@ public final class InitializeVaultService implements InitializeVaultUseCase {
                 new Recipient(command.machineLabel(), identity.id(), identity.publicKey()))));
 
         return identity;
+    }
+
+    private MachineIdentity loadOrCreateIdentity() {
+        try {
+            return loadMachineIdentityUseCase.load();
+        } catch (PrivateKeyNotFoundException e) {
+            return initializeMachineIdentityUseCase.initialize();
+        }
     }
 }

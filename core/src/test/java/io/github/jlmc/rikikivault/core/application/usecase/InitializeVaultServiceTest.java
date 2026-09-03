@@ -1,6 +1,7 @@
 package io.github.jlmc.rikikivault.core.application.usecase;
 
-import io.github.jlmc.rikikivault.core.domain.exception.MachineIdentityAlreadyExistsException;
+import io.github.jlmc.rikikivault.core.domain.exception.PrivateKeyNotFoundException;
+import io.github.jlmc.rikikivault.core.domain.exception.VaultAlreadyInitializedException;
 import io.github.jlmc.rikikivault.core.domain.model.KeyFingerprint;
 import io.github.jlmc.rikikivault.core.domain.model.MachineIdentity;
 import io.github.jlmc.rikikivault.core.domain.model.Recipient;
@@ -30,6 +31,11 @@ class InitializeVaultServiceTest {
         return new MachineIdentity(KeyFingerprint.of(keyPair.getPublic()), keyPair.getPublic(), keyPair.getPrivate(), "X25519");
     }
 
+    /** No identity on this machine yet - the normal first-ever-vault case. */
+    private static FakeLoadMachineIdentityUseCase noIdentityYet() {
+        return new FakeLoadMachineIdentityUseCase(new PrivateKeyNotFoundException("no identity stored yet"));
+    }
+
     @Test
     void withGitRequestedInitializesTheRepositoryAndWritesGitignoreAndEmptyManifest() throws Exception {
         MachineIdentity identity = someIdentity();
@@ -39,7 +45,7 @@ class InitializeVaultServiceTest {
         FakeRecipientRegistryPort recipientRegistryPort = new FakeRecipientRegistryPort();
         FakeGitRepositoryPort gitRepositoryPort = new FakeGitRepositoryPort();
         InitializeVaultService service = new InitializeVaultService(
-                identityUseCase, vaultRootFiles, manifestPort, recipientRegistryPort, gitRepositoryPort);
+                noIdentityYet(), identityUseCase, vaultRootFiles, manifestPort, recipientRegistryPort, gitRepositoryPort);
 
         MachineIdentity result = service.initialize(new InitializeVaultCommand(true, "machine-a"));
 
@@ -57,7 +63,7 @@ class InitializeVaultServiceTest {
         FakeRecipientRegistryPort recipientRegistryPort = new FakeRecipientRegistryPort();
         FakeGitRepositoryPort gitRepositoryPort = new FakeGitRepositoryPort();
         InitializeVaultService service = new InitializeVaultService(
-                identityUseCase, vaultRootFiles, manifestPort, recipientRegistryPort, gitRepositoryPort);
+                noIdentityYet(), identityUseCase, vaultRootFiles, manifestPort, recipientRegistryPort, gitRepositoryPort);
 
         service.initialize(new InitializeVaultCommand(false, "machine-a"));
 
@@ -72,7 +78,8 @@ class InitializeVaultServiceTest {
         FakeInitializeMachineIdentityUseCase identityUseCase = new FakeInitializeMachineIdentityUseCase(identity);
         FakeRecipientRegistryPort recipientRegistryPort = new FakeRecipientRegistryPort();
         InitializeVaultService service = new InitializeVaultService(
-                identityUseCase, new FakeFileStoragePort(), new FakeManifestPort(), recipientRegistryPort, new FakeGitRepositoryPort());
+                noIdentityYet(), identityUseCase, new FakeFileStoragePort(), new FakeManifestPort(),
+                recipientRegistryPort, new FakeGitRepositoryPort());
 
         service.initialize(new InitializeVaultCommand(false, "machine-a"));
 
@@ -82,22 +89,43 @@ class InitializeVaultServiceTest {
     }
 
     @Test
-    void propagatesAndShortCircuitsWhenTheIdentityAlreadyExists() {
-        FakeInitializeMachineIdentityUseCase identityUseCase = new FakeInitializeMachineIdentityUseCase(
-                new MachineIdentityAlreadyExistsException("already exists"));
+    void reusesAnExistingMachineIdentityInsteadOfFailing() throws Exception {
+        // The machine identity is global (Plan.md - it represents this computer, not a single
+        // vault): a second, independent vault on a machine that already used Rikiki Vault before
+        // must succeed, reusing the existing identity, not be blocked because one already exists.
+        MachineIdentity existingIdentity = someIdentity();
+        FakeLoadMachineIdentityUseCase loadIdentityUseCase = new FakeLoadMachineIdentityUseCase(existingIdentity);
+        FakeInitializeMachineIdentityUseCase initializeIdentityUseCase = new FakeInitializeMachineIdentityUseCase(someIdentity());
+        FakeRecipientRegistryPort recipientRegistryPort = new FakeRecipientRegistryPort();
+        InitializeVaultService service = new InitializeVaultService(
+                loadIdentityUseCase, initializeIdentityUseCase, new FakeFileStoragePort(), new FakeManifestPort(),
+                recipientRegistryPort, new FakeGitRepositoryPort());
+
+        MachineIdentity result = service.initialize(new InitializeVaultCommand(false, "second-vault"));
+
+        assertEquals(existingIdentity, result);
+        assertEquals(0, initializeIdentityUseCase.initializeCallCount);
+        assertEquals(new Recipient("second-vault", existingIdentity.id(), existingIdentity.publicKey()),
+                recipientRegistryPort.load().recipients().get(0));
+    }
+
+    @Test
+    void refusesToReInitializeAVaultThatAlreadyHasRecipients() throws Exception {
+        MachineIdentity existingRecipient = someIdentity();
+        FakeRecipientRegistryPort recipientRegistryPort = new FakeRecipientRegistryPort(new RecipientRegistry(1, List.of(
+                new Recipient("machine-a", existingRecipient.id(), existingRecipient.publicKey()))));
         FakeFileStoragePort vaultRootFiles = new FakeFileStoragePort();
         FakeManifestPort manifestPort = new FakeManifestPort();
-        FakeRecipientRegistryPort recipientRegistryPort = new FakeRecipientRegistryPort();
         FakeGitRepositoryPort gitRepositoryPort = new FakeGitRepositoryPort();
         InitializeVaultService service = new InitializeVaultService(
-                identityUseCase, vaultRootFiles, manifestPort, recipientRegistryPort, gitRepositoryPort);
+                noIdentityYet(), new FakeInitializeMachineIdentityUseCase(someIdentity()),
+                vaultRootFiles, manifestPort, recipientRegistryPort, gitRepositoryPort);
 
-        assertThrows(MachineIdentityAlreadyExistsException.class,
+        assertThrows(VaultAlreadyInitializedException.class,
                 () -> service.initialize(new InitializeVaultCommand(true, "machine-a")));
 
         assertEquals(0, gitRepositoryPort.initCallCount);
         assertTrue(vaultRootFiles.listFiles().isEmpty());
         assertEquals(VaultManifest.empty(), manifestPort.load());
-        assertEquals(RecipientRegistry.empty(), recipientRegistryPort.load());
     }
 }
