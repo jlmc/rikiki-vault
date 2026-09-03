@@ -21,6 +21,7 @@
             <Label text="Criar um novo vault aqui" styleClass="section-title"/>
             <TextField fx:id="labelField" promptText="nome desta máquina, ex. portátil-joao"/>
             <CheckBox fx:id="gitCheckBox" text="Inicializar repositório git local" selected="true"/>
+            <TextField fx:id="initRemoteUrlField" promptText="URL do remoto (opcional)"/>
             <Button fx:id="initButton" text="Inicializar" styleClass="primary-button" onAction="#onInitialize"/>
         </VBox>
         <Separator orientation="VERTICAL"/>

@@ -24,6 +24,7 @@ public final class InitOrCloneController {
     @FXML private Label titleLabel;
     @FXML private TextField labelField;
     @FXML private CheckBox gitCheckBox;
+    @FXML private TextField initRemoteUrlField;
     @FXML private Button initButton;
     @FXML private TextField remoteField;
     @FXML private Button cloneButton;
@@ -37,6 +38,7 @@ public final class InitOrCloneController {
         this.ctx = ctx;
         this.onReady = onReady;
         titleLabel.setText("Pasta ainda não é um vault: " + ctx.vaultRoot());
+        initRemoteUrlField.disableProperty().bind(gitCheckBox.selectedProperty().not());
     }
 
     @FXML
@@ -48,13 +50,14 @@ public final class InitOrCloneController {
         }
         setBusy(initButton, "A inicializar...");
         boolean initGit = gitCheckBox.isSelected();
+        String remoteUri = initRemoteUrlField.getText();
         BackgroundTask.runVoid(
                 () -> new InitializeVaultService(
                         new LoadMachineIdentityService(ctx.keyStorePort()),
                         new InitializeMachineIdentityService(new X25519KeyPairGeneratorAdapter(), ctx.keyStorePort()),
                         new LocalFileSystemAdapter(ctx.vaultRoot()),
                         ctx.manifestPort(), ctx.recipientRegistryPort(), ctx.gitRepositoryPort())
-                        .initialize(new InitializeVaultCommand(initGit, machineLabel)),
+                        .initialize(new InitializeVaultCommand(initGit, machineLabel, remoteUri)),
                 () -> {
                     clearBusy();
                     onReady.accept(ctx);
