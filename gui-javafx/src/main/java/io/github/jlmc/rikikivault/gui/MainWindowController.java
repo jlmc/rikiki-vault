@@ -1,12 +1,15 @@
 package io.github.jlmc.rikikivault.gui;
 
 import io.github.jlmc.rikikivault.core.adapters.diff.TextDiffAdapter;
+import io.github.jlmc.rikikivault.core.adapters.encryption.X25519KeyPairGeneratorAdapter;
 import io.github.jlmc.rikikivault.core.application.usecase.DecryptFileService;
 import io.github.jlmc.rikikivault.core.application.usecase.DiffFileService;
+import io.github.jlmc.rikikivault.core.application.usecase.InitializeMachineIdentityService;
 import io.github.jlmc.rikikivault.core.application.usecase.LoadMachineIdentityService;
 import io.github.jlmc.rikikivault.core.application.usecase.PullVaultService;
 import io.github.jlmc.rikikivault.core.application.usecase.RevertFileService;
 import io.github.jlmc.rikikivault.core.application.usecase.ScanChangesService;
+import io.github.jlmc.rikikivault.core.domain.exception.PrivateKeyNotFoundException;
 import io.github.jlmc.rikikivault.core.domain.model.MachineIdentity;
 import io.github.jlmc.rikikivault.core.domain.model.PullResult;
 import io.github.jlmc.rikikivault.core.domain.model.VaultChange;
@@ -51,7 +54,7 @@ public final class MainWindowController {
 
     void init(VaultContext ctx) {
         this.ctx = ctx;
-        MachineIdentity identity = new LoadMachineIdentityService(ctx.keyStorePort()).load();
+        MachineIdentity identity = loadOrCreateIdentity();
         vaultPathLabel.setText(ctx.vaultRoot().toString());
         fingerprintLabel.setText("Identidade: " + identity.id());
 
@@ -66,6 +69,20 @@ public final class MainWindowController {
 
         refresh();
         startAutoRefresh();
+    }
+
+    private MachineIdentity loadOrCreateIdentity() {
+        try {
+            return new LoadMachineIdentityService(ctx.keyStorePort()).load();
+        } catch (PrivateKeyNotFoundException e) {
+            MachineIdentity identity = new InitializeMachineIdentityService(
+                    new X25519KeyPairGeneratorAdapter(), ctx.keyStorePort()).initialize();
+            Dialogs.showInfo("Nova identidade gerada",
+                    "Esta máquina ainda não tinha identidade e o vault já existia - foi gerada uma nova. "
+                            + "Pede a uma máquina já autorizada para te autorizar em \"Gerir Acessos\" "
+                            + "antes de conseguires desencriptar ficheiros.");
+            return identity;
+        }
     }
 
     private void startAutoRefresh() {
