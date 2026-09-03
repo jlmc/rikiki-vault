@@ -175,3 +175,35 @@
 .status-deleted {
     -fx-text-fill: #C42B2B;
 }
+
+/* --- Preview pane --- */
+
+.preview-container {
+    -fx-background-color: -fx-card-bg;
+    -fx-border-color: -fx-border-subtle;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-padding: 4px;
+}
+
+.preview-text {
+    -fx-font-family: "Menlo", "Consolas", monospace;
+    -fx-font-size: 12px;
+    -fx-background-color: transparent;
+}
+
+.preview-text .content {
+    -fx-background-color: -fx-card-bg;
+}
+
+.preview-image-scroll {
+    -fx-background-color: transparent;
+}
+
+.preview-unsupported {
+    -fx-text-fill: -fx-text-secondary;
+    -fx-font-size: 13px;
+    -fx-wrap-text: true;
+    -fx-text-alignment: center;
+    -fx-padding: 24px;
+}
