@@ -214,7 +214,7 @@ public final class Main {
                 new LoadMachineIdentityService(ctx.keyStorePort()),
                 new InitializeMachineIdentityService(new X25519KeyPairGeneratorAdapter(), ctx.keyStorePort()),
                 new DecryptFileService(ctx.encryptionPort()),
-                ctx.localFiles(), ctx.documentsFiles(), ctx.manifestPort(), ctx.gitRepositoryPort());
+                ctx.localFiles(), ctx.documentsFiles(), ctx.manifestPort(), ctx.recipientRegistryPort(), ctx.gitRepositoryPort());
 
         MachineIdentity identity = service.clone(new CloneVaultCommand(remoteUri));
 
