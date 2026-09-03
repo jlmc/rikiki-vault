@@ -108,6 +108,15 @@ Define `RIKIKI_VAULT_GITHUB_TOKEN` no teu ambiente antes de `publish`/`pull`/`cl
 remoto HTTPS que precise de token. Remotos SSH usam o agente/chaves SSH do teu sistema — sem
 configuração extra.
 
+### Notas de robustez
+
+Os ficheiros decifrados escritos em `local/` são criados com permissões só do dono (`rw-------`
+em sistemas POSIX, tal como já acontecia com a chave privada da máquina) e a escrita é atómica —
+uma interrupção ou falha a meio da escrita nunca deixa um ficheiro truncado no sítio. Quando o
+`pull` reporta um conflito, mostra os hashes SHA-256 da versão local e da remota, para conseguires
+distingui-las antes de reconciliar manualmente; continua sem ação de "manter remoto"/"comparar" —
+a versão local é sempre a que fica automaticamente, e o resto resolve-se à mão.
+
 ## Aplicação desktop (JavaFX)
 
 ```

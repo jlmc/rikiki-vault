@@ -105,6 +105,15 @@ Set `RIKIKI_VAULT_GITHUB_TOKEN` in your environment before `publish`/`pull`/`clo
 HTTPS remote that needs a token. SSH remotes fall back to your system's SSH agent/keys instead —
 no extra configuration needed.
 
+### Hardening notes
+
+Decrypted files written to `local/` are created with owner-only permissions (`rw-------` on
+POSIX systems, matching how the machine's private key is already stored) and written atomically —
+a crash or interruption mid-write can never leave a truncated file in place. When `pull` reports a
+conflict, both the local and remote SHA-256 hashes are shown so you can tell the two versions apart
+before manually reconciling them; there's still no "keep remote"/"compare" action built in — the
+local version is always what's kept automatically, and you resolve the rest by hand.
+
 ## Desktop app (JavaFX)
 
 ```
