@@ -131,15 +131,23 @@ public final class Main {
     private static void runInit(VaultContext ctx, String[] rest) {
         boolean initGit = false;
         String label = null;
-        for (String token : rest) {
-            if (token.equals("--git")) {
+        String remoteUri = null;
+        for (int i = 0; i < rest.length; i++) {
+            if (rest[i].equals("--git")) {
                 initGit = true;
+            } else if (rest[i].equals("--remote") && i + 1 < rest.length) {
+                remoteUri = rest[++i];
             } else {
-                label = token;
+                label = rest[i];
             }
         }
         if (label == null) {
-            System.err.println("Uso: init [--git] <machine-label>");
+            System.err.println("Uso: init [--git] [--remote <url>] <machine-label>");
+            System.exit(1);
+            return;
+        }
+        if (remoteUri != null && !initGit) {
+            System.err.println("--remote exige --git (não há repositório local onde associar um remoto sem ele)");
             System.exit(1);
             return;
         }
@@ -152,14 +160,18 @@ public final class Main {
                 ctx.recipientRegistryPort(),
                 ctx.gitRepositoryPort());
 
-        MachineIdentity identity = service.initialize(new InitializeVaultCommand(initGit, label));
+        MachineIdentity identity = service.initialize(new InitializeVaultCommand(initGit, label, remoteUri));
 
         System.out.println("Vault inicializado em " + ctx.vaultRoot());
         System.out.println("Identidade desta máquina: " + identity.id());
         if (initGit) {
             System.out.println("Repositório git local criado. Já podes publicar (fica só local).");
-            System.out.println("Opcional - para sincronizar com outra máquina, associa um remoto com:");
-            System.out.println("  git -C " + ctx.vaultRoot() + " remote add origin <url>");
+            if (remoteUri != null) {
+                System.out.println("Remoto associado: " + remoteUri);
+            } else {
+                System.out.println("Opcional - para sincronizar com outra máquina, associa um remoto com:");
+                System.out.println("  git -C " + ctx.vaultRoot() + " remote add origin <url>");
+            }
         }
     }
 
@@ -434,7 +446,7 @@ public final class Main {
                 Uso: rikiki-vault [-C <vault-dir>] <comando> [args]
 
                 Comandos:
-                  init [--git] <machine-label>
+                  init [--git] [--remote <url>] <machine-label>
                   whoami
                   export-key <output-file>
                   clone <remote-uri>       (entrar num vault já existente - a primeira máquina usa 'init')
