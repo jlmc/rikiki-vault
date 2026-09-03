@@ -1,6 +1,5 @@
 package io.github.jlmc.rikikivault.core.adapters.git;
 
-import io.github.jlmc.rikikivault.core.configuration.GitAuthSettings;
 import io.github.jlmc.rikikivault.core.domain.exception.GitOperationException;
 import io.github.jlmc.rikikivault.core.domain.model.GitStatus;
 import io.github.jlmc.rikikivault.core.ports.out.GitAuthSettingsPort;
@@ -18,6 +17,7 @@ import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.SshTransport;
+import org.eclipse.jgit.transport.URIish;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.eclipse.jgit.transport.sshd.SshdSessionFactory;
 import org.eclipse.jgit.treewalk.AbstractTreeIterator;
@@ -28,6 +28,7 @@ import org.eclipse.jgit.treewalk.FileTreeIterator;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.List;
@@ -59,6 +60,17 @@ public final class JGitRepositoryAdapter implements GitRepositoryPort {
             // repository created; nothing else to do
         } catch (GitAPIException e) {
             throw new GitOperationException("Failed to initialize a Git repository at " + root, e);
+        }
+    }
+
+    @Override
+    public void addRemote(String name, String url) {
+        Objects.requireNonNull(name, "name must not be null");
+        Objects.requireNonNull(url, "url must not be null");
+        try (Git git = openGit()) {
+            git.remoteAdd().setName(name).setUri(new URIish(url)).call();
+        } catch (GitAPIException | URISyntaxException e) {
+            throw new GitOperationException("Failed to add remote '" + name + "' (" + url + ") in " + root, e);
         }
     }
 

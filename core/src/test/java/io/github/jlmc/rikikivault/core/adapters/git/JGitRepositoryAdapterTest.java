@@ -34,6 +34,28 @@ class JGitRepositoryAdapterTest {
     }
 
     @Test
+    void addRemoteRegistersTheRemoteUnderTheGivenName(@TempDir Path root) throws Exception {
+        JGitRepositoryAdapter adapter = new JGitRepositoryAdapter(root, new FakeGitAuthSettingsPort());
+        adapter.init();
+
+        adapter.addRemote("origin", "file:///some/remote.git");
+
+        try (Git git = Git.open(root.toFile())) {
+            List<org.eclipse.jgit.transport.RemoteConfig> remotes = git.remoteList().call();
+            assertEquals(1, remotes.size());
+            assertEquals("origin", remotes.get(0).getName());
+            assertEquals("file:///some/remote.git", remotes.get(0).getURIs().get(0).toString());
+        }
+    }
+
+    @Test
+    void addRemoteOnADirectoryThatWasNeverInitializedFails(@TempDir Path root) {
+        JGitRepositoryAdapter adapter = new JGitRepositoryAdapter(root, new FakeGitAuthSettingsPort());
+
+        assertThrows(GitOperationException.class, () -> adapter.addRemote("origin", "file:///some/remote.git"));
+    }
+
+    @Test
     void addThenCommitMovesAFileFromUntrackedToCleanHistory(@TempDir Path root) throws IOException {
         JGitRepositoryAdapter adapter = new JGitRepositoryAdapter(root, new FakeGitAuthSettingsPort());
         adapter.init();

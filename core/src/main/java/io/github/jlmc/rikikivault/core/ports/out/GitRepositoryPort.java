@@ -8,6 +8,8 @@ public interface GitRepositoryPort {
 
     void init();
 
+    void addRemote(String name, String url);
+
     void clone(String remoteUri);
 
     void pull();
