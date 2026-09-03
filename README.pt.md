@@ -71,14 +71,21 @@ java -jar cli/target/rikiki-vault.jar -C /caminho/para/o/vault status
 mkdir o-meu-vault && cd o-meu-vault
 java -jar rikiki-vault.jar init --git machine-a
 
-# o GitRepositoryPort ainda não tem operação de "add remote" - associa o remoto tu próprio:
-git remote add origin git@github.com:tu/o-meu-vault-cifrado.git
-
 mkdir local
 echo "olá" > local/notas.txt
 
 java -jar rikiki-vault.jar status
 java -jar rikiki-vault.jar publish -m "primeira publicação"
+```
+
+Um remoto é opcional: `publish`/`authorize`/`revoke` fazem commit localmente e imprimem
+`(guardado localmente - sem remoto configurado)` quando não há nenhum, em vez de falhar. Para
+sincronizar com outra máquina mais tarde, associa um (o `GitRepositoryPort` não tem operação de
+"add remote", por isso associa-o com o `git` normal):
+
+```
+git remote add origin git@github.com:tu/o-meu-vault-cifrado.git
+java -jar rikiki-vault.jar publish -m "sincronizar com o remoto"
 ```
 
 Para deixar entrar uma segunda máquina:
