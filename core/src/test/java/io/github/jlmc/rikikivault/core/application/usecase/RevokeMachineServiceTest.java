@@ -18,6 +18,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class RevokeMachineServiceTest {
 
@@ -43,7 +44,8 @@ class RevokeMachineServiceTest {
         RevokeMachineService service = new RevokeMachineService(
                 recipientRegistryPort, localFiles, documentsFiles, manifestPort, encryptionPort, gitRepositoryPort);
 
-        service.revoke(new RevokeMachineCommand(KeyFingerprint.of(revokedKey)));
+        assertTrue(service.revoke(new RevokeMachineCommand(KeyFingerprint.of(revokedKey))),
+                "com remoto configurado, revoke deveria devolver true");
 
         RecipientRegistry updated = recipientRegistryPort.load();
         assertEquals(1, updated.recipients().size());
@@ -78,5 +80,23 @@ class RevokeMachineServiceTest {
 
         assertThrows(IllegalStateException.class,
                 () -> service.revoke(new RevokeMachineCommand(KeyFingerprint.of(soleKey))));
+    }
+
+    @Test
+    void returnsFalseWhenThereIsNoRemoteConfigured() throws Exception {
+        PublicKey remainingKey = someKey();
+        PublicKey revokedKey = someKey();
+        FakeRecipientRegistryPort recipientRegistryPort = new FakeRecipientRegistryPort(new RecipientRegistry(1, List.of(
+                new Recipient("machine-a", KeyFingerprint.of(remainingKey), remainingKey),
+                new Recipient("machine-b", KeyFingerprint.of(revokedKey), revokedKey))));
+        FakeGitRepositoryPort gitRepositoryPort = new FakeGitRepositoryPort();
+        gitRepositoryPort.pushReturnValue = false;
+        RevokeMachineService service = new RevokeMachineService(
+                recipientRegistryPort, new FakeFileStoragePort(), new FakeFileStoragePort(),
+                new FakeManifestPort(), new FakeEncryptionPort(), gitRepositoryPort);
+
+        boolean pushed = service.revoke(new RevokeMachineCommand(KeyFingerprint.of(revokedKey)));
+
+        assertEquals(false, pushed, "sem remoto configurado, revoke deveria devolver false");
     }
 }

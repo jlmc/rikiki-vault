@@ -13,6 +13,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -78,11 +79,22 @@ class JGitRepositoryAdapterTest {
         Files.writeString(dirA.resolve("new.txt"), "added from A");
         adapterA.add(List.of("new.txt"));
         adapterA.commit("add new.txt");
-        adapterA.push();
+        assertTrue(adapterA.push(), "push deveria devolver true quando há um remoto configurado");
 
         adapterB.pull();
 
         assertEquals("added from A", Files.readString(dirB.resolve("new.txt")));
+    }
+
+    @Test
+    void pushOnARepositoryWithNoRemoteIsSkippedInsteadOfFailing(@TempDir Path root) throws IOException {
+        JGitRepositoryAdapter adapter = new JGitRepositoryAdapter(root);
+        adapter.init();
+        Files.writeString(root.resolve("a.txt"), "hello");
+        adapter.add(List.of("a.txt"));
+        adapter.commit("add a.txt");
+
+        assertFalse(adapter.push(), "push sem nenhum remoto configurado deve ser ignorado, não falhar");
     }
 
     @Test

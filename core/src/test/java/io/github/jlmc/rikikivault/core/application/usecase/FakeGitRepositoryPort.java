@@ -13,6 +13,7 @@ final class FakeGitRepositoryPort implements GitRepositoryPort {
     String clonedRemoteUri;
     int pullCallCount = 0;
     int pushCallCount = 0;
+    boolean pushReturnValue = true;
     final List<List<String>> addedPathBatches = new ArrayList<>();
     final List<String> commitMessages = new ArrayList<>();
     GitStatus statusToReturn = new GitStatus(Set.of(), Set.of(), Set.of(), Set.of(), Set.of(), Set.of(), Set.of());
@@ -49,8 +50,9 @@ final class FakeGitRepositoryPort implements GitRepositoryPort {
     }
 
     @Override
-    public void push() {
+    public boolean push() {
         pushCallCount++;
+        return pushReturnValue;
     }
 
     @Override

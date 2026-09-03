@@ -58,7 +58,7 @@ public final class PublishVaultService implements PublishVaultUseCase {
     }
 
     @Override
-    public void publish(PublishVaultCommand command) {
+    public boolean publish(PublishVaultCommand command) {
         Objects.requireNonNull(command, "command must not be null");
 
         List<PublicKey> recipients = recipientRegistryPort.load().recipients().stream().map(Recipient::publicKey).toList();
@@ -86,7 +86,7 @@ public final class PublishVaultService implements PublishVaultUseCase {
 
         gitRepositoryPort.add(List.of("."));
         gitRepositoryPort.commit(command.commitMessage());
-        gitRepositoryPort.push();
+        return gitRepositoryPort.push();
     }
 
     private ManifestEntry encryptAndStore(String plaintextPath, List<PublicKey> recipients) {

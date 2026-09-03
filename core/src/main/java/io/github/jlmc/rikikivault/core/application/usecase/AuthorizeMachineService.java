@@ -53,7 +53,7 @@ public final class AuthorizeMachineService implements AuthorizeMachineUseCase {
     }
 
     @Override
-    public void authorize(AuthorizeMachineCommand command) {
+    public boolean authorize(AuthorizeMachineCommand command) {
         Objects.requireNonNull(command, "command must not be null");
 
         RecipientRegistry registry = recipientRegistryPort.load();
@@ -73,7 +73,7 @@ public final class AuthorizeMachineService implements AuthorizeMachineUseCase {
 
         gitRepositoryPort.add(List.of("."));
         gitRepositoryPort.commit("authorize machine: " + command.label());
-        gitRepositoryPort.push();
+        return gitRepositoryPort.push();
     }
 
     private void reEncryptAllTrackedFiles(List<Recipient> recipients) {

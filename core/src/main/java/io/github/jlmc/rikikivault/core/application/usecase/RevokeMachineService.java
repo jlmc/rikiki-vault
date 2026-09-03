@@ -52,7 +52,7 @@ public final class RevokeMachineService implements RevokeMachineUseCase {
     }
 
     @Override
-    public void revoke(RevokeMachineCommand command) {
+    public boolean revoke(RevokeMachineCommand command) {
         Objects.requireNonNull(command, "command must not be null");
 
         RecipientRegistry registry = recipientRegistryPort.load();
@@ -76,7 +76,7 @@ public final class RevokeMachineService implements RevokeMachineUseCase {
 
         gitRepositoryPort.add(List.of("."));
         gitRepositoryPort.commit("revoke machine: " + command.fingerprint());
-        gitRepositoryPort.push();
+        return gitRepositoryPort.push();
     }
 
     private void reEncryptAllTrackedFiles(List<Recipient> recipients) {

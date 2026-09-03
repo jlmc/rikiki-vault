@@ -18,7 +18,11 @@ public interface GitRepositoryPort {
 
     void commit(String message);
 
-    void push();
+    /**
+     * @return {@code true} if the commit(s) were pushed, {@code false} if there is no remote
+     * configured yet and the push was skipped (a valid local-only vault, not an error).
+     */
+    boolean push();
 
     String diff();
 }

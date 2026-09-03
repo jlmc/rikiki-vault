@@ -43,7 +43,8 @@ class AuthorizeMachineServiceTest {
         AuthorizeMachineService service = new AuthorizeMachineService(
                 recipientRegistryPort, localFiles, documentsFiles, manifestPort, encryptionPort, gitRepositoryPort);
 
-        service.authorize(new AuthorizeMachineCommand("machine-b", newKey));
+        assertTrue(service.authorize(new AuthorizeMachineCommand("machine-b", newKey)),
+                "com remoto configurado, authorize deveria devolver true");
 
         RecipientRegistry updated = recipientRegistryPort.load();
         assertEquals(2, updated.recipients().size());
@@ -69,5 +70,21 @@ class AuthorizeMachineServiceTest {
 
         assertThrows(IllegalArgumentException.class,
                 () -> service.authorize(new AuthorizeMachineCommand("machine-a-again", existingKey)));
+    }
+
+    @Test
+    void returnsFalseWhenThereIsNoRemoteConfigured() throws Exception {
+        PublicKey existingKey = someKey();
+        FakeRecipientRegistryPort recipientRegistryPort = new FakeRecipientRegistryPort(new RecipientRegistry(1, List.of(
+                new Recipient("machine-a", KeyFingerprint.of(existingKey), existingKey))));
+        FakeGitRepositoryPort gitRepositoryPort = new FakeGitRepositoryPort();
+        gitRepositoryPort.pushReturnValue = false;
+        AuthorizeMachineService service = new AuthorizeMachineService(
+                recipientRegistryPort, new FakeFileStoragePort(), new FakeFileStoragePort(),
+                new FakeManifestPort(), new FakeEncryptionPort(), gitRepositoryPort);
+
+        boolean pushed = service.authorize(new AuthorizeMachineCommand("machine-b", someKey()));
+
+        assertEquals(false, pushed, "sem remoto configurado, authorize deveria devolver false");
     }
 }

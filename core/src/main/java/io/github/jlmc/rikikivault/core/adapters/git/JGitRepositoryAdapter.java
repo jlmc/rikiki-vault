@@ -121,12 +121,16 @@ public final class JGitRepositoryAdapter implements GitRepositoryPort {
     }
 
     @Override
-    public void push() {
+    public boolean push() {
         // Does not inspect per-ref PushResult status (e.g. rejected non-fast-forward updates) —
         // that level of scrutiny is deferred to Phase 8 (Hardening), same spirit as the symlink
         // caveat left on LocalFileSystemAdapter in Milestone 2.
         try (Git git = openGit()) {
+            if (git.remoteList().call().isEmpty()) {
+                return false;
+            }
             git.push().setCredentialsProvider(resolveCredentials()).call();
+            return true;
         } catch (GitAPIException e) {
             throw new GitOperationException("Failed to push from " + root, e);
         }
