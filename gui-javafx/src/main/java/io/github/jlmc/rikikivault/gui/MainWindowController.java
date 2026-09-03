@@ -311,16 +311,28 @@ public final class MainWindowController {
     @FXML
     private void onPublish() {
         BackgroundTask.run(
-                () -> new ScanChangesService(ctx.localFiles(), ctx.hashPort(), ctx.manifestPort()).scan(),
-                changes -> {
-                    if (changes.isEmpty()) {
-                        Dialogs.showInfo("Publicar", "Não há alterações para publicar.");
+                () -> {
+                    List<VaultChange> changes = new ScanChangesService(ctx.localFiles(), ctx.hashPort(), ctx.manifestPort()).scan();
+                    // Only worth checking the remote when there's nothing local to publish -
+                    // otherwise ChangeReviewController opens regardless, no need for a fetch first.
+                    boolean remoteAhead = changes.isEmpty() && ctx.gitRepositoryPort().isRemoteAhead();
+                    return new PublishCheck(changes, remoteAhead);
+                },
+                check -> {
+                    if (check.changes().isEmpty()) {
+                        String message = check.remoteAhead()
+                                ? "Nada para publicar localmente, mas o remoto tem alterações que ainda não fizeste Pull."
+                                : "Não há alterações para publicar.";
+                        Dialogs.showInfo("Publicar", message);
                         return;
                     }
                     Stage owner = (Stage) fileTable.getScene().getWindow();
-                    ChangeReviewController.open(owner, ctx, changes, this::refresh);
+                    ChangeReviewController.open(owner, ctx, check.changes(), this::refresh);
                 },
                 Dialogs::showError);
+    }
+
+    private record PublishCheck(List<VaultChange> changes, boolean remoteAhead) {
     }
 
     private void refresh() {
