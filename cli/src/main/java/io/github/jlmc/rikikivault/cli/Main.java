@@ -145,6 +145,7 @@ public final class Main {
         }
 
         InitializeVaultService service = new InitializeVaultService(
+                new LoadMachineIdentityService(ctx.keyStorePort()),
                 new InitializeMachineIdentityService(new X25519KeyPairGeneratorAdapter(), ctx.keyStorePort()),
                 new LocalFileSystemAdapter(ctx.vaultRoot()),
                 ctx.manifestPort(),
