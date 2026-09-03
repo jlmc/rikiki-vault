@@ -14,8 +14,20 @@ final class Dialogs {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle("Erro");
         alert.setHeaderText(null);
-        alert.setContentText(error.getMessage() != null ? error.getMessage() : error.toString());
+        alert.setContentText(fullMessage(error));
         alert.showAndWait();
+    }
+
+    private static String fullMessage(Throwable error) {
+        String topMessage = error.getMessage() != null ? error.getMessage() : error.toString();
+        Throwable rootCause = error;
+        while (rootCause.getCause() != null) {
+            rootCause = rootCause.getCause();
+        }
+        String rootMessage = rootCause.getMessage() != null ? rootCause.getMessage() : rootCause.toString();
+        return rootCause == error || rootMessage.equals(topMessage)
+                ? topMessage
+                : topMessage + "\n\nCausa: " + rootMessage;
     }
 
     static boolean confirm(String title, String message) {
