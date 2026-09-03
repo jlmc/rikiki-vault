@@ -1,18 +1,25 @@
 package io.github.jlmc.rikikivault.gui;
 
+import io.github.jlmc.rikikivault.core.adapters.diff.TextDiffAdapter;
 import io.github.jlmc.rikikivault.core.application.usecase.DecryptFileService;
+import io.github.jlmc.rikikivault.core.application.usecase.DiffFileService;
 import io.github.jlmc.rikikivault.core.application.usecase.LoadMachineIdentityService;
 import io.github.jlmc.rikikivault.core.application.usecase.PullVaultService;
+import io.github.jlmc.rikikivault.core.application.usecase.RevertFileService;
 import io.github.jlmc.rikikivault.core.application.usecase.ScanChangesService;
 import io.github.jlmc.rikikivault.core.domain.model.MachineIdentity;
 import io.github.jlmc.rikikivault.core.domain.model.PullResult;
 import io.github.jlmc.rikikivault.core.domain.model.VaultChange;
+import io.github.jlmc.rikikivault.core.ports.in.DiffFileCommand;
+import io.github.jlmc.rikikivault.core.ports.in.RevertFileCommand;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.fxml.FXML;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeTableColumn;
 import javafx.scene.control.TreeTableView;
@@ -20,6 +27,7 @@ import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 public final class MainWindowController {
@@ -30,8 +38,16 @@ public final class MainWindowController {
     @FXML private TreeTableColumn<FolderTreeNode, String> nameColumn;
     @FXML private TreeTableColumn<FolderTreeNode, FolderTreeNode> statusColumn;
     @FXML private StackPane previewContainer;
+    @FXML private Button editToggleButton;
+    @FXML private Button saveButton;
+    @FXML private Button encryptButton;
+    @FXML private Button revertButton;
+    @FXML private Button diffButton;
 
     private VaultContext ctx;
+    private FolderTreeNode currentNode;
+    private boolean editMode;
+    private TextArea editorArea;
 
     void init(VaultContext ctx) {
         this.ctx = ctx;
@@ -61,16 +77,28 @@ public final class MainWindowController {
     }
 
     private void showPreview(FolderTreeNode node) {
+        String newPath = node != null && !node.isFolder() ? node.fileEntry().path() : null;
+        String oldPath = currentNode != null && !currentNode.isFolder() ? currentNode.fileEntry().path() : null;
+        boolean sameFileReselectedWhileEditing = editMode && newPath != null && newPath.equals(oldPath);
+        currentNode = node;
+        if (sameFileReselectedWhileEditing) {
+            return;
+        }
+        exitEditMode();
+
         if (node == null) {
+            editToggleButton.setDisable(true);
             previewContainer.getChildren().setAll(ViewerResultRenderer.renderUnsupported("Seleciona um ficheiro para pré-visualizar."));
             return;
         }
         if (node.isFolder()) {
+            editToggleButton.setDisable(true);
             previewContainer.getChildren().setAll(ViewerResultRenderer.renderUnsupported("Selecionaste uma pasta."));
             return;
         }
         FileEntry entry = node.fileEntry();
         if (entry.status() == FileStatus.DELETED) {
+            editToggleButton.setDisable(true);
             previewContainer.getChildren().setAll(
                     ViewerResultRenderer.renderUnsupported("Ficheiro removido - sem conteúdo local para pré-visualizar."));
             return;
@@ -79,11 +107,146 @@ public final class MainWindowController {
                 () -> {
                     byte[] content = ctx.localFiles().readFile(entry.path());
                     FileViewer viewer = FileViewerRegistry.select(entry.path());
-                    return viewer.view(content, entry.path());
+                    ViewerResult result = viewer.view(content, entry.path());
+                    boolean editable = TextFileViewer.tryDecodeUtf8(content) != null;
+                    return new PreviewLoad(result, editable);
                 },
-                result -> previewContainer.getChildren().setAll(ViewerResultRenderer.render(result)),
-                error -> previewContainer.getChildren().setAll(
-                        ViewerResultRenderer.renderUnsupported("Não foi possível pré-visualizar: " + error.getMessage())));
+                load -> {
+                    editToggleButton.setDisable(!load.editable());
+                    previewContainer.getChildren().setAll(ViewerResultRenderer.render(load.result()));
+                },
+                error -> {
+                    editToggleButton.setDisable(true);
+                    previewContainer.getChildren().setAll(
+                            ViewerResultRenderer.renderUnsupported("Não foi possível pré-visualizar: " + error.getMessage()));
+                });
+    }
+
+    private record PreviewLoad(ViewerResult result, boolean editable) {
+    }
+
+    @FXML
+    private void onToggleEdit() {
+        if (editMode) {
+            exitEditMode();
+            showPreview(currentNode);
+        } else {
+            enterEditMode();
+        }
+    }
+
+    private void enterEditMode() {
+        if (currentNode == null || currentNode.isFolder()) {
+            return;
+        }
+        String path = currentNode.fileEntry().path();
+        BackgroundTask.run(
+                () -> ctx.localFiles().readFile(path),
+                bytes -> {
+                    editorArea = new TextArea(TextFileViewer.tryDecodeUtf8(bytes));
+                    editorArea.setWrapText(false);
+                    editorArea.getStyleClass().add("preview-text");
+                    previewContainer.getChildren().setAll(editorArea);
+                    editMode = true;
+                    editToggleButton.setText("Ver");
+                    setEditActionButtonsVisible(true);
+                },
+                Dialogs::showError);
+    }
+
+    private void exitEditMode() {
+        editMode = false;
+        editorArea = null;
+        editToggleButton.setText("Editar");
+        setEditActionButtonsVisible(false);
+    }
+
+    private void setEditActionButtonsVisible(boolean visible) {
+        saveButton.setVisible(visible);
+        saveButton.setManaged(visible);
+        encryptButton.setVisible(visible);
+        encryptButton.setManaged(visible);
+        revertButton.setVisible(visible);
+        revertButton.setManaged(visible);
+        diffButton.setVisible(visible);
+        diffButton.setManaged(visible);
+    }
+
+    @FXML
+    private void onSave() {
+        if (currentNode == null || currentNode.isFolder() || editorArea == null) {
+            return;
+        }
+        String path = currentNode.fileEntry().path();
+        String text = editorArea.getText();
+        BackgroundTask.runVoid(
+                () -> ctx.localFiles().writeFile(path, text.getBytes(StandardCharsets.UTF_8)),
+                () -> refresh(true),
+                Dialogs::showError);
+    }
+
+    @FXML
+    private void onEncrypt() {
+        if (editorArea == null || currentNode == null || currentNode.isFolder()) {
+            onPublish();
+            return;
+        }
+        String path = currentNode.fileEntry().path();
+        String text = editorArea.getText();
+        BackgroundTask.runVoid(
+                () -> ctx.localFiles().writeFile(path, text.getBytes(StandardCharsets.UTF_8)),
+                this::onPublish,
+                Dialogs::showError);
+    }
+
+    @FXML
+    private void onRevert() {
+        if (currentNode == null || currentNode.isFolder()) {
+            return;
+        }
+        String path = currentNode.fileEntry().path();
+        if (!Dialogs.confirm("Revert", "Descartar as alterações locais de " + path + " e voltar à última versão publicada?")) {
+            return;
+        }
+        BackgroundTask.runVoid(
+                () -> new RevertFileService(
+                        ctx.manifestPort(), ctx.localFiles(), ctx.documentsFiles(),
+                        new DecryptFileService(ctx.encryptionPort()), new LoadMachineIdentityService(ctx.keyStorePort()))
+                        .revert(new RevertFileCommand(path)),
+                () -> reloadEditorContent(path),
+                Dialogs::showError);
+    }
+
+    private void reloadEditorContent(String path) {
+        BackgroundTask.run(
+                () -> ctx.localFiles().readFile(path),
+                bytes -> {
+                    if (editorArea != null) {
+                        editorArea.setText(TextFileViewer.tryDecodeUtf8(bytes));
+                    }
+                    refresh(true);
+                },
+                Dialogs::showError);
+    }
+
+    @FXML
+    private void onDiff() {
+        if (currentNode == null || currentNode.isFolder() || editorArea == null) {
+            return;
+        }
+        String path = currentNode.fileEntry().path();
+        byte[] currentContent = editorArea.getText().getBytes(StandardCharsets.UTF_8);
+        BackgroundTask.run(
+                () -> new DiffFileService(
+                        ctx.manifestPort(), ctx.documentsFiles(),
+                        new DecryptFileService(ctx.encryptionPort()), new LoadMachineIdentityService(ctx.keyStorePort()),
+                        new TextDiffAdapter())
+                        .diff(new DiffFileCommand(path, currentContent)),
+                diffText -> {
+                    Stage owner = (Stage) fileTable.getScene().getWindow();
+                    DiffResultController.open(owner, diffText);
+                },
+                Dialogs::showError);
     }
 
     @FXML

@@ -34,7 +34,24 @@
                     <TreeTableColumn fx:id="statusColumn" text="Estado" prefWidth="90"/>
                 </columns>
             </TreeTableView>
-            <StackPane fx:id="previewContainer" styleClass="preview-container"/>
+            <BorderPane>
+                <top>
+                    <HBox fx:id="editorToolbar" styleClass="editor-toolbar" spacing="8" alignment="CENTER_LEFT">
+                        <padding>
+                            <Insets top="8" right="8" bottom="8" left="8"/>
+                        </padding>
+                        <Button fx:id="editToggleButton" text="Editar" onAction="#onToggleEdit" disable="true"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Button fx:id="saveButton" text="Save" onAction="#onSave" managed="false" visible="false"/>
+                        <Button fx:id="encryptButton" text="Encrypt" onAction="#onEncrypt" managed="false" visible="false"/>
+                        <Button fx:id="revertButton" text="Revert" onAction="#onRevert" managed="false" visible="false"/>
+                        <Button fx:id="diffButton" text="Diff" onAction="#onDiff" managed="false" visible="false"/>
+                    </HBox>
+                </top>
+                <center>
+                    <StackPane fx:id="previewContainer" styleClass="preview-container"/>
+                </center>
+            </BorderPane>
         </SplitPane>
     </center>
 </BorderPane>
