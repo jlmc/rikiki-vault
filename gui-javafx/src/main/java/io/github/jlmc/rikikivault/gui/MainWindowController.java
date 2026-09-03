@@ -7,6 +7,8 @@ import io.github.jlmc.rikikivault.core.application.usecase.ScanChangesService;
 import io.github.jlmc.rikikivault.core.domain.model.MachineIdentity;
 import io.github.jlmc.rikikivault.core.domain.model.PullResult;
 import io.github.jlmc.rikikivault.core.domain.model.VaultChange;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -16,6 +18,7 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
 import java.util.List;
 
@@ -45,6 +48,15 @@ public final class MainWindowController {
         showPreview(null);
 
         refresh();
+        startAutoRefresh();
+    }
+
+    private void startAutoRefresh() {
+        // Reflects changes made to local/ from outside the app (Finder, another editor, ...).
+        // Never touches the remote - pulling still requires the explicit "Pull" action.
+        Timeline timeline = new Timeline(new KeyFrame(Duration.seconds(3), event -> refresh(false)));
+        timeline.setCycleCount(Timeline.INDEFINITE);
+        timeline.play();
     }
 
     private void showPreview(FileEntry entry) {
@@ -70,7 +82,7 @@ public final class MainWindowController {
 
     @FXML
     private void onRefresh() {
-        refresh();
+        refresh(true);
     }
 
     @FXML
@@ -112,6 +124,10 @@ public final class MainWindowController {
     }
 
     private void refresh() {
+        refresh(true);
+    }
+
+    private void refresh(boolean reportErrors) {
         BackgroundTask.run(
                 () -> {
                     List<String> localPaths = ctx.localFiles().listFiles();
@@ -120,6 +136,10 @@ public final class MainWindowController {
                     return FileTreeBuilder.build(localPaths, changes);
                 },
                 entries -> fileTable.setItems(FXCollections.observableArrayList(entries)),
-                Dialogs::showError);
+                error -> {
+                    if (reportErrors) {
+                        Dialogs.showError(error);
+                    }
+                });
     }
 }
