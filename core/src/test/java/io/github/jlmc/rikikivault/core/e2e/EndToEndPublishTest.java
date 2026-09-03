@@ -4,6 +4,7 @@ import io.github.jlmc.rikikivault.core.adapters.encryption.JceHybridEncryptionAd
 import io.github.jlmc.rikikivault.core.adapters.encryption.X25519KeyPairGeneratorAdapter;
 import io.github.jlmc.rikikivault.core.adapters.encryption.format.RvEncryptedFileFormatCodec;
 import io.github.jlmc.rikikivault.core.adapters.filesystem.LocalFileSystemAdapter;
+import io.github.jlmc.rikikivault.core.adapters.git.FakeGitAuthSettingsPort;
 import io.github.jlmc.rikikivault.core.adapters.git.JGitRepositoryAdapter;
 import io.github.jlmc.rikikivault.core.adapters.hashing.Sha256HashAdapter;
 import io.github.jlmc.rikikivault.core.adapters.keystore.LocalKeyStoreAdapter;
@@ -59,7 +60,7 @@ class EndToEndPublishTest {
         Path recipientsFile = vaultRoot.resolve("vault").resolve("recipients.json");
         Path identityDirectory = tempDir.resolve("identity");
 
-        JGitRepositoryAdapter gitRepositoryPort = new JGitRepositoryAdapter(vaultRoot);
+        JGitRepositoryAdapter gitRepositoryPort = new JGitRepositoryAdapter(vaultRoot, new FakeGitAuthSettingsPort());
         gitRepositoryPort.clone("file://" + bareRepoDir);
 
         LocalKeyStoreAdapter keyStorePort = new LocalKeyStoreAdapter(identityDirectory);
@@ -109,7 +110,7 @@ class EndToEndPublishTest {
 
         // A fresh clone of the remote proves the commit was actually pushed.
         Path freshClone = tempDir.resolve("fresh-clone");
-        new JGitRepositoryAdapter(freshClone).clone("file://" + bareRepoDir);
+        new JGitRepositoryAdapter(freshClone, new FakeGitAuthSettingsPort()).clone("file://" + bareRepoDir);
         assertArrayEquals(encodedBytes, Files.readAllBytes(freshClone.resolve("documents").resolve("cv.pdf.enc")));
     }
 }

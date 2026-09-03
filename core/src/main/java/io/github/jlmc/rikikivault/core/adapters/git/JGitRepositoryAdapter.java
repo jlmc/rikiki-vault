@@ -1,12 +1,15 @@
 package io.github.jlmc.rikikivault.core.adapters.git;
 
+import io.github.jlmc.rikikivault.core.configuration.GitAuthSettings;
 import io.github.jlmc.rikikivault.core.domain.exception.GitOperationException;
 import io.github.jlmc.rikikivault.core.domain.model.GitStatus;
+import io.github.jlmc.rikikivault.core.ports.out.GitAuthSettingsPort;
 import io.github.jlmc.rikikivault.core.ports.out.GitRepositoryPort;
 import org.eclipse.jgit.api.AddCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.PullResult;
 import org.eclipse.jgit.api.Status;
+import org.eclipse.jgit.api.TransportConfigCallback;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.api.errors.JGitInternalException;
 import org.eclipse.jgit.diff.DiffFormatter;
@@ -14,13 +17,16 @@ import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.CredentialsProvider;
+import org.eclipse.jgit.transport.SshTransport;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
+import org.eclipse.jgit.transport.sshd.SshdSessionFactory;
 import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.treewalk.EmptyTreeIterator;
 import org.eclipse.jgit.treewalk.FileTreeIterator;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -39,10 +45,12 @@ public final class JGitRepositoryAdapter implements GitRepositoryPort {
     private static final String GITHUB_TOKEN_ENV_VAR = "RIKIKI_VAULT_GITHUB_TOKEN";
 
     private final Path root;
+    private final GitAuthSettingsPort gitAuthSettingsPort;
 
-    public JGitRepositoryAdapter(Path root) {
+    public JGitRepositoryAdapter(Path root, GitAuthSettingsPort gitAuthSettingsPort) {
         Objects.requireNonNull(root, "root must not be null");
         this.root = root.toAbsolutePath().normalize();
+        this.gitAuthSettingsPort = Objects.requireNonNull(gitAuthSettingsPort, "gitAuthSettingsPort must not be null");
     }
 
     @Override
@@ -61,6 +69,7 @@ public final class JGitRepositoryAdapter implements GitRepositoryPort {
                 .setURI(remoteUri)
                 .setDirectory(root.toFile())
                 .setCredentialsProvider(resolveCredentials())
+                .setTransportConfigCallback(resolveSshTransportConfigCallback())
                 .call()) {
             // repository cloned; nothing else to do
         } catch (GitAPIException | JGitInternalException e) {
@@ -71,7 +80,10 @@ public final class JGitRepositoryAdapter implements GitRepositoryPort {
     @Override
     public void pull() {
         try (Git git = openGit()) {
-            PullResult result = git.pull().setCredentialsProvider(resolveCredentials()).call();
+            PullResult result = git.pull()
+                    .setCredentialsProvider(resolveCredentials())
+                    .setTransportConfigCallback(resolveSshTransportConfigCallback())
+                    .call();
             if (!result.isSuccessful()) {
                 throw new GitOperationException("git pull did not complete successfully in " + root);
             }
@@ -129,7 +141,10 @@ public final class JGitRepositoryAdapter implements GitRepositoryPort {
             if (git.remoteList().call().isEmpty()) {
                 return false;
             }
-            git.push().setCredentialsProvider(resolveCredentials()).call();
+            git.push()
+                    .setCredentialsProvider(resolveCredentials())
+                    .setTransportConfigCallback(resolveSshTransportConfigCallback())
+                    .call();
             return true;
         } catch (GitAPIException e) {
             throw new GitOperationException("Failed to push from " + root, e);
@@ -172,16 +187,56 @@ public final class JGitRepositoryAdapter implements GitRepositoryPort {
     }
 
     /**
-     * Reads GitHub credentials from the environment rather than a config file or the repository
-     * itself (Plan.md §19). Absent a token, {@code null} is returned, which is correct both for
-     * local {@code file://} remotes (used in tests) and for {@code ssh://}/{@code git@} remotes
-     * that authenticate via the system's own SSH agent/keys instead.
+     * Resolves GitHub credentials for HTTPS remotes: an explicit token configured in the app
+     * (Milestone 13) takes priority, falling back to the {@code RIKIKI_VAULT_GITHUB_TOKEN} env var
+     * (Plan.md §19) for backward compatibility. Absent either, {@code null} is returned, which is
+     * correct both for local {@code file://} remotes (used in tests) and for {@code ssh://}/
+     * {@code git@} remotes, which never use this provider at all. Package-private so
+     * {@code JGitRepositoryAdapterTest} can verify the token-priority rule without any real
+     * network call.
      */
-    private static CredentialsProvider resolveCredentials() {
-        String token = System.getenv(GITHUB_TOKEN_ENV_VAR);
+    CredentialsProvider resolveCredentials() {
+        String configuredToken = gitAuthSettingsPort.load().githubToken();
+        String token = configuredToken != null && !configuredToken.isBlank() ? configuredToken : System.getenv(GITHUB_TOKEN_ENV_VAR);
         if (token == null || token.isBlank()) {
             return null;
         }
         return new UsernamePasswordCredentialsProvider(token, "");
+    }
+
+    /**
+     * When the app has an explicit SSH key configured (Milestone 13), forces every SSH transport
+     * to use exactly that identity file instead of relying entirely on implicit discovery
+     * (default-named keys / {@code ~/.ssh/config} / the running SSH agent) - useful when the key
+     * has a non-standard name and automatic discovery doesn't find it. A configured key that's
+     * agent-protected still works: only the default identity *file* list is overridden below, the
+     * base class's own agent support is untouched. Without a configured key, this is a no-op and
+     * today's fully automatic behavior is unchanged.
+     */
+    private TransportConfigCallback resolveSshTransportConfigCallback() {
+        Path configuredKey = gitAuthSettingsPort.load().sshPrivateKeyPath();
+        if (configuredKey == null) {
+            return transport -> {
+            };
+        }
+        SshdSessionFactory sessionFactory = new FixedIdentitySshdSessionFactory(configuredKey);
+        return transport -> {
+            if (transport instanceof SshTransport sshTransport) {
+                sshTransport.setSshSessionFactory(sessionFactory);
+            }
+        };
+    }
+
+    private static final class FixedIdentitySshdSessionFactory extends SshdSessionFactory {
+        private final Path identity;
+
+        FixedIdentitySshdSessionFactory(Path identity) {
+            this.identity = identity;
+        }
+
+        @Override
+        protected List<Path> getDefaultIdentities(File sshDir) {
+            return List.of(identity);
+        }
     }
 }

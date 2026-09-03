@@ -1,8 +1,12 @@
 package io.github.jlmc.rikikivault.core.adapters.git;
 
+import io.github.jlmc.rikikivault.core.configuration.GitAuthSettings;
 import io.github.jlmc.rikikivault.core.domain.exception.GitOperationException;
 import io.github.jlmc.rikikivault.core.domain.model.GitStatus;
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.transport.CredentialItem;
+import org.eclipse.jgit.transport.CredentialsProvider;
+import org.eclipse.jgit.transport.URIish;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -21,7 +25,7 @@ class JGitRepositoryAdapterTest {
 
     @Test
     void initCreatesAGitDirectoryAndAnEmptyRepoIsClean(@TempDir Path root) {
-        JGitRepositoryAdapter adapter = new JGitRepositoryAdapter(root);
+        JGitRepositoryAdapter adapter = new JGitRepositoryAdapter(root, new FakeGitAuthSettingsPort());
 
         adapter.init();
 
@@ -31,7 +35,7 @@ class JGitRepositoryAdapterTest {
 
     @Test
     void addThenCommitMovesAFileFromUntrackedToCleanHistory(@TempDir Path root) throws IOException {
-        JGitRepositoryAdapter adapter = new JGitRepositoryAdapter(root);
+        JGitRepositoryAdapter adapter = new JGitRepositoryAdapter(root, new FakeGitAuthSettingsPort());
         adapter.init();
         Files.writeString(root.resolve("a.txt"), "hello");
 
@@ -50,7 +54,7 @@ class JGitRepositoryAdapterTest {
     void cloneRecreatesTheCommittedFileInTheTargetDirectory(@TempDir Path bareRepoDir, @TempDir Path cloneDir) throws Exception {
         seedBareRepoWithOneCommit(bareRepoDir, "cv.pdf", "cv content");
 
-        JGitRepositoryAdapter adapter = new JGitRepositoryAdapter(cloneDir.resolve("clone"));
+        JGitRepositoryAdapter adapter = new JGitRepositoryAdapter(cloneDir.resolve("clone"), new FakeGitAuthSettingsPort());
         adapter.clone("file://" + bareRepoDir);
 
         assertEquals("cv content", Files.readString(cloneDir.resolve("clone").resolve("cv.pdf")));
@@ -61,7 +65,7 @@ class JGitRepositoryAdapterTest {
         seedBareRepoWithOneCommit(bareRepoDir, "cv.pdf", "cv content");
         Files.writeString(target.resolve("already-here.txt"), "pre-existing");
 
-        JGitRepositoryAdapter adapter = new JGitRepositoryAdapter(target);
+        JGitRepositoryAdapter adapter = new JGitRepositoryAdapter(target, new FakeGitAuthSettingsPort());
 
         assertThrows(GitOperationException.class, () -> adapter.clone("file://" + bareRepoDir));
     }
@@ -71,8 +75,8 @@ class JGitRepositoryAdapterTest {
         seedBareRepoWithOneCommit(bareRepoDir, "notes.md", "original");
         Path dirA = workDirs.resolve("a");
         Path dirB = workDirs.resolve("b");
-        JGitRepositoryAdapter adapterA = new JGitRepositoryAdapter(dirA);
-        JGitRepositoryAdapter adapterB = new JGitRepositoryAdapter(dirB);
+        JGitRepositoryAdapter adapterA = new JGitRepositoryAdapter(dirA, new FakeGitAuthSettingsPort());
+        JGitRepositoryAdapter adapterB = new JGitRepositoryAdapter(dirB, new FakeGitAuthSettingsPort());
         adapterA.clone("file://" + bareRepoDir);
         adapterB.clone("file://" + bareRepoDir);
 
@@ -88,7 +92,7 @@ class JGitRepositoryAdapterTest {
 
     @Test
     void pushOnARepositoryWithNoRemoteIsSkippedInsteadOfFailing(@TempDir Path root) throws IOException {
-        JGitRepositoryAdapter adapter = new JGitRepositoryAdapter(root);
+        JGitRepositoryAdapter adapter = new JGitRepositoryAdapter(root, new FakeGitAuthSettingsPort());
         adapter.init();
         Files.writeString(root.resolve("a.txt"), "hello");
         adapter.add(List.of("a.txt"));
@@ -99,7 +103,7 @@ class JGitRepositoryAdapterTest {
 
     @Test
     void diffReportsAModifiedTrackedFile(@TempDir Path root) throws IOException {
-        JGitRepositoryAdapter adapter = new JGitRepositoryAdapter(root);
+        JGitRepositoryAdapter adapter = new JGitRepositoryAdapter(root, new FakeGitAuthSettingsPort());
         adapter.init();
         Files.writeString(root.resolve("notes.md"), "original content");
         adapter.add(List.of("notes.md"));
@@ -115,7 +119,7 @@ class JGitRepositoryAdapterTest {
 
     @Test
     void diffOnARepoWithNoCommitsYetReflectsTheUntrackedFileAsNew(@TempDir Path root) throws IOException {
-        JGitRepositoryAdapter adapter = new JGitRepositoryAdapter(root);
+        JGitRepositoryAdapter adapter = new JGitRepositoryAdapter(root, new FakeGitAuthSettingsPort());
         adapter.init();
         Files.writeString(root.resolve("new.txt"), "brand new");
 
@@ -126,16 +130,32 @@ class JGitRepositoryAdapterTest {
 
     @Test
     void statusOnADirectoryThatWasNeverInitializedFails(@TempDir Path root) {
-        JGitRepositoryAdapter adapter = new JGitRepositoryAdapter(root);
+        JGitRepositoryAdapter adapter = new JGitRepositoryAdapter(root, new FakeGitAuthSettingsPort());
 
         assertThrows(GitOperationException.class, adapter::status);
     }
 
     @Test
     void commitOnADirectoryThatWasNeverInitializedFails(@TempDir Path root) {
-        JGitRepositoryAdapter adapter = new JGitRepositoryAdapter(root);
+        JGitRepositoryAdapter adapter = new JGitRepositoryAdapter(root, new FakeGitAuthSettingsPort());
 
         assertThrows(GitOperationException.class, () -> adapter.commit("message"));
+    }
+
+    @Test
+    void resolveCredentialsPrefersTheConfiguredTokenAsUsername(@TempDir Path root) throws Exception {
+        FakeGitAuthSettingsPort authSettings = new FakeGitAuthSettingsPort();
+        authSettings.save(new GitAuthSettings(null, "configured-token"));
+        JGitRepositoryAdapter adapter = new JGitRepositoryAdapter(root, authSettings);
+
+        CredentialsProvider provider = adapter.resolveCredentials();
+
+        CredentialItem.Username usernameItem = new CredentialItem.Username();
+        CredentialItem.Password passwordItem = new CredentialItem.Password();
+        provider.get(new URIish("https://github.com/example/repo.git"), usernameItem, passwordItem);
+
+        assertEquals("configured-token", usernameItem.getValue());
+        assertEquals("", new String(passwordItem.getValue()));
     }
 
     private static void seedBareRepoWithOneCommit(Path bareRepoDir, String fileName, String content) throws Exception {

@@ -3,6 +3,7 @@ package io.github.jlmc.rikikivault.core.e2e;
 import io.github.jlmc.rikikivault.core.adapters.encryption.JceHybridEncryptionAdapter;
 import io.github.jlmc.rikikivault.core.adapters.encryption.X25519KeyPairGeneratorAdapter;
 import io.github.jlmc.rikikivault.core.adapters.filesystem.LocalFileSystemAdapter;
+import io.github.jlmc.rikikivault.core.adapters.git.FakeGitAuthSettingsPort;
 import io.github.jlmc.rikikivault.core.adapters.git.JGitRepositoryAdapter;
 import io.github.jlmc.rikikivault.core.adapters.hashing.Sha256HashAdapter;
 import io.github.jlmc.rikikivault.core.adapters.keystore.LocalKeyStoreAdapter;
@@ -168,7 +169,7 @@ class EndToEndClonePullTest {
             this.documentsFiles = new LocalFileSystemAdapter(vaultRoot.resolve("documents"));
             this.manifestPort = new JsonManifestFileAdapter(vaultRoot.resolve("vault").resolve("manifest.json"));
             this.recipientRegistryPort = new JsonRecipientRegistryFileAdapter(vaultRoot.resolve("vault").resolve("recipients.json"));
-            this.gitRepositoryPort = new JGitRepositoryAdapter(vaultRoot);
+            this.gitRepositoryPort = new JGitRepositoryAdapter(vaultRoot, new FakeGitAuthSettingsPort());
             this.keyStorePort = new LocalKeyStoreAdapter(identityDirectory);
         }
     }
