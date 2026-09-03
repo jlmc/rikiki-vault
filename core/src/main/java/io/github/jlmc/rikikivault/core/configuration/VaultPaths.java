@@ -18,6 +18,10 @@ public final class VaultPaths {
         return vaultHome().resolve("config").resolve("config.yaml");
     }
 
+    public static Path defaultGitAuthDirectory() {
+        return vaultHome().resolve("git-auth");
+    }
+
     private static Path vaultHome() {
         return Paths.get(System.getProperty("user.home"), VAULT_HOME_DIR_NAME);
     }
