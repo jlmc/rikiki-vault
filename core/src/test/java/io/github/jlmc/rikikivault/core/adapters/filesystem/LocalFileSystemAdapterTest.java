@@ -50,6 +50,20 @@ class LocalFileSystemAdapterTest {
     }
 
     @Test
+    void ignoresKnownOsJunkFiles(@TempDir Path tempDir) throws IOException {
+        Path root = tempDir.resolve("local");
+        Files.createDirectories(root.resolve("cv"));
+        Files.writeString(root.resolve(".DS_Store"), "junk");
+        Files.writeString(root.resolve("cv").resolve(".DS_Store"), "junk");
+        Files.writeString(root.resolve("Thumbs.db"), "junk");
+        Files.writeString(root.resolve("cv").resolve("CV.pdf"), "cv content");
+
+        LocalFileSystemAdapter adapter = new LocalFileSystemAdapter(root);
+
+        assertEquals(List.of("cv/CV.pdf"), adapter.listFiles());
+    }
+
+    @Test
     void readFileReturnsExactBytes(@TempDir Path tempDir) throws IOException {
         Path root = tempDir.resolve("local");
         Files.createDirectories(root);

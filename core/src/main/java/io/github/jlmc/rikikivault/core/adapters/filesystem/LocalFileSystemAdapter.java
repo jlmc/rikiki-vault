@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -18,6 +19,8 @@ import java.util.stream.StreamSupport;
  * constructor-injected-path style.
  */
 public final class LocalFileSystemAdapter implements FileStoragePort {
+
+    private static final Set<String> IGNORED_FILE_NAMES = Set.of(".DS_Store", "Thumbs.db", "desktop.ini");
 
     private final Path rootDirectory;
 
@@ -33,6 +36,7 @@ public final class LocalFileSystemAdapter implements FileStoragePort {
         }
         try (Stream<Path> walk = Files.walk(rootDirectory)) {
             return walk.filter(Files::isRegularFile)
+                    .filter(file -> !IGNORED_FILE_NAMES.contains(file.getFileName().toString()))
                     .map(this::toRelativeSlashPath)
                     .sorted()
                     .collect(Collectors.toList());
