@@ -55,7 +55,7 @@ java -jar cli/target/rikiki-vault.jar -C /caminho/para/o/vault status
 
 | Comando | O que faz |
 |---|---|
-| `init [--git] <nome-da-máquina>` | Inicializa um vault novo na diretoria atual. Com `--git`, também corre `git init` localmente. Semeia o registo de destinatários com esta máquina como único destinatário. |
+| `init [--git] [--remote <url>] <nome-da-máquina>` | Inicializa um vault novo na diretoria atual. Com `--git`, também corre `git init` localmente; `--remote` (exige `--git`) associa também esse URL como `origin`, para a primeira `publish` já publicar a sério. Semeia o registo de destinatários com esta máquina como único destinatário. |
 | `whoami` | Mostra o fingerprint da identidade desta máquina, gerando uma primeiro se ainda não existir. |
 | `export-key <ficheiro-saída>` | Escreve a chave pública desta máquina num ficheiro, para dar a quem gere o `authorize` noutra máquina. |
 | `clone <remote-uri>` | Entra num vault **já existente** (usa `init` para arrancar um novo). |
@@ -80,9 +80,13 @@ java -jar rikiki-vault.jar publish -m "primeira publicação"
 ```
 
 Um remoto é opcional: `publish`/`authorize`/`revoke` fazem commit localmente e imprimem
-`(guardado localmente - sem remoto configurado)` quando não há nenhum, em vez de falhar. Para
-sincronizar com outra máquina mais tarde, associa um (o `GitRepositoryPort` não tem operação de
-"add remote", por isso associa-o com o `git` normal):
+`(guardado localmente - sem remoto configurado)` quando não há nenhum, em vez de falhar. Podes
+registar um logo no `init` com `--remote` (a única operação do `GitRepositoryPort` relacionada com
+remotos), ou associar um mais tarde com o `git` normal:
+
+```
+java -jar rikiki-vault.jar init --git --remote git@github.com:tu/o-meu-vault-cifrado.git machine-a
+```
 
 ```
 git remote add origin git@github.com:tu/o-meu-vault-cifrado.git

@@ -52,7 +52,7 @@ java -jar cli/target/rikiki-vault.jar -C /path/to/vault status
 
 | Command | What it does |
 |---|---|
-| `init [--git] <machine-label>` | Initializes a brand-new vault in the current directory. `--git` also runs `git init` locally. Seeds the recipient registry with this machine as the sole recipient. |
+| `init [--git] [--remote <url>] <machine-label>` | Initializes a brand-new vault in the current directory. `--git` also runs `git init` locally; `--remote` (requires `--git`) additionally registers that URL as `origin`, so the very first `publish` already pushes for real. Seeds the recipient registry with this machine as the sole recipient. |
 | `whoami` | Prints this machine's identity fingerprint, generating one first if it doesn't exist yet. |
 | `export-key <output-file>` | Writes this machine's public key to a file, to hand to whoever manages `authorize` on another machine. |
 | `clone <remote-uri>` | Joins an *already-initialized* vault (use `init` to start a brand-new one instead). |
@@ -77,9 +77,13 @@ java -jar rikiki-vault.jar publish -m "first publish"
 ```
 
 A remote is optional: `publish`/`authorize`/`revoke` commit locally and print
-`(guardado localmente - sem remoto configurado)` when none is configured, instead of failing. To
-sync with another machine later, add one (GitRepositoryPort has no "add remote" operation, so wire
-it with plain `git`):
+`(guardado localmente - sem remoto configurado)` when none is configured, instead of failing. You
+can register one right at `init` time with `--remote` (GitRepositoryPort's only remote-related
+operation), or add one later with plain `git`:
+
+```
+java -jar rikiki-vault.jar init --git --remote git@github.com:you/my-vault-encrypted.git machine-a
+```
 
 ```
 git remote add origin git@github.com:you/my-vault-encrypted.git
