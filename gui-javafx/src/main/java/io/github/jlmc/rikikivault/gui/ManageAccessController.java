@@ -97,15 +97,18 @@ public final class ManageAccessController {
         PublicKey publicKey = readPublicKeyFile(chosenPublicKeyFile);
 
         setBusy(true, "A autorizar...");
-        BackgroundTask.runVoid(
+        BackgroundTask.run(
                 () -> new AuthorizeMachineService(
                         ctx.recipientRegistryPort(), ctx.localFiles(), ctx.documentsFiles(),
                         ctx.manifestPort(), ctx.encryptionPort(), ctx.gitRepositoryPort())
                         .authorize(new AuthorizeMachineCommand(label, publicKey)),
-                () -> {
+                (Boolean pushed) -> {
                     setBusy(false, "");
                     onChanged.run();
                     stage.close();
+                    if (!pushed) {
+                        Dialogs.showInfo("Autorizado localmente", "Guardado localmente - sem remoto configurado.");
+                    }
                 },
                 error -> {
                     setBusy(false, "");
@@ -132,15 +135,18 @@ public final class ManageAccessController {
         }
 
         setBusy(true, "A revogar...");
-        BackgroundTask.runVoid(
+        BackgroundTask.run(
                 () -> new RevokeMachineService(
                         ctx.recipientRegistryPort(), ctx.localFiles(), ctx.documentsFiles(),
                         ctx.manifestPort(), ctx.encryptionPort(), ctx.gitRepositoryPort())
                         .revoke(new RevokeMachineCommand(fingerprint)),
-                () -> {
+                (Boolean pushed) -> {
                     setBusy(false, "");
                     onChanged.run();
                     stage.close();
+                    if (!pushed) {
+                        Dialogs.showInfo("Revogado localmente", "Guardado localmente - sem remoto configurado.");
+                    }
                 },
                 error -> {
                     setBusy(false, "");

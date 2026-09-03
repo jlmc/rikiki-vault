@@ -111,15 +111,18 @@ public final class ChangeReviewController {
         }
 
         setBusy(true, "A publicar...");
-        BackgroundTask.runVoid(
+        BackgroundTask.run(
                 () -> new PublishVaultService(
                         ctx.localFiles(), ctx.documentsFiles(), ctx.encryptionPort(), ctx.hashPort(),
                         ctx.manifestPort(), ctx.recipientRegistryPort(), ctx.gitRepositoryPort())
                         .publish(new PublishVaultCommand(selected, commitMessage)),
-                () -> {
+                (Boolean pushed) -> {
                     setBusy(false, "");
                     onPublished.run();
                     stage.close();
+                    if (!pushed) {
+                        Dialogs.showInfo("Publicado localmente", "Guardado localmente - sem remoto configurado.");
+                    }
                 },
                 error -> {
                     setBusy(false, "");
