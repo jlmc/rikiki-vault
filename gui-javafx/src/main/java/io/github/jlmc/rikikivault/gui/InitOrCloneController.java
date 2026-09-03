@@ -78,7 +78,7 @@ public final class InitOrCloneController {
                         new LoadMachineIdentityService(ctx.keyStorePort()),
                         new InitializeMachineIdentityService(new X25519KeyPairGeneratorAdapter(), ctx.keyStorePort()),
                         new DecryptFileService(encryptionPort),
-                        ctx.localFiles(), ctx.documentsFiles(), ctx.manifestPort(), ctx.gitRepositoryPort())
+                        ctx.localFiles(), ctx.documentsFiles(), ctx.manifestPort(), ctx.recipientRegistryPort(), ctx.gitRepositoryPort())
                         .clone(new CloneVaultCommand(remoteUri)),
                 () -> {
                     clearBusy();

@@ -26,6 +26,8 @@
         <Separator orientation="VERTICAL"/>
         <VBox spacing="8">
             <Label text="Entrar num vault já existente" styleClass="section-title"/>
+            <Label text="Só para um repositório já inicializado por outra máquina com &quot;Criar&quot; - não para um repositório remoto vazio."
+                   styleClass="subtitle" wrapText="true" maxWidth="220"/>
             <TextField fx:id="remoteField" promptText="URL do repositório remoto"/>
             <Button fx:id="cloneButton" text="Clonar" onAction="#onClone"/>
         </VBox>
