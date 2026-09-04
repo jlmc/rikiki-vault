@@ -4,12 +4,12 @@
   <parent>
     <artifactId>rikiki-vault</artifactId>
     <groupId>io.github.jlmc</groupId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.0.0</version>
   </parent>
 
   <groupId>io.github.jlmc</groupId>
   <artifactId>gui-javafx</artifactId>
-  <version>1.0.0-SNAPSHOT</version>
+  <version>1.0.0</version>
 
   <name>gui-javafx</name>
 
@@ -39,7 +39,7 @@
     <dependency>
       <groupId>io.github.jlmc</groupId>
       <artifactId>core</artifactId>
-      <version>1.0.0-SNAPSHOT</version>
+      <version>1.0.0</version>
     </dependency>
     <dependency>
       <groupId>org.openjfx</groupId>
