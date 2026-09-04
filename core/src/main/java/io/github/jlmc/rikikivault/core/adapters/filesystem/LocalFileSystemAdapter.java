@@ -63,7 +63,7 @@ public final class LocalFileSystemAdapter implements FileStoragePort {
 
     @Override
     public void writeFile(String relativePath, byte[] content) {
-        // Written content may be decrypted plaintext (Plan.md §25): write to a sibling temp file,
+        // Written content may be decrypted plaintext: write to a sibling temp file,
         // restrict its permissions, then atomically move it into place - a crash mid-write can
         // never leave a truncated/partial file at the final path, and it's never briefly
         // world-readable.

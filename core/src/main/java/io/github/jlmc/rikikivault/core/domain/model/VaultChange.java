@@ -4,8 +4,7 @@ import java.util.Objects;
 
 /**
  * A detected difference between the local plaintext tree and the manifest. {@code path} is
- * always the plaintext-relative path (under {@code local/}), matching how the CLI status
- * example in Plan.md §27 reports changes.
+ * always the plaintext-relative path (under {@code local/}).
  */
 public record VaultChange(ChangeType type, String path) {
 

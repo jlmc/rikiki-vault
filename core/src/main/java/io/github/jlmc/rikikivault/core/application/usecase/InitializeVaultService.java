@@ -20,15 +20,15 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Composes the vault-level bootstrap (Plan.md §9, steps 5-8) on top of the machine-identity
- * bootstrap (steps 1-4, already covered by {@link InitializeMachineIdentityUseCase}). {@code
+ * Composes the vault-level bootstrap on top of the machine-identity
+ * bootstrap (covered by {@link InitializeMachineIdentityUseCase}). {@code
  * documents/} and {@code local/} are deliberately not created eagerly: git does not track empty
  * directories, and {@link FileStoragePort#writeFile} brings each one into existence the moment
  * the first file lands in it, exactly like a real git repository behaves. The recipient registry
- * (Plan.md §4) is seeded with this machine as the sole authorized recipient - without it, the
+ * is seeded with this machine as the sole authorized recipient - without it, the
  * first {@code publish} would have no one to encrypt for.
  *
- * <p>The machine identity is global to the machine, not to a single vault (Plan.md - it
+ * <p>The machine identity is global to the machine, not to a single vault (it
  * represents "this computer", not "this vault"), so it is loaded if it already exists rather than
  * always created - a second, independent vault on a machine that already used Rikiki Vault before
  * must not be blocked just because the identity already exists. "Already initialized" is instead

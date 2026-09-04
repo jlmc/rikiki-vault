@@ -11,10 +11,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Line-based diff (Plan.md §16). Text files get a {@code --- previous}/{@code +++ current} header
+ * Line-based diff. Text files get a {@code --- previous}/{@code +++ current} header
  * followed by one line per input line, prefixed with a space (unchanged), {@code -} (removed) or
  * {@code +} (added), computed via the classic LCS dynamic-programming backtrack. Binary content
- * (either side fails to decode as UTF-8) just reports that the file changed, per spec - this
+ * (either side fails to decode as UTF-8) just reports that the file changed - this
  * makes no attempt to diff at the byte level.
  */
 public final class TextDiffAdapter implements DiffPort {

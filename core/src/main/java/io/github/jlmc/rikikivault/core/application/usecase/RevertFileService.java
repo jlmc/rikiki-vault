@@ -17,7 +17,7 @@ import io.github.jlmc.rikikivault.core.ports.out.ManifestPort;
 import java.util.Objects;
 
 /**
- * Discards local edits by restoring a file to its last-published state (Plan.md §15's "Revert"
+ * Discards local edits by restoring a file to its last-published state ("Revert"
  * editor action). Only meaningful for a file that has actually been published before - a file
  * that only exists locally (never published) has nothing to revert to.
  */

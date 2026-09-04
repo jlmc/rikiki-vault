@@ -4,7 +4,7 @@ import io.github.jlmc.rikikivault.core.domain.model.VaultChange;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 
-/** One pending change in the review list, with a per-row checkbox (Plan.md §17). */
+/** One pending change in the review list, with a per-row checkbox. */
 public final class SelectableChange {
 
     private final VaultChange change;

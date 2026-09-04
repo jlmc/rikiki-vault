@@ -20,7 +20,7 @@ import java.util.Optional;
 
 /**
  * Compares the current (possibly unsaved) editor content of a file against its last-published
- * version (Plan.md §15's "Diff" editor action / §16). A path never published compares against
+ * version. A path never published compares against
  * empty content - the whole file shows up as added, which is the honest answer for "what would
  * change if I published this now".
  */

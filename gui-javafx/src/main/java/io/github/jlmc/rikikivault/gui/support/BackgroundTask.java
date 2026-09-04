@@ -6,7 +6,7 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
- * Runs work off the JavaFX Application Thread (Plan.md §29 - Git/crypto operations must not block
+ * Runs work off the JavaFX Application Thread (Git/crypto operations must not block
  * the UI). {@code onSuccess}/{@code onFailure} run back on the FX thread automatically, since
  * {@link Task}'s succeeded/failed handlers are always dispatched there.
  */

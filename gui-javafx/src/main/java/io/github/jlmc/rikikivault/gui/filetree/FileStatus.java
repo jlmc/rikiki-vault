@@ -2,7 +2,7 @@ package io.github.jlmc.rikikivault.gui.filetree;
 
 import io.github.jlmc.rikikivault.core.domain.model.VaultChange;
 
-/** Status badge shown per file in the browser (Plan.md §13) and in the change review list. */
+/** Status badge shown per file in the browser and in the change review list. */
 public enum FileStatus {
 
     SYNCED("✓", "status-synced"),

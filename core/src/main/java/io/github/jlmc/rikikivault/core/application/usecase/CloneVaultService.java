@@ -22,19 +22,18 @@ import io.github.jlmc.rikikivault.core.ports.out.RecipientRegistryPort;
 import java.util.Objects;
 
 /**
- * Composes a new machine joining an existing vault (Plan.md §10). This machine's identity (step
- * 4, "load local private key") is reused if it already exists - e.g. generated ahead of time so
+ * Composes a new machine joining an existing vault. This machine's identity
+ * ("load local private key") is reused if it already exists - e.g. generated ahead of time so
  * its public key could be shared with whoever manages recipient authorization - or generated on
  * the spot otherwise, since a genuinely first-time machine has nothing but a folder of files it
- * wants tracked and no key at all yet. "Validate repository structure" (step 2) checks the
+ * wants tracked and no key at all yet. "Validate repository structure" checks the
  * recipient registry, not the manifest - {@code ManifestPort#load()} is deliberately fail-safe on
  * a missing file (it means "nothing published yet" for an otherwise-valid vault), so it cannot
- * tell an empty-but-initialized vault apart from a remote that was never {@code init}-ed at all; a
+ * tell an empty-but-initialized vault apart from a remote that was never initialized at all; a
  * validly initialized vault always has at least one recipient (whoever created it), even with zero
- * files published. Recipient authorization (step 5) is enforced per file by
+ * files published. Recipient authorization is enforced per file by
  * {@link DecryptFileUseCase}, not duplicated here - a brand-new identity that was not yet granted
- * access to any pre-existing file will simply fail to decrypt it, which is expected until Phase 6
- * wires up authorization sharing.
+ * access to any pre-existing file will simply fail to decrypt it.
  */
 public final class CloneVaultService implements CloneVaultUseCase {
 

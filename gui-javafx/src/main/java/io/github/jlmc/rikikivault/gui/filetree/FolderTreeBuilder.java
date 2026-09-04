@@ -7,8 +7,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Groups the flat, slash-separated list {@link FileTreeBuilder} already produces into a folder
- * hierarchy (Plan.md §13's own example is a tree, not a flat list) - reuses that status
+ * Groups the flat, slash-separated list into a folder
+ * hierarchy - reuses that status
  * computation as-is, only regroups it.
  */
 public final class FolderTreeBuilder {

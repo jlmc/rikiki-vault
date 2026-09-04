@@ -34,7 +34,7 @@ import javafx.stage.Stage;
 import java.util.List;
 
 /**
- * Review-and-approve step of the "Encrypt &amp; Publish" flow (Plan.md §17): the user can
+ * Review-and-approve step of the "Encrypt &amp; Publish" flow: the user can
  * deselect individual changes before publishing - {@link PublishVaultCommand} already accepts any
  * subset of {@link VaultChange}, not just the full scan result.
  */

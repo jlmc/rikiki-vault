@@ -234,8 +234,8 @@ public final class JGitRepositoryAdapter implements GitRepositoryPort {
 
     /**
      * Resolves GitHub credentials for HTTPS remotes: an explicit token configured in the app
-     * (Milestone 13) takes priority, falling back to the {@code RIKIKI_VAULT_GITHUB_TOKEN} env var
-     * (Plan.md §19) for backward compatibility. Absent either, {@code null} is returned, which is
+     * takes priority, falling back to the {@code RIKIKI_VAULT_GITHUB_TOKEN} env var
+     * for backward compatibility. Absent either, {@code null} is returned, which is
      * correct both for local {@code file://} remotes (used in tests) and for {@code ssh://}/
      * {@code git@} remotes, which never use this provider at all. Package-private so
      * {@code JGitRepositoryAdapterTest} can verify the token-priority rule without any real

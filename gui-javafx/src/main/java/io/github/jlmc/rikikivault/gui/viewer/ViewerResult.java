@@ -1,6 +1,6 @@
 package io.github.jlmc.rikikivault.gui.viewer;
 
-/** What a {@link FileViewer} produced (Plan.md §14) - rendering-agnostic, JavaFX-free. */
+/** What a {@link FileViewer} produced - rendering-agnostic, JavaFX-free. */
 public sealed interface ViewerResult {
 
     record TextViewerResult(String text) implements ViewerResult {

@@ -20,11 +20,11 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Revokes a machine's access to this vault (Plan.md §4): removes it from the recipient registry,
+ * Revokes a machine's access to this vault: removes it from the recipient registry,
  * then re-encrypts every already-tracked file for the reduced set - this is what actually revokes
  * access (the revoked machine's wrapped-key entry no longer exists in any newly published
- * ciphertext), rather than the explicitly forbidden approach of just deleting a private key
- * locally. Publishes the result like {@link PublishVaultService} does (single add/commit/push).
+ * ciphertext), rather than just deleting a private key locally. Publishes the result like
+ * {@link PublishVaultService} does (single add/commit/push).
  */
 public final class RevokeMachineService implements RevokeMachineUseCase {
 

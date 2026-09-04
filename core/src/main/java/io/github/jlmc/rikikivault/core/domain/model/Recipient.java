@@ -4,7 +4,7 @@ import java.security.PublicKey;
 import java.util.Objects;
 
 /**
- * One machine authorized to decrypt this vault's contents (Plan.md §4). {@code fingerprint} is
+ * One machine authorized to decrypt this vault's contents. {@code fingerprint} is
  * derived from {@code publicKey} ({@link KeyFingerprint#of(PublicKey)}) and is what
  * {@code RecipientKeyEntry}/authorization checks match against.
  */

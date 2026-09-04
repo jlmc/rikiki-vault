@@ -11,7 +11,7 @@ import javafx.scene.control.TextArea;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
-/** Read-only modal showing the text a {@code DiffFileUseCase} call produced (Plan.md §16). */
+/** Read-only modal showing the text a {@code DiffFileUseCase} call produced. */
 public final class DiffResultController {
 
     @FXML private TextArea diffArea;

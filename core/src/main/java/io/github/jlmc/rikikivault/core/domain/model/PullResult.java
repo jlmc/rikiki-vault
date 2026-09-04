@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * The outcome of a {@code pull} (Plan.md §11): which remotely-changed paths were safely applied
+ * The outcome of a {@code pull}: which remotely-changed paths were safely applied
  * to {@code local/}, which conflicted with an uncommitted local change and were left untouched,
  * and the full set of local changes detected before the pull (for a "you have uncommitted
  * changes" warning, independent of whether any of them actually conflicted).

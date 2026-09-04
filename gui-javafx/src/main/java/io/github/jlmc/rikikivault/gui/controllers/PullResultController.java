@@ -18,7 +18,7 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 
 /**
- * Shows what a {@code pull} changed (Plan.md §11) and, for conflicts, reports them (§32) without
+ * Shows what a {@code pull} changed and, for conflicts, reports them without
  * offering "Keep Remote"/"Compare" - those need a use case that doesn't exist yet to force a
  * remote overwrite; "Keep Local" is already what {@link io.github.jlmc.rikikivault.core.application.usecase.PullVaultService}
  * does automatically, so there's nothing to click for it.

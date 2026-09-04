@@ -28,12 +28,12 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * Composes the "pull" flow (Plan.md §11): pull the encrypted repository, then decide per path
+ * Composes the "pull" flow: pull the encrypted repository, then decide per path
  * whether the remote change can be safely applied to {@code local/}. The manifest travels inside
  * the git repository itself, so {@link GitRepositoryPort#pull()} already updates it - comparing
  * the manifest before/after tells us what changed remotely; comparing that against a pre-pull
  * {@link ScanChangesUseCase#scan()} tells us what also changed locally. A path that changed on
- * both sides is a conflict and is left untouched (Plan.md §11/§32) - the next {@code scan()} will
+ * both sides is a conflict and is left untouched - the next {@code scan()} will
  * keep reporting it as a local modification, which is the correct and already-existing behavior.
  */
 public final class PullVaultService implements PullVaultUseCase {
@@ -122,8 +122,8 @@ public final class PullVaultService implements PullVaultUseCase {
     }
 
     private FileHash hashLocalFileIfPresent(String path, ChangeType localType) {
-        // A DELETED local change means there's no local content left to hash (Plan.md §32 only
-        // asks for a hash of whichever side still has a version to compare).
+        // A DELETED local change means there's no local content left to hash (only
+        // computes a hash of whichever side still has a version to compare).
         if (localType == ChangeType.DELETED) {
             return null;
         }

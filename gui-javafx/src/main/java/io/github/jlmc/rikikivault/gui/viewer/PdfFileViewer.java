@@ -12,7 +12,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 /**
- * Renders just the first page as an image (Plan.md §14 asks for a preview, not a full reader),
+ * Renders just the first page as an image (as a preview, not a full reader),
  * but extracts the text of every page - extraction is cheap, unlike rasterization, so there's no
  * reason to limit it to page 1 the way the image is. Lets the preview offer a selectable/copyable
  * text view alongside the image.

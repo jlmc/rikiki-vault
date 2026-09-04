@@ -42,8 +42,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * crypto + Git, over a real {@code @TempDir} tree and a real local {@code file://} bare remote.
  * {@link JGitRepositoryAdapter#clone(String)} is used here purely as test setup, to wire up the
  * "origin" remote that {@link InitializeVaultService}'s optional {@code git init} does not
- * configure - the Git port has no "add remote" operation (Plan.md's Git section never lists one),
- * so configuring one for a brand-new vault is left to a later milestone.
+ * configure.
  */
 class EndToEndPublishTest {
 

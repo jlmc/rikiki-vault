@@ -83,7 +83,7 @@ class EndToEndAuthorizeAndRevokeTest {
         Files.write(machineA.vaultRoot.resolve("local").resolve("cv.pdf"), plaintextV1);
         publishAllChanges(machineA, encryptionPort, hashPort, "publish cv.pdf v1");
 
-        // Machine B already has an identity (Plan.md §10 step 4: clone loads, not generates) but is
+        // Machine B already has an identity (clone loads, not generates) but is
         // not yet authorized - decrypting the current ciphertext with her key must fail.
         MachineIdentity identityB = new InitializeMachineIdentityService(
                 new X25519KeyPairGeneratorAdapter(), machineB.keyStorePort).initialize();
@@ -107,7 +107,7 @@ class EndToEndAuthorizeAndRevokeTest {
         assertArrayEquals(identityB.publicKey().getEncoded(), clonedIdentity.publicKey().getEncoded());
 
         // Machine A revokes Machine B - the re-encrypted ciphertext can no longer be decrypted with
-        // Machine B's key, satisfying Plan.md §4's "do not just delete the private key" requirement.
+        // Machine B's key, satisfying the "do not just delete the private key" requirement.
         new RevokeMachineService(
                 machineA.recipientRegistryPort, machineA.localFiles, machineA.documentsFiles,
                 machineA.manifestPort, encryptionPort, machineA.gitRepositoryPort)

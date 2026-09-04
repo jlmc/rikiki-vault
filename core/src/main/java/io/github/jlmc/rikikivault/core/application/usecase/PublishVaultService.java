@@ -23,10 +23,9 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * Composes the "encrypt & push" flow (Plan.md §17) for a batch of already-approved changes -
- * the two user-confirmation gates in that flow are a CLI/UI concern for a later milestone; this
- * service is what runs after both have been granted. Recipients are resolved from the vault's
- * {@link RecipientRegistryPort} (Plan.md §4) rather than supplied by the caller, so a publish can
+ * Composes the "encrypt & push" flow for a batch of approved changes.
+ * Recipients are resolved from the vault's
+ * {@link RecipientRegistryPort} rather than supplied by the caller, so a publish can
  * never accidentally omit an authorized machine.
  */
 public final class PublishVaultService implements PublishVaultUseCase {

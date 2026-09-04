@@ -90,7 +90,7 @@ class InitializeVaultServiceTest {
 
     @Test
     void reusesAnExistingMachineIdentityInsteadOfFailing() throws Exception {
-        // The machine identity is global (Plan.md - it represents this computer, not a single
+        // The machine identity is global (it represents this computer, not a single
         // vault): a second, independent vault on a machine that already used Rikiki Vault before
         // must succeed, reusing the existing identity, not be blocked because one already exists.
         MachineIdentity existingIdentity = someIdentity();

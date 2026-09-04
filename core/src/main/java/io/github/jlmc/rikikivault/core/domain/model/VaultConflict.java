@@ -3,8 +3,8 @@ package io.github.jlmc.rikikivault.core.domain.model;
 import java.util.Objects;
 
 /**
- * A path that changed both locally (since the last sync) and remotely (in the same {@code pull}),
- * per Plan.md §11/§32 - the file was never touched, this only reports the fact. {@code localHash}/
+ * A path that changed both locally (since the last sync) and remotely (in the same {@code pull}) -
+ * the file was never touched, this only reports the fact. {@code localHash}/
  * {@code remoteHash} are {@code null} when that side is a deletion (no content left to hash).
  */
 public record VaultConflict(

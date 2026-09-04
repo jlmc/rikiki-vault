@@ -46,7 +46,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * {@code EndToEndPublishTest} does for {@code publish} alone. {@link JGitRepositoryAdapter#clone}
  * is used as test scaffolding for Machine A too (same reason as in {@code EndToEndPublishTest}:
  * the Git port has no "add remote" operation yet). Machine B generates its identity before
- * cloning - matching {@code CloneVaultService}'s corrected contract (Plan.md §10 step 4 loads an
+ * cloning - matching {@code CloneVaultService}'s contract (clone loads an
  * existing key, it does not generate one) - and Machine A authorizes it via
  * {@link AuthorizeMachineService} before publishing, so it can decrypt what gets published.
  */
@@ -67,7 +67,7 @@ class EndToEndClonePullTest {
         Machine machineB = new Machine(tempDir.resolve("machine-b-vault"), tempDir.resolve("machine-b-identity"));
 
         // Machine B generates its identity ahead of time, so its public key can be handed to
-        // Machine A before anything is published (Plan.md §10 step 4: clone loads, not generates).
+        // Machine A before anything is published (clone loads, not generates).
         MachineIdentity identityB = new InitializeMachineIdentityService(
                 new X25519KeyPairGeneratorAdapter(), machineB.keyStorePort).initialize();
 

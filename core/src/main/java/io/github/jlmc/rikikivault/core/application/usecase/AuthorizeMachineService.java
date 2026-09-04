@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Grants a machine access to this vault (Plan.md §4): adds it to the recipient registry, then
+ * Grants a machine access to this vault: adds it to the recipient registry, then
  * re-encrypts every already-tracked file for the updated recipient set - without this, the newly
  * authorized machine could not decrypt anything published before it was authorized. Publishes the
  * result like {@link PublishVaultService} does (single add/commit/push).

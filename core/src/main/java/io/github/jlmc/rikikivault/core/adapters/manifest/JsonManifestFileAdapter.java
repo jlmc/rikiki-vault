@@ -18,7 +18,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
- * Loads/saves {@link VaultManifest} as manifest.json (Plan.md §24) via plain Jackson JSON
+ * Loads/saves {@link VaultManifest} as manifest.json via plain Jackson JSON
  * binding. Deliberately NOT fail-safe like
  * {@link io.github.jlmc.rikikivault.core.adapters.configuration.YamlConfigFileAdapter}: a missing
  * file legitimately means "nothing encrypted yet" ({@link VaultManifest#empty()}), but an

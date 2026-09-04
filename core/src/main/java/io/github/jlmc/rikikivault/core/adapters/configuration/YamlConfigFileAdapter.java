@@ -15,8 +15,7 @@ import java.nio.file.Path;
 import java.util.Objects;
 
 /**
- * Loads/saves {@link VaultConfig} as YAML (Plan.md §6 names this file config.json; YAML instead
- * is a deliberate deviation made per explicit user request). Never throws on a missing, partial,
+ * Loads/saves {@link VaultConfig} as YAML (names this file config.yaml). Never throws on a missing, partial,
  * or malformed file — this is local convenience configuration, not encrypted vault data, so it
  * fails safe by falling back to defaults for whatever can't be read.
  */

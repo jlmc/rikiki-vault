@@ -23,7 +23,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
- * Loads/saves {@link RecipientRegistry} as recipients.json (Plan.md §4) via plain Jackson JSON
+ * Loads/saves {@link RecipientRegistry} as recipients.json via plain Jackson JSON
  * binding, mirroring {@link io.github.jlmc.rikikivault.core.adapters.manifest.JsonManifestFileAdapter}.
  * A missing file means "no recipients yet" ({@link RecipientRegistry#empty()}); an existing file
  * that fails to parse throws {@link CorruptedRecipientRegistryException} rather than defaulting to
