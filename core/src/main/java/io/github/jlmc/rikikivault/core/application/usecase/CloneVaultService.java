@@ -4,8 +4,8 @@ import io.github.jlmc.rikikivault.core.adapters.encryption.format.RvEncryptedFil
 import io.github.jlmc.rikikivault.core.domain.exception.PrivateKeyNotFoundException;
 import io.github.jlmc.rikikivault.core.domain.exception.UninitializedVaultException;
 import io.github.jlmc.rikikivault.core.domain.model.EncryptedFile;
-import io.github.jlmc.rikikivault.core.domain.model.ManifestEntry;
 import io.github.jlmc.rikikivault.core.domain.model.MachineIdentity;
+import io.github.jlmc.rikikivault.core.domain.model.ManifestEntry;
 import io.github.jlmc.rikikivault.core.domain.model.PlaintextFile;
 import io.github.jlmc.rikikivault.core.domain.model.VaultManifest;
 import io.github.jlmc.rikikivault.core.ports.in.CloneVaultCommand;
