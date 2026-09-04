@@ -198,3 +198,49 @@ page of PDFs) that can also be switched into an editor (Save/Encrypt/Revert/Diff
 sync-status badge, and toolbar actions for Pull, Publish (with a review-and-approve step before
 anything is encrypted, and a separate prompt before pushing to the remote), managing machine
 access (authorize/revoke), and Configurações (Git authentication + language).
+
+## Distribution
+
+Neither module ships a fat/shaded jar. `mvn package` produces a thin jar per module (only the
+project's own classes) plus a `target/lib/` folder with every dependency as a separate jar; the
+jar's manifest already points at `lib/`, so it runs exactly like before:
+
+```bash
+mvn package
+java -jar cli/target/rikiki-vault.jar -C <vault> status
+java -jar gui-javafx/target/rikiki-vault-gui.jar
+```
+
+Just keep `target/lib/` next to the jar - copy the whole `target/` folder (or `lib/` + the jar)
+if you move it elsewhere. Java 25 still needs to be installed on that machine.
+
+### Native apps (no Java required on the target machine)
+
+`scripts/package.sh` (macOS/Linux) and `scripts/package.ps1` (Windows) wrap `mvn package` and
+then run `jpackage` (bundled with the JDK) to produce a self-contained native app - the JVM ships
+inside it, so the machine that runs it doesn't need Java installed at all. `jpackage` never
+cross-compiles: each script only produces artifacts for the OS it runs on, so run the matching
+script manually on each target OS - there's no CI in this repository to do that centrally.
+
+```bash
+scripts/package.sh              # macOS/Linux, app-image (fast, for local testing)
+scripts/package.sh installer    # macOS/Linux, the real installer (.dmg / .deb)
+```
+
+```powershell
+scripts\package.ps1              # Windows, app-image
+scripts\package.ps1 -Mode installer  # Windows, .msi
+```
+
+Output goes to `dist/` (already git-ignored). Prerequisites per OS:
+
+- **macOS**: Xcode Command Line Tools (`xcode-select --install`) - already required by `jpackage`
+  itself.
+- **Windows**: the [WiX Toolset](https://wixtoolset.org/) installed, for `-Mode installer`
+  (`--type msi`).
+- **Linux**: `dpkg-dev` and `fakeroot` installed, for `installer` mode (`--type deb`).
+
+The CLI's packaged app is still a console tool - run it from a terminal (e.g.
+`dist/rikiki-vault-cli.app/Contents/MacOS/rikiki-vault-cli` on macOS), it just no longer needs a
+separate Java installation. The app icon lives at `branding/icon.svg` (source) with the
+platform-specific `branding/icon.icns`/`.ico`/`.png` derived from it.
