@@ -69,9 +69,11 @@ public final class MainWindowController {
     private FolderTreeNode currentNode;
     private boolean editMode;
     private TextArea editorArea;
+    private Runnable onLanguageChanged;
 
-    public void init(VaultContext ctx) {
+    public void init(VaultContext ctx, Runnable onLanguageChanged) {
         this.ctx = ctx;
+        this.onLanguageChanged = onLanguageChanged;
         MachineIdentity identity = loadOrCreateIdentity();
         vaultPathLabel.setText(ctx.vaultRoot().toString());
         fingerprintLabel.setText(Messages.get("mainWindow.identity", identity.id()));
@@ -356,7 +358,7 @@ public final class MainWindowController {
     @FXML
     private void onOpenSettings() {
         Stage owner = (Stage) fileTable.getScene().getWindow();
-        SettingsController.open(owner, this::refreshAfterPublish);
+        SettingsController.open(owner, onLanguageChanged);
     }
 
     @FXML

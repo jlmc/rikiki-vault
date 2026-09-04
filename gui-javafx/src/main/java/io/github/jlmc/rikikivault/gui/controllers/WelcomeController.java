@@ -13,10 +13,12 @@ public final class WelcomeController {
 
     private Stage stage;
     private Consumer<VaultContext> onVaultChosen;
+    private Runnable onLanguageChanged;
 
-    public void init(Stage stage, Consumer<VaultContext> onVaultChosen) {
+    public void init(Stage stage, Consumer<VaultContext> onVaultChosen, Runnable onLanguageChanged) {
         this.stage = stage;
         this.onVaultChosen = onVaultChosen;
+        this.onLanguageChanged = onLanguageChanged;
     }
 
     @FXML
@@ -31,7 +33,6 @@ public final class WelcomeController {
 
     @FXML
     private void onOpenSettings() {
-        SettingsController.open(stage, () -> {
-        });
+        SettingsController.open(stage, onLanguageChanged);
     }
 }

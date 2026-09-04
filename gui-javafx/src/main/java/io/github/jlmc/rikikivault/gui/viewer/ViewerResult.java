@@ -12,6 +12,11 @@ public sealed interface ViewerResult {
     record ImageViewerResult(byte[] imageBytes) implements ViewerResult {
     }
 
+    /** A PDF's first page rendered as an image, plus the extracted text of every page (cheap,
+     * unlike rasterization) so the user can switch to a selectable/copyable view. */
+    record PdfViewerResult(byte[] imageBytes, String extractedText) implements ViewerResult {
+    }
+
     record UnsupportedViewerResult(String reason) implements ViewerResult {
     }
 }
