@@ -14,7 +14,7 @@
             fx:controller="io.github.jlmc.rikikivault.gui.SettingsController"
             styleClass="settings-view">
     <top>
-        <Label text="Configurações" styleClass="title">
+        <Label text="%settings.title" styleClass="title">
             <BorderPane.margin>
                 <Insets top="20" right="20" bottom="8" left="20"/>
             </BorderPane.margin>
@@ -26,12 +26,12 @@
                 <Insets top="0" right="20" bottom="0" left="20"/>
             </BorderPane.margin>
             <tabs>
-                <Tab text="Idioma">
+                <Tab text="%settings.tab.language">
                     <VBox spacing="12">
                         <padding>
                             <Insets top="16" right="16" bottom="16" left="16"/>
                         </padding>
-                        <Label text="Idioma da aplicação" styleClass="section-title"/>
+                        <Label text="%settings.language.title" styleClass="section-title"/>
                         <RadioButton fx:id="ptRadio" text="Português">
                             <toggleGroup>
                                 <ToggleGroup fx:id="languageGroup"/>
@@ -49,8 +49,8 @@
                 <Insets top="12" right="20" bottom="20" left="20"/>
             </BorderPane.margin>
             <Label fx:id="statusLabel" styleClass="status-label"/>
-            <Button text="Fechar" onAction="#onClose"/>
-            <Button fx:id="saveButton" text="Guardar" styleClass="primary-button" onAction="#onSave"/>
+            <Button text="%common.close" onAction="#onClose"/>
+            <Button fx:id="saveButton" text="%common.save" styleClass="primary-button" onAction="#onSave"/>
         </HBox>
     </bottom>
 </BorderPane>

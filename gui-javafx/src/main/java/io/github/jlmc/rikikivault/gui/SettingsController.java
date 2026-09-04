@@ -16,9 +16,6 @@ import javafx.scene.control.TabPane;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-
 /**
  * Single "Configurações" screen (Milestone 19) replacing the standalone "Definições de Git"
  * dialog - one clearly-labelled, navigable tab per concern (Git today, Idioma; more later)
@@ -41,18 +38,13 @@ public final class SettingsController {
     private Runnable onLanguageChanged;
 
     static void open(Stage owner, Runnable onLanguageChanged) {
-        FXMLLoader loader = new FXMLLoader(SettingsController.class.getResource("/fxml/settings-view.fxml"));
-        Parent root;
-        try {
-            root = loader.load();
-        } catch (IOException e) {
-            throw new UncheckedIOException("Failed to load settings-view.fxml", e);
-        }
+        FXMLLoader loader = Fxml.loader("/fxml/settings-view.fxml");
+        Parent root = loader.getRoot();
         SettingsController controller = loader.getController();
         Stage stage = new Stage();
         stage.initOwner(owner);
         stage.initModality(Modality.APPLICATION_MODAL);
-        stage.setTitle("Configurações");
+        stage.setTitle(Messages.get("settings.windowTitle"));
         Scene scene = new Scene(root, 640, 640);
         scene.getStylesheets().add(App.class.getResource("/css/app.css").toExternalForm());
         stage.setScene(scene);
@@ -67,17 +59,13 @@ public final class SettingsController {
         AppPreferences preferences = preferencesPort.load();
         this.lastSavedLanguage = preferences.language();
 
-        try {
-            FXMLLoader gitLoader = new FXMLLoader(GitAuthSettingsPanel.class.getResource("/fxml/git-auth-settings-panel.fxml"));
-            Parent gitRoot = gitLoader.load();
-            gitAuthPanel = gitLoader.getController();
-            gitAuthPanel.init(stage, preferences.gitAuth());
-            Tab gitTab = new Tab("Git", gitRoot);
-            tabPane.getTabs().add(0, gitTab);
-            tabPane.getSelectionModel().select(gitTab);
-        } catch (IOException e) {
-            throw new UncheckedIOException("Failed to load git-auth-settings-panel.fxml", e);
-        }
+        FXMLLoader gitLoader = Fxml.loader("/fxml/git-auth-settings-panel.fxml");
+        Parent gitRoot = gitLoader.getRoot();
+        gitAuthPanel = gitLoader.getController();
+        gitAuthPanel.init(stage, preferences.gitAuth());
+        Tab gitTab = new Tab(Messages.get("settings.tab.git"), gitRoot);
+        tabPane.getTabs().add(0, gitTab);
+        tabPane.getSelectionModel().select(gitTab);
 
         (preferences.language() == AppLanguage.EN ? enRadio : ptRadio).setSelected(true);
     }
@@ -86,7 +74,7 @@ public final class SettingsController {
     private void onSave() {
         AppLanguage language = enRadio.isSelected() ? AppLanguage.EN : AppLanguage.PT;
         preferencesPort.save(new AppPreferences(gitAuthPanel.buildSettings(), language));
-        statusLabel.setText("Guardado.");
+        statusLabel.setText(Messages.get("settings.saved"));
 
         // Real re-rendering in the new language arrives with Milestone 20's message bundles -
         // for now this just notifies the caller that a language change was saved.

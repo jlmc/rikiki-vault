@@ -12,9 +12,9 @@
     <padding>
         <Insets top="20" right="20" bottom="20" left="20"/>
     </padding>
-    <Label text="Diferenças desde a última publicação" styleClass="title"/>
+    <Label text="%diffResult.title" styleClass="title"/>
     <TextArea fx:id="diffArea" editable="false" styleClass="preview-text" VBox.vgrow="ALWAYS"/>
     <HBox alignment="CENTER_RIGHT">
-        <Button text="OK" styleClass="primary-button" onAction="#onClose"/>
+        <Button text="%common.ok" styleClass="primary-button" onAction="#onClose"/>
     </HBox>
 </VBox>

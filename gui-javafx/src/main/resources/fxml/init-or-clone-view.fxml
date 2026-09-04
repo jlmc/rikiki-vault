@@ -18,19 +18,19 @@
     <Label fx:id="titleLabel" styleClass="title"/>
     <HBox spacing="32" alignment="TOP_CENTER">
         <VBox spacing="8">
-            <Label text="Criar um novo vault aqui" styleClass="section-title"/>
-            <TextField fx:id="labelField" promptText="nome desta máquina, ex. portátil-joao"/>
-            <CheckBox fx:id="gitCheckBox" text="Inicializar repositório git local" selected="true"/>
-            <TextField fx:id="initRemoteUrlField" promptText="URL do remoto (opcional)"/>
-            <Button fx:id="initButton" text="Inicializar" styleClass="primary-button" onAction="#onInitialize"/>
+            <Label text="%initOrClone.create.section" styleClass="section-title"/>
+            <TextField fx:id="labelField" promptText="%initOrClone.labelField.prompt"/>
+            <CheckBox fx:id="gitCheckBox" text="%initOrClone.gitCheckBox" selected="true"/>
+            <TextField fx:id="initRemoteUrlField" promptText="%initOrClone.remoteUrlField.prompt"/>
+            <Button fx:id="initButton" text="%initOrClone.initButton" styleClass="primary-button" onAction="#onInitialize"/>
         </VBox>
         <Separator orientation="VERTICAL"/>
         <VBox spacing="8">
-            <Label text="Entrar num vault já existente" styleClass="section-title"/>
-            <Label text="Só para um repositório já inicializado por outra máquina com &quot;Criar&quot; - não para um repositório remoto vazio."
+            <Label text="%initOrClone.clone.section" styleClass="section-title"/>
+            <Label text="%initOrClone.clone.hint"
                    styleClass="subtitle" wrapText="true" maxWidth="220"/>
-            <TextField fx:id="remoteField" promptText="URL do repositório remoto"/>
-            <Button fx:id="cloneButton" text="Clonar" onAction="#onClone"/>
+            <TextField fx:id="remoteField" promptText="%initOrClone.remoteField.prompt"/>
+            <Button fx:id="cloneButton" text="%initOrClone.cloneButton" onAction="#onClone"/>
         </VBox>
     </HBox>
     <HBox spacing="8" alignment="CENTER_LEFT">

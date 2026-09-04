@@ -7,8 +7,7 @@
       fx:controller="io.github.jlmc.rikikivault.gui.WelcomeController"
       styleClass="welcome-view" alignment="CENTER" spacing="16">
     <Label text="Rikiki Vault" styleClass="title"/>
-    <Label text="Escolhe a pasta de um vault para abrir, ou uma pasta vazia para criar um novo."
-           styleClass="subtitle" wrapText="true"/>
-    <Button fx:id="chooseButton" text="Abrir pasta..." styleClass="primary-button" onAction="#onChooseFolder"/>
-    <Button text="Configurações..." onAction="#onOpenSettings"/>
+    <Label text="%welcome.subtitle" styleClass="subtitle" wrapText="true"/>
+    <Button fx:id="chooseButton" text="%welcome.chooseFolder" styleClass="primary-button" onAction="#onChooseFolder"/>
+    <Button text="%mainWindow.button.settings" onAction="#onOpenSettings"/>
 </VBox>

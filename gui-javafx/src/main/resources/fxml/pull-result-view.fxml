@@ -12,25 +12,25 @@
     <padding>
         <Insets top="20" right="20" bottom="20" left="20"/>
     </padding>
-    <Label text="Resultado do Pull" styleClass="title"/>
-    <Label fx:id="emptyLabel" text="Já estás atualizado." managed="false" visible="false"/>
+    <Label text="%pullResult.title" styleClass="title"/>
+    <Label fx:id="emptyLabel" text="%pullResult.upToDate" managed="false" visible="false"/>
     <VBox fx:id="uncommittedSection" spacing="6">
-        <Label text="Alterações locais por publicar" styleClass="section-title"/>
+        <Label text="%pullResult.uncommittedSection" styleClass="section-title"/>
         <ListView fx:id="uncommittedList" prefHeight="70"/>
     </VBox>
     <VBox fx:id="updatedSection" spacing="6">
-        <Label text="Atualizados" styleClass="section-title"/>
+        <Label text="%pullResult.updatedSection" styleClass="section-title"/>
         <ListView fx:id="updatedList" prefHeight="70"/>
     </VBox>
     <VBox fx:id="deletedSection" spacing="6">
-        <Label text="Removidos" styleClass="section-title"/>
+        <Label text="%pullResult.deletedSection" styleClass="section-title"/>
         <ListView fx:id="deletedList" prefHeight="70"/>
     </VBox>
     <VBox fx:id="conflictsSection" spacing="6">
-        <Label text="Conflitos — ficheiro local mantido, versão remota não aplicada" styleClass="section-title conflict-title"/>
+        <Label text="%pullResult.conflictsSection" styleClass="section-title conflict-title"/>
         <ListView fx:id="conflictsList" prefHeight="140"/>
     </VBox>
     <HBox alignment="CENTER_RIGHT">
-        <Button text="OK" styleClass="primary-button" onAction="#onClose"/>
+        <Button text="%common.ok" styleClass="primary-button" onAction="#onClose"/>
     </HBox>
 </VBox>

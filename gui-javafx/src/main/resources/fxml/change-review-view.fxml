@@ -16,21 +16,21 @@
     <padding>
         <Insets top="20" right="20" bottom="20" left="20"/>
     </padding>
-    <Label text="Alterações por publicar" styleClass="title"/>
+    <Label text="%changeReview.title" styleClass="title"/>
     <TableView fx:id="changesTable" VBox.vgrow="ALWAYS">
         <columns>
             <TableColumn fx:id="selectedColumn" text="" prefWidth="36"/>
-            <TableColumn fx:id="statusColumn" text="Estado" prefWidth="70"/>
-            <TableColumn fx:id="pathColumn" text="Ficheiro" prefWidth="420"/>
+            <TableColumn fx:id="statusColumn" text="%mainWindow.column.status" prefWidth="70"/>
+            <TableColumn fx:id="pathColumn" text="%mainWindow.column.file" prefWidth="420"/>
         </columns>
     </TableView>
-    <Label text="Mensagem de publicação"/>
-    <TextField fx:id="commitMessageField" promptText="ex. atualizar CV"/>
+    <Label text="%changeReview.commitMessage.label"/>
+    <TextField fx:id="commitMessageField" promptText="%changeReview.commitMessage.prompt"/>
     <HBox spacing="8" alignment="CENTER_LEFT">
         <ProgressIndicator fx:id="progress" maxWidth="24" maxHeight="24" visible="false"/>
         <Label fx:id="statusLabel" styleClass="status-label"/>
         <Region HBox.hgrow="ALWAYS"/>
-        <Button fx:id="cancelButton" text="Cancelar" onAction="#onCancel"/>
-        <Button fx:id="publishButton" text="Encrypt &amp; Push" styleClass="primary-button" onAction="#onPublish"/>
+        <Button fx:id="cancelButton" text="%common.cancel" onAction="#onCancel"/>
+        <Button fx:id="publishButton" text="%changeReview.publishButton" styleClass="primary-button" onAction="#onPublish"/>
     </HBox>
 </VBox>

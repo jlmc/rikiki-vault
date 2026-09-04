@@ -20,8 +20,8 @@ final class RemotePush {
                 pushed -> onDone.run(),
                 error -> {
                     onDone.run();
-                    Dialogs.showWarning("Não foi possível publicar",
-                            "Não foi possível publicar para o remoto: " + Dialogs.fullMessage(error));
+                    Dialogs.showWarning(Messages.get("remotePush.failed.title"),
+                            Messages.get("remotePush.failed.body", Dialogs.fullMessage(error)));
                 });
     }
 }

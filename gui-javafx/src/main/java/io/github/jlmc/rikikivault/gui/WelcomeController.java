@@ -20,7 +20,7 @@ public final class WelcomeController {
     @FXML
     private void onChooseFolder() {
         DirectoryChooser chooser = new DirectoryChooser();
-        chooser.setTitle("Escolher pasta do vault");
+        chooser.setTitle(Messages.get("welcome.chooseFolderDialogTitle"));
         File chosen = chooser.showDialog(stage);
         if (chosen != null) {
             onVaultChosen.accept(VaultContext.at(chosen.toPath()));

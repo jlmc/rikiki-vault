@@ -21,8 +21,6 @@ import javafx.scene.control.cell.CheckBoxTableCell;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.List;
 
 /**
@@ -47,18 +45,13 @@ public final class ChangeReviewController {
     private Runnable onPublished;
 
     static void open(Stage owner, VaultContext ctx, List<VaultChange> changes, Runnable onPublished) {
-        FXMLLoader loader = new FXMLLoader(ChangeReviewController.class.getResource("/fxml/change-review-view.fxml"));
-        Parent root;
-        try {
-            root = loader.load();
-        } catch (IOException e) {
-            throw new UncheckedIOException("Failed to load change-review-view.fxml", e);
-        }
+        FXMLLoader loader = Fxml.loader("/fxml/change-review-view.fxml");
+        Parent root = loader.getRoot();
         ChangeReviewController controller = loader.getController();
         Stage stage = new Stage();
         stage.initOwner(owner);
         stage.initModality(Modality.APPLICATION_MODAL);
-        stage.setTitle("Rever alterações");
+        stage.setTitle(Messages.get("changeReview.windowTitle"));
         Scene scene = new Scene(root, 620, 480);
         scene.getStylesheets().add(App.class.getResource("/css/app.css").toExternalForm());
         stage.setScene(scene);
@@ -95,7 +88,7 @@ public final class ChangeReviewController {
     private void onPublish() {
         String commitMessage = commitMessageField.getText();
         if (commitMessage == null || commitMessage.isBlank()) {
-            statusLabel.setText("Indica uma mensagem de publicação.");
+            statusLabel.setText(Messages.get("changeReview.status.needMessage"));
             return;
         }
         List<VaultChange> selected = changesTable.getItems().stream()
@@ -103,10 +96,10 @@ public final class ChangeReviewController {
                 .map(SelectableChange::change)
                 .toList();
         if (selected.isEmpty()) {
-            statusLabel.setText("Seleciona pelo menos uma alteração.");
+            statusLabel.setText(Messages.get("changeReview.status.needSelection"));
             return;
         }
-        if (!Dialogs.confirm("Publicar", "Encriptar e publicar " + selected.size() + " alteração(ões) localmente?")) {
+        if (!Dialogs.confirm(Messages.get("mainWindow.publish.title"), Messages.get("changeReview.confirmBody", selected.size()))) {
             return;
         }
 
@@ -116,7 +109,7 @@ public final class ChangeReviewController {
 
         // Phase 1 - local only. Must never fail because of the remote; a failure here means
         // nothing was actually saved, so it's a genuine blocking error.
-        setBusy(true, "A publicar localmente...");
+        setBusy(true, Messages.get("changeReview.busy.publishingLocally"));
         BackgroundTask.runVoid(
                 () -> service.publishLocally(new PublishVaultCommand(selected, commitMessage)),
                 this::onLocalPublishSucceeded,
@@ -135,23 +128,22 @@ public final class ChangeReviewController {
                 hasRemote -> {
                     if (!hasRemote) {
                         finishPublish();
-                        Dialogs.showInfo("Publicado localmente", "Guardado localmente - sem remoto configurado.");
+                        Dialogs.showInfo(Messages.get("changeReview.publishedLocally.title"), Messages.get("common.savedLocallyNoRemote"));
                         return;
                     }
                     setBusy(false, "");
-                    if (!Dialogs.confirm("Publicar para o remoto",
-                            "Alterações guardadas localmente. Publicar agora para o remoto (origin)?")) {
+                    if (!Dialogs.confirm(Messages.get("mainWindow.publish.remoteTitle"), Messages.get("changeReview.confirmRemoteBody"))) {
                         finishPublish();
-                        Dialogs.showInfo("Publicado localmente", "Guardado localmente. Publica para o remoto quando quiseres.");
+                        Dialogs.showInfo(Messages.get("changeReview.publishedLocally.title"), Messages.get("changeReview.savedLocallyLater"));
                         return;
                     }
-                    setBusy(true, "A publicar para o remoto...");
+                    setBusy(true, Messages.get("changeReview.busy.publishingRemote"));
                     RemotePush.pushInBackground(ctx.gitRepositoryPort(), this::finishPublish);
                 },
                 error -> {
                     finishPublish();
-                    Dialogs.showWarning("Guardado localmente",
-                            "Não foi possível verificar se há um remoto configurado: " + Dialogs.fullMessage(error));
+                    Dialogs.showWarning(Messages.get("changeReview.savedLocally.title"),
+                            Messages.get("changeReview.remoteCheckFailed", Dialogs.fullMessage(error)));
                 });
     }
 

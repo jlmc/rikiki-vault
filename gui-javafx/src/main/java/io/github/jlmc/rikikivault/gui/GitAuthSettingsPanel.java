@@ -96,18 +96,18 @@ public final class GitAuthSettingsPanel {
 
     private void updateActiveTypeLabel() {
         String description = switch (selectedType()) {
-            case SSH -> "SSH";
-            case TOKEN -> "Token GitHub (HTTPS)";
-            case HTTP_BASIC -> "Utilizador/Password (HTTP)";
-            case NONE -> "Nenhum (descoberta automática)";
+            case SSH -> Messages.get("gitAuthPanel.type.ssh");
+            case TOKEN -> Messages.get("gitAuthPanel.type.token");
+            case HTTP_BASIC -> Messages.get("gitAuthPanel.type.http");
+            case NONE -> Messages.get("gitAuthPanel.type.none");
         };
-        activeTypeLabel.setText("Método ativo: " + description);
+        activeTypeLabel.setText(Messages.get("gitAuthPanel.activeType", description));
     }
 
     @FXML
     private void onChooseSshKey() {
         FileChooser chooser = new FileChooser();
-        chooser.setTitle("Escolher chave privada SSH");
+        chooser.setTitle(Messages.get("gitAuthPanel.chooseKeyDialogTitle"));
         File file = chooser.showOpenDialog(ownerStage);
         if (file != null) {
             pendingSshKeyPath = file.toPath();

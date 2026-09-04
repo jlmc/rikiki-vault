@@ -6,9 +6,6 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-
 public final class App extends Application {
 
     @Override
@@ -47,13 +44,7 @@ public final class App extends Application {
     }
 
     private static FXMLLoader load(String resource) {
-        FXMLLoader loader = new FXMLLoader(App.class.getResource(resource));
-        try {
-            loader.load();
-        } catch (IOException e) {
-            throw new UncheckedIOException("Failed to load " + resource, e);
-        }
-        return loader;
+        return Fxml.loader(resource);
     }
 
     public static void main(String[] args) {

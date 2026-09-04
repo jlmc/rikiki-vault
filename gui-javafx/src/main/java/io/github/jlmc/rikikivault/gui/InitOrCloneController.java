@@ -37,7 +37,7 @@ public final class InitOrCloneController {
     void init(VaultContext ctx, Consumer<VaultContext> onReady) {
         this.ctx = ctx;
         this.onReady = onReady;
-        titleLabel.setText("Pasta ainda não é um vault: " + ctx.vaultRoot());
+        titleLabel.setText(Messages.get("initOrClone.titleLabel", ctx.vaultRoot()));
         initRemoteUrlField.disableProperty().bind(gitCheckBox.selectedProperty().not());
     }
 
@@ -45,10 +45,10 @@ public final class InitOrCloneController {
     private void onInitialize() {
         String machineLabel = labelField.getText();
         if (machineLabel == null || machineLabel.isBlank()) {
-            statusLabel.setText("Indica um nome para esta máquina.");
+            statusLabel.setText(Messages.get("initOrClone.status.needMachineLabel"));
             return;
         }
-        setBusy(initButton, "A inicializar...");
+        setBusy(initButton, Messages.get("initOrClone.busy.initializing"));
         boolean initGit = gitCheckBox.isSelected();
         String remoteUri = initRemoteUrlField.getText();
         BackgroundTask.runVoid(
@@ -72,10 +72,10 @@ public final class InitOrCloneController {
     private void onClone() {
         String remoteUri = remoteField.getText();
         if (remoteUri == null || remoteUri.isBlank()) {
-            statusLabel.setText("Indica o URL do repositório remoto.");
+            statusLabel.setText(Messages.get("initOrClone.status.needRemoteUrl"));
             return;
         }
-        setBusy(cloneButton, "A clonar...");
+        setBusy(cloneButton, Messages.get("initOrClone.busy.cloning"));
         JceHybridEncryptionAdapter encryptionPort = ctx.encryptionPort();
         BackgroundTask.runVoid(
                 () -> new CloneVaultService(

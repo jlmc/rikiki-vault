@@ -12,7 +12,7 @@ final class Dialogs {
 
     static void showError(Throwable error) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle("Erro");
+        alert.setTitle(Messages.get("common.error.title"));
         alert.setHeaderText(null);
         alert.setContentText(fullMessage(error));
         alert.showAndWait();
@@ -36,7 +36,7 @@ final class Dialogs {
         String rootMessage = rootCause.getMessage() != null ? rootCause.getMessage() : rootCause.toString();
         return rootCause == error || rootMessage.equals(topMessage)
                 ? topMessage
-                : topMessage + "\n\nCausa: " + rootMessage;
+                : topMessage + "\n\n" + Messages.get("common.cause") + ": " + rootMessage;
     }
 
     static boolean confirm(String title, String message) {

@@ -14,22 +14,22 @@
     <padding>
         <Insets top="24" right="24" bottom="24" left="24"/>
     </padding>
-    <Label text="Gerir acesso ao vault" styleClass="title"/>
+    <Label text="%manageAccess.title" styleClass="title"/>
     <HBox spacing="32" alignment="TOP_LEFT">
         <VBox spacing="8">
-            <Label text="Autorizar uma máquina" styleClass="section-title"/>
-            <TextField fx:id="labelField" promptText="nome da máquina"/>
+            <Label text="%manageAccess.authorize.section" styleClass="section-title"/>
+            <TextField fx:id="labelField" promptText="%manageAccess.labelField.prompt"/>
             <HBox spacing="8" alignment="CENTER_LEFT">
-                <TextField fx:id="publicKeyFileField" promptText="ficheiro .pub" editable="false" prefWidth="220"/>
-                <Button text="Escolher..." onAction="#onChoosePublicKeyFile"/>
+                <TextField fx:id="publicKeyFileField" promptText="%manageAccess.publicKeyField.prompt" editable="false" prefWidth="220"/>
+                <Button text="%manageAccess.choose" onAction="#onChoosePublicKeyFile"/>
             </HBox>
-            <Button fx:id="authorizeButton" text="Autorizar" styleClass="primary-button" onAction="#onAuthorize"/>
+            <Button fx:id="authorizeButton" text="%manageAccess.authorize.button" styleClass="primary-button" onAction="#onAuthorize"/>
         </VBox>
         <Separator orientation="VERTICAL"/>
         <VBox spacing="8">
-            <Label text="Revogar uma máquina" styleClass="section-title"/>
-            <TextField fx:id="fingerprintField" promptText="fingerprint (hex)"/>
-            <Button fx:id="revokeButton" text="Revogar" onAction="#onRevoke"/>
+            <Label text="%manageAccess.revoke.section" styleClass="section-title"/>
+            <TextField fx:id="fingerprintField" promptText="%manageAccess.fingerprintField.prompt"/>
+            <Button fx:id="revokeButton" text="%manageAccess.revoke.button" onAction="#onRevoke"/>
         </VBox>
     </HBox>
     <HBox spacing="8" alignment="CENTER_LEFT">

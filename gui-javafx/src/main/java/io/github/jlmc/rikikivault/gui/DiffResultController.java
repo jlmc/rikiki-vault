@@ -8,9 +8,6 @@ import javafx.scene.control.TextArea;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-
 /** Read-only modal showing the text a {@code DiffFileUseCase} call produced (Plan.md §16). */
 public final class DiffResultController {
 
@@ -19,18 +16,13 @@ public final class DiffResultController {
     private Stage stage;
 
     static void open(Stage owner, String diffText) {
-        FXMLLoader loader = new FXMLLoader(DiffResultController.class.getResource("/fxml/diff-result-view.fxml"));
-        Parent root;
-        try {
-            root = loader.load();
-        } catch (IOException e) {
-            throw new UncheckedIOException("Failed to load diff-result-view.fxml", e);
-        }
+        FXMLLoader loader = Fxml.loader("/fxml/diff-result-view.fxml");
+        Parent root = loader.getRoot();
         DiffResultController controller = loader.getController();
         Stage stage = new Stage();
         stage.initOwner(owner);
         stage.initModality(Modality.APPLICATION_MODAL);
-        stage.setTitle("Diff");
+        stage.setTitle(Messages.get("mainWindow.editor.diff"));
         Scene scene = new Scene(root, 640, 480);
         scene.getStylesheets().add(App.class.getResource("/css/app.css").toExternalForm());
         stage.setScene(scene);

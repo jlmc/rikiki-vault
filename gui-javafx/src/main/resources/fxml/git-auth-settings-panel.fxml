@@ -18,31 +18,30 @@
     <padding>
         <Insets top="16" right="16" bottom="16" left="16"/>
     </padding>
-    <Label text="Opcional - só é preciso se a descoberta automática (agente/chaves por omissão/RIKIKI_VAULT_GITHUB_TOKEN) não funcionar. Apenas um método fica ativo de cada vez - os outros ficam guardados, prontos a usar se trocares."
-           styleClass="subtitle" wrapText="true"/>
+    <Label text="%gitAuthPanel.subtitle" styleClass="subtitle" wrapText="true"/>
     <Label fx:id="activeTypeLabel" styleClass="section-title"/>
     <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" styleClass="git-auth-scroll">
         <VBox spacing="20">
             <padding>
                 <Insets top="4" right="4" bottom="4" left="4"/>
             </padding>
-            <RadioButton fx:id="noneRadio" text="Nenhum (descoberta automática)">
+            <RadioButton fx:id="noneRadio" text="%gitAuthPanel.type.none">
                 <toggleGroup>
                     <ToggleGroup fx:id="authTypeGroup"/>
                 </toggleGroup>
             </RadioButton>
 
             <VBox spacing="8">
-                <RadioButton fx:id="sshRadio" text="Chave SSH específica" toggleGroup="$authTypeGroup"/>
+                <RadioButton fx:id="sshRadio" text="%gitAuthPanel.type.ssh" toggleGroup="$authTypeGroup"/>
                 <HBox spacing="8" alignment="CENTER_LEFT">
                     <TextField fx:id="sshKeyPathField" editable="false" prefWidth="280"/>
-                    <Button text="Escolher..." onAction="#onChooseSshKey"/>
+                    <Button text="%gitAuthPanel.chooseKey" onAction="#onChooseSshKey"/>
                 </HBox>
-                <Button text="Remover chave" onAction="#onClearSshKey"/>
+                <Button text="%gitAuthPanel.removeKey" onAction="#onClearSshKey"/>
             </VBox>
 
             <VBox spacing="8">
-                <RadioButton fx:id="tokenRadio" text="Token GitHub (HTTPS)" toggleGroup="$authTypeGroup"/>
+                <RadioButton fx:id="tokenRadio" text="%gitAuthPanel.type.token" toggleGroup="$authTypeGroup"/>
                 <HBox spacing="8" alignment="CENTER_LEFT">
                     <StackPane prefWidth="220">
                         <PasswordField fx:id="tokenField" prefWidth="220"/>
@@ -50,12 +49,12 @@
                     </StackPane>
                     <ToggleButton fx:id="tokenEyeToggle" text="👁"/>
                 </HBox>
-                <Button text="Remover token" onAction="#onClearToken"/>
+                <Button text="%gitAuthPanel.removeToken" onAction="#onClearToken"/>
             </VBox>
 
             <VBox spacing="8">
-                <RadioButton fx:id="httpRadio" text="Utilizador/Password (HTTP)" toggleGroup="$authTypeGroup"/>
-                <TextField fx:id="httpUsernameField" promptText="utilizador" prefWidth="220"/>
+                <RadioButton fx:id="httpRadio" text="%gitAuthPanel.type.http" toggleGroup="$authTypeGroup"/>
+                <TextField fx:id="httpUsernameField" promptText="%gitAuthPanel.usernamePrompt" prefWidth="220"/>
                 <HBox spacing="8" alignment="CENTER_LEFT">
                     <StackPane prefWidth="220">
                         <PasswordField fx:id="httpPasswordField" prefWidth="220"/>
@@ -63,7 +62,7 @@
                     </StackPane>
                     <ToggleButton fx:id="httpPasswordEyeToggle" text="👁"/>
                 </HBox>
-                <Button text="Remover utilizador/password" onAction="#onClearHttpBasic"/>
+                <Button text="%gitAuthPanel.removeHttpBasic" onAction="#onClearHttpBasic"/>
             </VBox>
         </VBox>
     </ScrollPane>

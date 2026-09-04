@@ -18,7 +18,7 @@ final class TextFileViewer implements FileViewer {
     public ViewerResult view(byte[] content, String fileName) {
         String text = tryDecodeUtf8(content);
         if (text == null) {
-            return new ViewerResult.UnsupportedViewerResult("Pré-visualização não disponível para este tipo de ficheiro.");
+            return new ViewerResult.UnsupportedViewerResult(Messages.get("fileViewer.unsupported"));
         }
         return new ViewerResult.TextViewerResult(text);
     }

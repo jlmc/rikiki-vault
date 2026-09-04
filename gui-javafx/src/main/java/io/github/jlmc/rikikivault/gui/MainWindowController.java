@@ -58,7 +58,7 @@ public final class MainWindowController {
         this.ctx = ctx;
         MachineIdentity identity = loadOrCreateIdentity();
         vaultPathLabel.setText(ctx.vaultRoot().toString());
-        fingerprintLabel.setText("Identidade: " + identity.id());
+        fingerprintLabel.setText(Messages.get("mainWindow.identity", identity.id()));
 
         nameColumn.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getValue().name()));
         statusColumn.setCellValueFactory(data -> new ReadOnlyObjectWrapper<>(data.getValue().getValue()));
@@ -80,10 +80,7 @@ public final class MainWindowController {
         } catch (PrivateKeyNotFoundException e) {
             MachineIdentity identity = new InitializeMachineIdentityService(
                     new X25519KeyPairGeneratorAdapter(), ctx.keyStorePort()).initialize();
-            Dialogs.showInfo("Nova identidade gerada",
-                    "Esta máquina ainda não tinha identidade e o vault já existia - foi gerada uma nova. "
-                            + "Pede a uma máquina já autorizada para te autorizar em \"Gerir Acessos\" "
-                            + "antes de conseguires desencriptar ficheiros.");
+            Dialogs.showInfo(Messages.get("mainWindow.newIdentity.title"), Messages.get("mainWindow.newIdentity.body"));
             return identity;
         }
     }
@@ -116,19 +113,19 @@ public final class MainWindowController {
 
         if (node == null) {
             editToggleButton.setDisable(true);
-            previewContainer.getChildren().setAll(ViewerResultRenderer.renderUnsupported("Seleciona um ficheiro para pré-visualizar."));
+            previewContainer.getChildren().setAll(ViewerResultRenderer.renderUnsupported(Messages.get("mainWindow.preview.selectFile")));
             return;
         }
         if (node.isFolder()) {
             editToggleButton.setDisable(true);
-            previewContainer.getChildren().setAll(ViewerResultRenderer.renderUnsupported("Selecionaste uma pasta."));
+            previewContainer.getChildren().setAll(ViewerResultRenderer.renderUnsupported(Messages.get("mainWindow.preview.selectFolder")));
             return;
         }
         FileEntry entry = node.fileEntry();
         if (entry.status() == FileStatus.DELETED) {
             editToggleButton.setDisable(true);
             previewContainer.getChildren().setAll(
-                    ViewerResultRenderer.renderUnsupported("Ficheiro removido - sem conteúdo local para pré-visualizar."));
+                    ViewerResultRenderer.renderUnsupported(Messages.get("mainWindow.preview.deletedFile")));
             return;
         }
         BackgroundTask.run(
@@ -146,7 +143,7 @@ public final class MainWindowController {
                 error -> {
                     editToggleButton.setDisable(true);
                     previewContainer.getChildren().setAll(
-                            ViewerResultRenderer.renderUnsupported("Não foi possível pré-visualizar: " + error.getMessage()));
+                            ViewerResultRenderer.renderUnsupported(Messages.get("mainWindow.preview.error", error.getMessage())));
                 });
     }
 
@@ -176,7 +173,7 @@ public final class MainWindowController {
                     editorArea.getStyleClass().add("preview-text");
                     previewContainer.getChildren().setAll(editorArea);
                     editMode = true;
-                    editToggleButton.setText("Ver");
+                    editToggleButton.setText(Messages.get("mainWindow.editor.view"));
                     setEditActionButtonsVisible(true);
                 },
                 Dialogs::showError);
@@ -185,7 +182,7 @@ public final class MainWindowController {
     private void exitEditMode() {
         editMode = false;
         editorArea = null;
-        editToggleButton.setText("Editar");
+        editToggleButton.setText(Messages.get("mainWindow.editor.edit"));
         setEditActionButtonsVisible(false);
     }
 
@@ -233,7 +230,7 @@ public final class MainWindowController {
             return;
         }
         String path = currentNode.fileEntry().path();
-        if (!Dialogs.confirm("Revert", "Descartar as alterações locais de " + path + " e voltar à última versão publicada?")) {
+        if (!Dialogs.confirm(Messages.get("mainWindow.revert.title"), Messages.get("mainWindow.revert.confirm", path))) {
             return;
         }
         BackgroundTask.runVoid(
@@ -316,20 +313,20 @@ public final class MainWindowController {
     private void showRemoteSyncStatus(RemoteSyncStatus status) {
         remoteSyncLabel.getStyleClass().removeAll("status-synced", "status-added", "status-modified", "status-deleted");
         if (status == null) {
-            remoteSyncLabel.setText("Remoto: desconhecido");
+            remoteSyncLabel.setText(Messages.get("mainWindow.remoteSync.unknown"));
         } else if (!status.hasRemote()) {
-            remoteSyncLabel.setText("Remoto: não configurado");
+            remoteSyncLabel.setText(Messages.get("mainWindow.remoteSync.none"));
         } else if (status.isSynced()) {
-            remoteSyncLabel.setText("Remoto: sincronizado");
+            remoteSyncLabel.setText(Messages.get("mainWindow.remoteSync.synced"));
             remoteSyncLabel.getStyleClass().add("status-synced");
         } else if (status.isDiverged()) {
-            remoteSyncLabel.setText("Remoto: divergente (local +" + status.aheadCount() + " / remoto +" + status.behindCount() + ")");
+            remoteSyncLabel.setText(Messages.get("mainWindow.remoteSync.diverged", status.aheadCount(), status.behindCount()));
             remoteSyncLabel.getStyleClass().add("status-deleted");
         } else if (status.aheadCount() > 0) {
-            remoteSyncLabel.setText("Remoto: " + status.aheadCount() + " por publicar");
+            remoteSyncLabel.setText(Messages.get("mainWindow.remoteSync.ahead", status.aheadCount()));
             remoteSyncLabel.getStyleClass().add("status-added");
         } else {
-            remoteSyncLabel.setText("Remoto: " + status.behindCount() + " por fazer pull");
+            remoteSyncLabel.setText(Messages.get("mainWindow.remoteSync.behind", status.behindCount()));
             remoteSyncLabel.getStyleClass().add("status-modified");
         }
     }
@@ -375,25 +372,22 @@ public final class MainWindowController {
                 () -> ctx.gitRepositoryPort().hasRemote() ? ctx.gitRepositoryPort().remoteSyncStatus() : RemoteSyncStatus.noRemote(),
                 status -> {
                     if (!status.hasRemote()) {
-                        Dialogs.showInfo("Publicar", "Não há alterações para publicar.");
+                        Dialogs.showInfo(Messages.get("mainWindow.publish.title"), Messages.get("mainWindow.publish.nothing"));
                     } else if (status.isDiverged()) {
-                        Dialogs.showInfo("Publicar", "Não há alterações novas para encriptar, mas o histórico local e remoto"
-                                + " divergiram (local +" + status.aheadCount() + " / remoto +" + status.behindCount()
-                                + "). Faz Pull antes de publicar.");
+                        Dialogs.showInfo(Messages.get("mainWindow.publish.title"),
+                                Messages.get("mainWindow.publish.diverged", status.aheadCount(), status.behindCount()));
                     } else if (status.aheadCount() > 0) {
-                        if (Dialogs.confirm("Publicar para o remoto", "Não há alterações novas, mas há " + status.aheadCount()
-                                + " commit(s) locais ainda não publicados no remoto. Publicar agora?")) {
+                        if (Dialogs.confirm(Messages.get("mainWindow.publish.remoteTitle"),
+                                Messages.get("mainWindow.publish.aheadConfirm", status.aheadCount()))) {
                             RemotePush.pushInBackground(ctx.gitRepositoryPort(), this::refreshRemoteSyncStatus);
                         }
                     } else if (status.behindCount() > 0) {
-                        Dialogs.showInfo("Publicar",
-                                "Não há alterações locais para publicar, mas o remoto tem alterações que ainda não fizeste pull.");
+                        Dialogs.showInfo(Messages.get("mainWindow.publish.title"), Messages.get("mainWindow.publish.behind"));
                     } else {
-                        Dialogs.showInfo("Publicar", "Não há alterações para publicar.");
+                        Dialogs.showInfo(Messages.get("mainWindow.publish.title"), Messages.get("mainWindow.publish.nothing"));
                     }
                 },
-                error -> Dialogs.showInfo("Publicar",
-                        "Não há alterações locais para publicar. Não foi possível confirmar o estado do remoto."));
+                error -> Dialogs.showInfo(Messages.get("mainWindow.publish.title"), Messages.get("mainWindow.publish.unknownRemote")));
     }
 
     private void refreshAfterPublish() {

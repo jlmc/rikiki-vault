@@ -14,9 +14,6 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-
 /**
  * Shows what a {@code pull} changed (Plan.md §11) and, for conflicts, reports them (§32) without
  * offering "Keep Remote"/"Compare" - those need a use case that doesn't exist yet to force a
@@ -38,18 +35,13 @@ public final class PullResultController {
     private Stage stage;
 
     static void open(Stage owner, PullResult result) {
-        FXMLLoader loader = new FXMLLoader(PullResultController.class.getResource("/fxml/pull-result-view.fxml"));
-        Parent root;
-        try {
-            root = loader.load();
-        } catch (IOException e) {
-            throw new UncheckedIOException("Failed to load pull-result-view.fxml", e);
-        }
+        FXMLLoader loader = Fxml.loader("/fxml/pull-result-view.fxml");
+        Parent root = loader.getRoot();
         PullResultController controller = loader.getController();
         Stage stage = new Stage();
         stage.initOwner(owner);
         stage.initModality(Modality.APPLICATION_MODAL);
-        stage.setTitle("Pull");
+        stage.setTitle(Messages.get("pullResult.windowTitle"));
         Scene scene = new Scene(root, 480, 520);
         scene.getStylesheets().add(App.class.getResource("/css/app.css").toExternalForm());
         stage.setScene(scene);
@@ -84,13 +76,14 @@ public final class PullResultController {
 
     private String describe(VaultConflict conflict) {
         StringBuilder text = new StringBuilder(conflict.plaintextPath())
-                .append("  (local: ").append(conflict.localChangeType())
-                .append(", remoto: ").append(conflict.remoteChangeType()).append(")");
+                .append("  (").append(Messages.get("pullResult.conflict.local")).append(": ").append(conflict.localChangeType())
+                .append(", ").append(Messages.get("pullResult.conflict.remote")).append(": ").append(conflict.remoteChangeType())
+                .append(")");
         if (conflict.localHash() != null) {
-            text.append("\n  Local SHA-256: ").append(conflict.localHash());
+            text.append("\n  ").append(Messages.get("pullResult.conflict.localHash")).append(": ").append(conflict.localHash());
         }
         if (conflict.remoteHash() != null) {
-            text.append("\n  Remoto SHA-256: ").append(conflict.remoteHash());
+            text.append("\n  ").append(Messages.get("pullResult.conflict.remoteHash")).append(": ").append(conflict.remoteHash());
         }
         return text.toString();
     }

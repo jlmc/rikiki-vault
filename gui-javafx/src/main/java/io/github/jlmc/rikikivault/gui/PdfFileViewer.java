@@ -28,7 +28,7 @@ final class PdfFileViewer implements FileViewer {
             ImageIO.write(image, "png", out);
             return new ViewerResult.ImageViewerResult(out.toByteArray());
         } catch (IOException e) {
-            return new ViewerResult.UnsupportedViewerResult("Não foi possível ler este PDF.");
+            return new ViewerResult.UnsupportedViewerResult(Messages.get("fileViewer.pdfError"));
         }
     }
 }

@@ -21,19 +21,19 @@
             <Region HBox.hgrow="ALWAYS"/>
             <Label fx:id="fingerprintLabel" styleClass="fingerprint-label"/>
             <Label fx:id="remoteSyncLabel" styleClass="status-label"/>
-            <Button fx:id="refreshButton" text="Atualizar" onAction="#onRefresh"/>
-            <Button fx:id="pullButton" text="Pull" onAction="#onPull"/>
-            <Button fx:id="manageAccessButton" text="Gerir acesso..." onAction="#onManageAccess"/>
-            <Button fx:id="settingsButton" text="Configurações..." onAction="#onOpenSettings"/>
-            <Button fx:id="publishButton" text="Publicar..." styleClass="primary-button" onAction="#onPublish"/>
+            <Button fx:id="refreshButton" text="%mainWindow.button.refresh" onAction="#onRefresh"/>
+            <Button fx:id="pullButton" text="%mainWindow.button.pull" onAction="#onPull"/>
+            <Button fx:id="manageAccessButton" text="%mainWindow.button.manageAccess" onAction="#onManageAccess"/>
+            <Button fx:id="settingsButton" text="%mainWindow.button.settings" onAction="#onOpenSettings"/>
+            <Button fx:id="publishButton" text="%mainWindow.button.publish" styleClass="primary-button" onAction="#onPublish"/>
         </HBox>
     </top>
     <center>
         <SplitPane dividerPositions="0.45">
             <TreeTableView fx:id="fileTable" styleClass="file-table" showRoot="false">
                 <columns>
-                    <TreeTableColumn fx:id="nameColumn" text="Ficheiro" prefWidth="330"/>
-                    <TreeTableColumn fx:id="statusColumn" text="Estado" prefWidth="90"/>
+                    <TreeTableColumn fx:id="nameColumn" text="%mainWindow.column.file" prefWidth="330"/>
+                    <TreeTableColumn fx:id="statusColumn" text="%mainWindow.column.status" prefWidth="90"/>
                 </columns>
             </TreeTableView>
             <BorderPane>
@@ -42,12 +42,12 @@
                         <padding>
                             <Insets top="8" right="8" bottom="8" left="8"/>
                         </padding>
-                        <Button fx:id="editToggleButton" text="Editar" onAction="#onToggleEdit" disable="true"/>
+                        <Button fx:id="editToggleButton" text="%mainWindow.editor.edit" onAction="#onToggleEdit" disable="true"/>
                         <Region HBox.hgrow="ALWAYS"/>
-                        <Button fx:id="saveButton" text="Save" onAction="#onSave" managed="false" visible="false"/>
-                        <Button fx:id="encryptButton" text="Encrypt" onAction="#onEncrypt" managed="false" visible="false"/>
-                        <Button fx:id="revertButton" text="Revert" onAction="#onRevert" managed="false" visible="false"/>
-                        <Button fx:id="diffButton" text="Diff" onAction="#onDiff" managed="false" visible="false"/>
+                        <Button fx:id="saveButton" text="%mainWindow.editor.save" onAction="#onSave" managed="false" visible="false"/>
+                        <Button fx:id="encryptButton" text="%mainWindow.editor.encrypt" onAction="#onEncrypt" managed="false" visible="false"/>
+                        <Button fx:id="revertButton" text="%mainWindow.editor.revert" onAction="#onRevert" managed="false" visible="false"/>
+                        <Button fx:id="diffButton" text="%mainWindow.editor.diff" onAction="#onDiff" managed="false" visible="false"/>
                     </HBox>
                 </top>
                 <center>

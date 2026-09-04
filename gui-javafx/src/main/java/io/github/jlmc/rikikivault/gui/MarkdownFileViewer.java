@@ -19,7 +19,7 @@ final class MarkdownFileViewer implements FileViewer {
     public ViewerResult view(byte[] content, String fileName) {
         String raw = TextFileViewer.tryDecodeUtf8(content);
         if (raw == null) {
-            return new ViewerResult.UnsupportedViewerResult("Pré-visualização não disponível para este tipo de ficheiro.");
+            return new ViewerResult.UnsupportedViewerResult(Messages.get("fileViewer.unsupported"));
         }
         Node document = parser.parse(raw);
         String body = renderer.render(document);

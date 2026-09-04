@@ -61,13 +61,13 @@ public final class Main {
         try {
             run(args);
         } catch (RikikiVaultException e) {
-            System.err.println("Erro: " + fullMessage(e));
+            System.err.println(CliMessages.get("main.error", fullMessage(e)));
             System.exit(1);
         } catch (RuntimeException e) {
             // Anything not already a RikikiVaultException (e.g. an UncheckedIOException from a
             // filesystem-level failure) still gets the same curated format instead of the JVM's
             // default uncaught-exception stack trace.
-            System.err.println("Erro: " + fullMessage(e));
+            System.err.println(CliMessages.get("main.error", fullMessage(e)));
             System.exit(1);
         }
     }
@@ -81,7 +81,7 @@ public final class Main {
         String rootMessage = rootCause.getMessage() != null ? rootCause.getMessage() : rootCause.toString();
         return rootCause == error || rootMessage.equals(topMessage)
                 ? topMessage
-                : topMessage + " (causa: " + rootMessage + ")";
+                : topMessage + " " + CliMessages.get("main.errorCause", rootMessage);
     }
 
     private static void run(String[] args) {
@@ -123,7 +123,7 @@ public final class Main {
             case "revoke" -> runRevoke(ctx, rest);
             case "git-auth" -> runGitAuth(ctx, rest);
             default -> {
-                System.err.println("Comando desconhecido: " + command);
+                System.err.println(CliMessages.get("run.unknownCommand", command));
                 printUsage();
                 System.exit(1);
             }
@@ -144,12 +144,12 @@ public final class Main {
             }
         }
         if (label == null) {
-            System.err.println("Uso: init [--git] [--remote <url>] <machine-label>");
+            System.err.println(CliMessages.get("init.usage"));
             System.exit(1);
             return;
         }
         if (remoteUri != null && !initGit) {
-            System.err.println("--remote exige --git (não há repositório local onde associar um remoto sem ele)");
+            System.err.println(CliMessages.get("init.remoteRequiresGit"));
             System.exit(1);
             return;
         }
@@ -164,14 +164,14 @@ public final class Main {
 
         MachineIdentity identity = service.initialize(new InitializeVaultCommand(initGit, label, remoteUri));
 
-        System.out.println("Vault inicializado em " + ctx.vaultRoot());
-        System.out.println("Identidade desta máquina: " + identity.id());
+        System.out.println(CliMessages.get("init.vaultInitializedIn", ctx.vaultRoot()));
+        System.out.println(CliMessages.get("init.identity", identity.id()));
         if (initGit) {
-            System.out.println("Repositório git local criado. Já podes publicar (fica só local).");
+            System.out.println(CliMessages.get("init.gitCreated"));
             if (remoteUri != null) {
-                System.out.println("Remoto associado: " + remoteUri);
+                System.out.println(CliMessages.get("init.remoteAssociated", remoteUri));
             } else {
-                System.out.println("Opcional - para sincronizar com outra máquina, associa um remoto com:");
+                System.out.println(CliMessages.get("init.remoteOptionalHint"));
                 System.out.println("  git -C " + ctx.vaultRoot() + " remote add origin <url>");
             }
         }
@@ -179,15 +179,15 @@ public final class Main {
 
     private static void runWhoami(VaultContext ctx) {
         IdentityResolution resolution = loadOrCreateIdentity(ctx);
-        System.out.println("Fingerprint: " + resolution.identity().id());
+        System.out.println(CliMessages.get("whoami.fingerprint", resolution.identity().id()));
         if (resolution.justCreated()) {
-            System.out.println("(identidade gerada agora - ainda não autorizada em nenhum vault)");
+            System.out.println(CliMessages.get("whoami.justGenerated"));
         }
     }
 
     private static void runExportKey(VaultContext ctx, String[] rest) {
         if (rest.length < 1) {
-            System.err.println("Uso: export-key <ficheiro-saída>");
+            System.err.println(CliMessages.get("exportKey.usage"));
             System.exit(1);
             return;
         }
@@ -195,16 +195,16 @@ public final class Main {
         IdentityResolution resolution = loadOrCreateIdentity(ctx);
         writePublicKeyFile(resolution.identity().publicKey(), outputFile);
 
-        System.out.println("Chave pública escrita em " + outputFile.toAbsolutePath());
-        System.out.println("Fingerprint: " + resolution.identity().id());
-        System.out.println("Envia este ficheiro a quem gere o vault para que corra 'authorize'.");
+        System.out.println(CliMessages.get("exportKey.written", outputFile.toAbsolutePath()));
+        System.out.println(CliMessages.get("exportKey.fingerprint", resolution.identity().id()));
+        System.out.println(CliMessages.get("exportKey.hint"));
     }
 
     private static void runStatus(VaultContext ctx) {
         ScanChangesService scanChangesService = new ScanChangesService(ctx.localFiles(), ctx.hashPort(), ctx.manifestPort());
         List<VaultChange> changes = scanChangesService.scan();
         if (changes.isEmpty()) {
-            System.out.println("Nada para publicar.");
+            System.out.println(CliMessages.get("status.nothing"));
             return;
         }
         for (VaultChange change : changes) {
@@ -219,7 +219,7 @@ public final class Main {
 
     private static void runClone(VaultContext ctx, String[] rest) {
         if (rest.length < 1) {
-            System.err.println("Uso: clone <remote-uri>");
+            System.err.println(CliMessages.get("clone.usage"));
             System.exit(1);
             return;
         }
@@ -233,8 +233,8 @@ public final class Main {
 
         MachineIdentity identity = service.clone(new CloneVaultCommand(remoteUri));
 
-        System.out.println("Vault clonado em " + ctx.vaultRoot());
-        System.out.println("Identidade desta máquina: " + identity.id());
+        System.out.println(CliMessages.get("clone.clonedIn", ctx.vaultRoot()));
+        System.out.println(CliMessages.get("clone.identity", identity.id()));
     }
 
     private static void runPublish(VaultContext ctx, String[] rest) {
@@ -245,7 +245,7 @@ public final class Main {
             }
         }
         if (message == null) {
-            System.err.println("Uso: publish -m \"<mensagem>\"");
+            System.err.println(CliMessages.get("publish.usage"));
             System.exit(1);
             return;
         }
@@ -264,16 +264,16 @@ public final class Main {
                 ctx.localFiles(), ctx.documentsFiles(), ctx.encryptionPort(), ctx.hashPort(),
                 ctx.manifestPort(), ctx.recipientRegistryPort(), ctx.gitRepositoryPort());
         service.publishLocally(new PublishVaultCommand(changes, message));
-        System.out.println("Publicadas " + changes.size() + " alterações (guardadas localmente).");
+        System.out.println(CliMessages.get("publish.published", changes.size()));
 
         if (!ctx.gitRepositoryPort().hasRemote()) {
-            System.out.println("(sem remoto configurado)");
+            System.out.println(CliMessages.get("publish.noRemote"));
             return;
         }
         try {
             service.pushToRemote();
         } catch (RikikiVaultException e) {
-            System.out.println("Aviso: não foi possível publicar para o remoto: " + fullMessage(e));
+            System.out.println(CliMessages.get("publish.pushWarning", fullMessage(e)));
         }
     }
 
@@ -286,31 +286,30 @@ public final class Main {
      */
     private static void reportNothingToCommit(VaultContext ctx) {
         if (!ctx.gitRepositoryPort().hasRemote()) {
-            System.out.println("Nada para publicar.");
+            System.out.println(CliMessages.get("nothingToCommit.nothing"));
             return;
         }
         RemoteSyncStatus status;
         try {
             status = ctx.gitRepositoryPort().remoteSyncStatus();
         } catch (RikikiVaultException e) {
-            System.out.println("Nada para publicar.");
+            System.out.println(CliMessages.get("nothingToCommit.nothing"));
             return;
         }
         if (status.isDiverged()) {
-            System.out.println("Nada para encriptar, mas o histórico local e remoto divergiram (local +"
-                    + status.aheadCount() + " / remoto +" + status.behindCount() + ") - corre 'pull' primeiro.");
+            System.out.println(CliMessages.get("nothingToCommit.diverged", status.aheadCount(), status.behindCount()));
         } else if (status.aheadCount() > 0) {
-            System.out.println("Nada para encriptar, mas há " + status.aheadCount() + " commit(s) locais ainda não publicados.");
+            System.out.println(CliMessages.get("nothingToCommit.ahead", status.aheadCount()));
             try {
                 ctx.gitRepositoryPort().push();
-                System.out.println("Publicado para o remoto.");
+                System.out.println(CliMessages.get("nothingToCommit.pushed"));
             } catch (RikikiVaultException e) {
-                System.out.println("Aviso: não foi possível publicar para o remoto: " + fullMessage(e));
+                System.out.println(CliMessages.get("publish.pushWarning", fullMessage(e)));
             }
         } else if (status.behindCount() > 0) {
-            System.out.println("Nada para publicar localmente, mas o remoto tem alterações que ainda não fizeste pull.");
+            System.out.println(CliMessages.get("nothingToCommit.behind"));
         } else {
-            System.out.println("Nada para publicar.");
+            System.out.println(CliMessages.get("nothingToCommit.nothing"));
         }
     }
 
@@ -324,35 +323,34 @@ public final class Main {
         PullResult result = service.pull();
 
         if (!result.uncommittedLocalChangesAtStart().isEmpty()) {
-            System.out.println("Aviso: tens alterações locais por publicar:");
+            System.out.println(CliMessages.get("pull.uncommittedWarning"));
             for (VaultChange change : result.uncommittedLocalChangesAtStart()) {
                 System.out.println("  " + change.type() + " " + change.path());
             }
         }
         for (String path : result.updatedPaths()) {
-            System.out.println("Atualizado: " + path);
+            System.out.println(CliMessages.get("pull.updated", path));
         }
         for (String path : result.deletedPaths()) {
-            System.out.println("Removido: " + path);
+            System.out.println(CliMessages.get("pull.deleted", path));
         }
         for (VaultConflict conflict : result.conflicts()) {
-            System.out.println("Conflito em " + conflict.plaintextPath()
-                    + " (local=" + conflict.localChangeType() + ", remoto=" + conflict.remoteChangeType() + ") - ficheiro local não foi tocado.");
+            System.out.println(CliMessages.get("pull.conflict", conflict.plaintextPath(), conflict.localChangeType(), conflict.remoteChangeType()));
             if (conflict.localHash() != null) {
-                System.out.println("  Local SHA-256: " + conflict.localHash());
+                System.out.println("  " + CliMessages.get("pull.conflict.localHash", conflict.localHash()));
             }
             if (conflict.remoteHash() != null) {
-                System.out.println("  Remoto SHA-256: " + conflict.remoteHash());
+                System.out.println("  " + CliMessages.get("pull.conflict.remoteHash", conflict.remoteHash()));
             }
         }
         if (result.updatedPaths().isEmpty() && result.deletedPaths().isEmpty() && !result.hasConflicts()) {
-            System.out.println("Já estás atualizado.");
+            System.out.println(CliMessages.get("pull.upToDate"));
         }
     }
 
     private static void runAuthorize(VaultContext ctx, String[] rest) {
         if (rest.length < 2) {
-            System.err.println("Uso: authorize <label> <ficheiro-chave-pública>");
+            System.err.println(CliMessages.get("authorize.usage"));
             System.exit(1);
             return;
         }
@@ -364,15 +362,15 @@ public final class Main {
                 ctx.manifestPort(), ctx.encryptionPort(), ctx.gitRepositoryPort());
         boolean pushed = service.authorize(new AuthorizeMachineCommand(label, publicKey));
 
-        System.out.println("Máquina '" + label + "' autorizada e publicada.");
+        System.out.println(CliMessages.get("authorize.done", label));
         if (!pushed) {
-            System.out.println("(guardado localmente - sem remoto configurado)");
+            System.out.println(CliMessages.get("authorize.noRemote"));
         }
     }
 
     private static void runRevoke(VaultContext ctx, String[] rest) {
         if (rest.length < 1) {
-            System.err.println("Uso: revoke <fingerprint-hex>");
+            System.err.println(CliMessages.get("revoke.usage"));
             System.exit(1);
             return;
         }
@@ -383,16 +381,15 @@ public final class Main {
                 ctx.manifestPort(), ctx.encryptionPort(), ctx.gitRepositoryPort());
         boolean pushed = service.revoke(new RevokeMachineCommand(fingerprint));
 
-        System.out.println("Máquina " + fingerprint + " revogada e alterações publicadas.");
+        System.out.println(CliMessages.get("revoke.done", fingerprint));
         if (!pushed) {
-            System.out.println("(guardado localmente - sem remoto configurado)");
+            System.out.println(CliMessages.get("revoke.noRemote"));
         }
     }
 
     private static void runGitAuth(VaultContext ctx, String[] rest) {
         if (rest.length < 1) {
-            System.err.println("Uso: git-auth show|set-ssh-key <path>|clear-ssh-key|set-token|clear-token"
-                    + "|set-http-basic <username>|clear-http-basic|use ssh|token|http|none");
+            System.err.println(CliMessages.get("gitAuth.usage"));
             System.exit(1);
             return;
         }
@@ -400,115 +397,118 @@ public final class Main {
         switch (rest[0]) {
             case "show" -> {
                 GitAuthSettings settings = port.load();
-                System.out.println("Método ativo: " + describeType(settings.activeType()));
-                System.out.println("Chave SSH: " + (settings.sshPrivateKeyPath() != null ? settings.sshPrivateKeyPath() : "nenhuma")
-                        + activeSuffix(settings.activeType() == GitAuthType.SSH));
+                System.out.println(CliMessages.get("gitAuth.activeType", describeType(settings.activeType())));
+                String sshKeyText = settings.sshPrivateKeyPath() != null
+                        ? settings.sshPrivateKeyPath().toString() : CliMessages.get("gitAuth.sshKey.none");
+                System.out.println(CliMessages.get("gitAuth.sshKey", sshKeyText) + activeSuffix(settings.activeType() == GitAuthType.SSH));
                 boolean hasToken = settings.githubToken() != null && !settings.githubToken().isBlank();
-                System.out.println("Token HTTPS: " + (hasToken ? "configurado" : "não configurado")
-                        + activeSuffix(settings.activeType() == GitAuthType.TOKEN));
+                String tokenText = hasToken ? CliMessages.get("gitAuth.configured") : CliMessages.get("gitAuth.notConfigured");
+                System.out.println(CliMessages.get("gitAuth.tokenLabel", tokenText) + activeSuffix(settings.activeType() == GitAuthType.TOKEN));
                 boolean hasHttpBasic = settings.httpUsername() != null && !settings.httpUsername().isBlank();
-                System.out.println("Utilizador/Password HTTP: " + (hasHttpBasic ? "configurado (" + settings.httpUsername() + ")" : "não configurado")
-                        + activeSuffix(settings.activeType() == GitAuthType.HTTP_BASIC));
+                String httpText = hasHttpBasic
+                        ? CliMessages.get("gitAuth.httpConfigured", settings.httpUsername())
+                        : CliMessages.get("gitAuth.notConfigured");
+                System.out.println(CliMessages.get("gitAuth.httpLabel", httpText) + activeSuffix(settings.activeType() == GitAuthType.HTTP_BASIC));
             }
             case "set-ssh-key" -> {
                 if (rest.length < 2) {
-                    System.err.println("Uso: git-auth set-ssh-key <path>");
+                    System.err.println(CliMessages.get("gitAuth.setSshKey.usage"));
                     System.exit(1);
                     return;
                 }
                 GitAuthSettings current = port.load();
                 port.save(new GitAuthSettings(GitAuthType.SSH, Path.of(rest[1]), current.githubToken(),
                         current.httpUsername(), current.httpPassword()));
-                System.out.println("Chave SSH configurada e ativa.");
+                System.out.println(CliMessages.get("gitAuth.setSshKey.done"));
             }
             case "clear-ssh-key" -> {
                 GitAuthSettings current = port.load();
                 GitAuthType newType = current.activeType() == GitAuthType.SSH ? GitAuthType.NONE : current.activeType();
                 port.save(new GitAuthSettings(newType, null, current.githubToken(), current.httpUsername(), current.httpPassword()));
-                System.out.println("Chave SSH removida.");
+                System.out.println(CliMessages.get("gitAuth.clearSshKey.done"));
             }
             case "set-token" -> {
                 // Reads from stdin, never from an argument - an argument would land in shell
                 // history, exactly the mistake that prompted this command in the first place.
-                String token = readSecretFromStdin("Nenhum token recebido no stdin");
+                String token = readSecretFromStdin(CliMessages.get("gitAuth.setToken.emptyStdin"));
                 GitAuthSettings current = port.load();
                 port.save(new GitAuthSettings(GitAuthType.TOKEN, current.sshPrivateKeyPath(), token,
                         current.httpUsername(), current.httpPassword()));
-                System.out.println("Token guardado e ativo.");
+                System.out.println(CliMessages.get("gitAuth.setToken.done"));
             }
             case "clear-token" -> {
                 GitAuthSettings current = port.load();
                 GitAuthType newType = current.activeType() == GitAuthType.TOKEN ? GitAuthType.NONE : current.activeType();
                 port.save(new GitAuthSettings(newType, current.sshPrivateKeyPath(), null, current.httpUsername(), current.httpPassword()));
-                System.out.println("Token removido.");
+                System.out.println(CliMessages.get("gitAuth.clearToken.done"));
             }
             case "set-http-basic" -> {
                 if (rest.length < 2) {
-                    System.err.println("Uso: git-auth set-http-basic <username>");
+                    System.err.println(CliMessages.get("gitAuth.setHttpBasic.usage"));
                     System.exit(1);
                     return;
                 }
-                String password = readSecretFromStdin("Nenhuma password recebida no stdin");
+                String password = readSecretFromStdin(CliMessages.get("gitAuth.setHttpBasic.emptyStdin"));
                 GitAuthSettings current = port.load();
                 port.save(new GitAuthSettings(GitAuthType.HTTP_BASIC, current.sshPrivateKeyPath(), current.githubToken(),
                         rest[1], password));
-                System.out.println("Utilizador/Password HTTP configurados e ativos.");
+                System.out.println(CliMessages.get("gitAuth.setHttpBasic.done"));
             }
             case "clear-http-basic" -> {
                 GitAuthSettings current = port.load();
                 GitAuthType newType = current.activeType() == GitAuthType.HTTP_BASIC ? GitAuthType.NONE : current.activeType();
                 port.save(new GitAuthSettings(newType, current.sshPrivateKeyPath(), current.githubToken(), null, null));
-                System.out.println("Utilizador/Password HTTP removidos.");
+                System.out.println(CliMessages.get("gitAuth.clearHttpBasic.done"));
             }
             case "use" -> {
                 if (rest.length < 2) {
-                    System.err.println("Uso: git-auth use ssh|token|http|none");
+                    System.err.println(CliMessages.get("gitAuth.use.usage"));
                     System.exit(1);
                     return;
                 }
                 GitAuthSettings current = port.load();
                 GitAuthType requested = parseRequestedType(rest[1]);
                 if (requested == null) {
-                    System.err.println("Método desconhecido: " + rest[1] + " (usa ssh, token, http ou none)");
+                    System.err.println(CliMessages.get("gitAuth.use.unknownMethod", rest[1]));
                     System.exit(1);
                     return;
                 }
                 if (requested == GitAuthType.SSH && current.sshPrivateKeyPath() == null) {
-                    System.err.println("SSH não tem chave configurada - usa 'set-ssh-key' primeiro.");
+                    System.err.println(CliMessages.get("gitAuth.use.sshNotConfigured"));
                     System.exit(1);
                     return;
                 }
                 if (requested == GitAuthType.TOKEN && (current.githubToken() == null || current.githubToken().isBlank())) {
-                    System.err.println("Token não está configurado - usa 'set-token' primeiro.");
+                    System.err.println(CliMessages.get("gitAuth.use.tokenNotConfigured"));
                     System.exit(1);
                     return;
                 }
                 if (requested == GitAuthType.HTTP_BASIC && (current.httpUsername() == null || current.httpUsername().isBlank())) {
-                    System.err.println("Utilizador/Password HTTP não estão configurados - usa 'set-http-basic' primeiro.");
+                    System.err.println(CliMessages.get("gitAuth.use.httpNotConfigured"));
                     System.exit(1);
                     return;
                 }
                 port.save(new GitAuthSettings(requested, current.sshPrivateKeyPath(), current.githubToken(),
                         current.httpUsername(), current.httpPassword()));
-                System.out.println("Método ativo: " + describeType(requested));
+                System.out.println(CliMessages.get("gitAuth.activeType", describeType(requested)));
             }
             default -> {
-                System.err.println("Subcomando desconhecido: " + rest[0]);
+                System.err.println(CliMessages.get("gitAuth.unknownSubcommand", rest[0]));
                 System.exit(1);
             }
         }
     }
 
     private static String activeSuffix(boolean active) {
-        return active ? " (ativo)" : "";
+        return active ? " " + CliMessages.get("gitAuth.active") : "";
     }
 
     private static String describeType(GitAuthType type) {
         return switch (type) {
-            case SSH -> "SSH";
-            case TOKEN -> "Token GitHub (HTTPS)";
-            case HTTP_BASIC -> "Utilizador/Password (HTTP)";
-            case NONE -> "Nenhum (descoberta automática)";
+            case SSH -> CliMessages.get("gitAuth.type.ssh");
+            case TOKEN -> CliMessages.get("gitAuth.type.token");
+            case HTTP_BASIC -> CliMessages.get("gitAuth.type.http");
+            case NONE -> CliMessages.get("gitAuth.type.none");
         };
     }
 
@@ -531,7 +531,7 @@ public final class Main {
             }
             return line.strip();
         } catch (IOException e) {
-            throw new UncheckedIOException("Falha ao ler do stdin", e);
+            throw new UncheckedIOException(CliMessages.get("stdin.readFailed"), e);
         }
     }
 
@@ -553,7 +553,7 @@ public final class Main {
             KeyFactory keyFactory = KeyFactory.getInstance(KEY_ALGORITHM);
             return keyFactory.generatePublic(new X509EncodedKeySpec(bytes));
         } catch (Exception e) {
-            throw new IllegalArgumentException("Não foi possível ler a chave pública de " + file, e);
+            throw new IllegalArgumentException(CliMessages.get("publicKey.readFailed", file), e);
         }
     }
 
@@ -566,7 +566,7 @@ public final class Main {
             String base64 = Base64.getEncoder().encodeToString(publicKey.getEncoded());
             Files.writeString(file, base64, StandardCharsets.UTF_8);
         } catch (IOException e) {
-            throw new UncheckedIOException("Falha ao escrever a chave pública em " + file, e);
+            throw new UncheckedIOException(CliMessages.get("publicKey.writeFailed", file), e);
         }
     }
 
@@ -574,22 +574,7 @@ public final class Main {
     }
 
     private static void printUsage() {
-        System.err.println("""
-                Uso: rikiki-vault [-C <vault-dir>] <comando> [args]
-
-                Comandos:
-                  init [--git] [--remote <url>] <machine-label>
-                  whoami
-                  export-key <output-file>
-                  clone <remote-uri>       (entrar num vault já existente - a primeira máquina usa 'init')
-                  status
-                  publish -m "<message>"
-                  pull
-                  authorize <label> <public-key-file>
-                  revoke <fingerprint-hex>
-                  git-auth show|set-ssh-key <path>|clear-ssh-key|set-token|clear-token
-                            |set-http-basic <username>|clear-http-basic|use ssh|token|http|none
-                """);
+        System.err.println(CliMessages.get("usage.text"));
     }
 
     private record VaultContext(

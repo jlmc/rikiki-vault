@@ -19,7 +19,6 @@ import javafx.stage.Stage;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -47,18 +46,13 @@ public final class ManageAccessController {
     private Path chosenPublicKeyFile;
 
     static void open(Stage owner, VaultContext ctx, Runnable onChanged) {
-        FXMLLoader loader = new FXMLLoader(ManageAccessController.class.getResource("/fxml/manage-access-view.fxml"));
-        Parent root;
-        try {
-            root = loader.load();
-        } catch (IOException e) {
-            throw new UncheckedIOException("Failed to load manage-access-view.fxml", e);
-        }
+        FXMLLoader loader = Fxml.loader("/fxml/manage-access-view.fxml");
+        Parent root = loader.getRoot();
         ManageAccessController controller = loader.getController();
         Stage stage = new Stage();
         stage.initOwner(owner);
         stage.initModality(Modality.APPLICATION_MODAL);
-        stage.setTitle("Gerir acesso");
+        stage.setTitle(Messages.get("manageAccess.windowTitle"));
         Scene scene = new Scene(root, 560, 320);
         scene.getStylesheets().add(App.class.getResource("/css/app.css").toExternalForm());
         stage.setScene(scene);
@@ -75,7 +69,7 @@ public final class ManageAccessController {
     @FXML
     private void onChoosePublicKeyFile() {
         FileChooser chooser = new FileChooser();
-        chooser.setTitle("Escolher ficheiro .pub");
+        chooser.setTitle(Messages.get("manageAccess.publicKeyField.prompt"));
         File file = chooser.showOpenDialog(stage);
         if (file != null) {
             chosenPublicKeyFile = file.toPath();
@@ -87,16 +81,16 @@ public final class ManageAccessController {
     private void onAuthorize() {
         String label = labelField.getText();
         if (label == null || label.isBlank()) {
-            statusLabel.setText("Indica um nome para a máquina.");
+            statusLabel.setText(Messages.get("manageAccess.status.needLabel"));
             return;
         }
         if (chosenPublicKeyFile == null) {
-            statusLabel.setText("Escolhe o ficheiro .pub da máquina.");
+            statusLabel.setText(Messages.get("manageAccess.status.needPublicKeyFile"));
             return;
         }
         PublicKey publicKey = readPublicKeyFile(chosenPublicKeyFile);
 
-        setBusy(true, "A autorizar...");
+        setBusy(true, Messages.get("manageAccess.busy.authorizing"));
         BackgroundTask.run(
                 () -> new AuthorizeMachineService(
                         ctx.recipientRegistryPort(), ctx.localFiles(), ctx.documentsFiles(),
@@ -107,7 +101,7 @@ public final class ManageAccessController {
                     onChanged.run();
                     stage.close();
                     if (!pushed) {
-                        Dialogs.showInfo("Autorizado localmente", "Guardado localmente - sem remoto configurado.");
+                        Dialogs.showInfo(Messages.get("manageAccess.authorizedLocally.title"), Messages.get("common.savedLocallyNoRemote"));
                     }
                 },
                 error -> {
@@ -120,21 +114,21 @@ public final class ManageAccessController {
     private void onRevoke() {
         String fingerprintHex = fingerprintField.getText();
         if (fingerprintHex == null || fingerprintHex.isBlank()) {
-            statusLabel.setText("Indica o fingerprint da máquina a revogar.");
+            statusLabel.setText(Messages.get("manageAccess.status.needFingerprint"));
             return;
         }
         KeyFingerprint fingerprint;
         try {
             fingerprint = new KeyFingerprint(fingerprintHex.trim());
         } catch (IllegalArgumentException e) {
-            statusLabel.setText("Fingerprint inválido: " + e.getMessage());
+            statusLabel.setText(Messages.get("manageAccess.invalidFingerprint", e.getMessage()));
             return;
         }
-        if (!Dialogs.confirm("Revogar", "Revogar o acesso da máquina " + fingerprint + "?")) {
+        if (!Dialogs.confirm(Messages.get("manageAccess.revoke.confirmTitle"), Messages.get("manageAccess.revoke.confirmBody", fingerprint))) {
             return;
         }
 
-        setBusy(true, "A revogar...");
+        setBusy(true, Messages.get("manageAccess.busy.revoking"));
         BackgroundTask.run(
                 () -> new RevokeMachineService(
                         ctx.recipientRegistryPort(), ctx.localFiles(), ctx.documentsFiles(),
@@ -145,7 +139,7 @@ public final class ManageAccessController {
                     onChanged.run();
                     stage.close();
                     if (!pushed) {
-                        Dialogs.showInfo("Revogado localmente", "Guardado localmente - sem remoto configurado.");
+                        Dialogs.showInfo(Messages.get("manageAccess.revokedLocally.title"), Messages.get("common.savedLocallyNoRemote"));
                     }
                 },
                 error -> {
@@ -168,7 +162,7 @@ public final class ManageAccessController {
             KeyFactory keyFactory = KeyFactory.getInstance(KEY_ALGORITHM);
             return keyFactory.generatePublic(new X509EncodedKeySpec(bytes));
         } catch (IOException | IllegalArgumentException | GeneralSecurityException e) {
-            throw new IllegalArgumentException("Não foi possível ler a chave pública de " + file, e);
+            throw new IllegalArgumentException(Messages.get("manageAccess.readKeyFailed", file), e);
         }
     }
 }
