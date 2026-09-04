@@ -1,5 +1,7 @@
 package io.github.jlmc.rikikivault.core.adapters.git;
 
+import io.github.jlmc.rikikivault.core.configuration.GitAuthSettings;
+import io.github.jlmc.rikikivault.core.configuration.GitAuthType;
 import io.github.jlmc.rikikivault.core.domain.exception.GitOperationException;
 import io.github.jlmc.rikikivault.core.domain.model.GitStatus;
 import io.github.jlmc.rikikivault.core.domain.model.RemoteSyncStatus;
@@ -240,12 +242,21 @@ public final class JGitRepositoryAdapter implements GitRepositoryPort {
      * network call.
      */
     CredentialsProvider resolveCredentials() {
-        String configuredToken = gitAuthSettingsPort.load().githubToken();
-        String token = configuredToken != null && !configuredToken.isBlank() ? configuredToken : System.getenv(GITHUB_TOKEN_ENV_VAR);
-        if (token == null || token.isBlank()) {
+        GitAuthSettings settings = gitAuthSettingsPort.load();
+        if (settings.activeType() == GitAuthType.TOKEN
+                && settings.githubToken() != null && !settings.githubToken().isBlank()) {
+            return new UsernamePasswordCredentialsProvider(settings.githubToken(), "");
+        }
+        if (settings.activeType() == GitAuthType.HTTP_BASIC
+                && settings.httpUsername() != null && !settings.httpUsername().isBlank()) {
+            String password = settings.httpPassword() != null ? settings.httpPassword() : "";
+            return new UsernamePasswordCredentialsProvider(settings.httpUsername(), password);
+        }
+        String envToken = System.getenv(GITHUB_TOKEN_ENV_VAR);
+        if (envToken == null || envToken.isBlank()) {
             return null;
         }
-        return new UsernamePasswordCredentialsProvider(token, "");
+        return new UsernamePasswordCredentialsProvider(envToken, "");
     }
 
     /**
@@ -258,12 +269,12 @@ public final class JGitRepositoryAdapter implements GitRepositoryPort {
      * today's fully automatic behavior is unchanged.
      */
     private TransportConfigCallback resolveSshTransportConfigCallback() {
-        Path configuredKey = gitAuthSettingsPort.load().sshPrivateKeyPath();
-        if (configuredKey == null) {
+        GitAuthSettings settings = gitAuthSettingsPort.load();
+        if (settings.activeType() != GitAuthType.SSH || settings.sshPrivateKeyPath() == null) {
             return transport -> {
             };
         }
-        SshdSessionFactory sessionFactory = new FixedIdentitySshdSessionFactory(configuredKey);
+        SshdSessionFactory sessionFactory = new FixedIdentitySshdSessionFactory(settings.sshPrivateKeyPath());
         return transport -> {
             if (transport instanceof SshTransport sshTransport) {
                 sshTransport.setSshSessionFactory(sessionFactory);

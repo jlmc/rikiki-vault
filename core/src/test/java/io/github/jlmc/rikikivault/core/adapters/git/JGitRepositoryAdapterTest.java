@@ -1,6 +1,7 @@
 package io.github.jlmc.rikikivault.core.adapters.git;
 
 import io.github.jlmc.rikikivault.core.configuration.GitAuthSettings;
+import io.github.jlmc.rikikivault.core.configuration.GitAuthType;
 import io.github.jlmc.rikikivault.core.domain.exception.GitOperationException;
 import io.github.jlmc.rikikivault.core.domain.model.GitStatus;
 import io.github.jlmc.rikikivault.core.domain.model.RemoteSyncStatus;
@@ -225,9 +226,9 @@ class JGitRepositoryAdapterTest {
     }
 
     @Test
-    void resolveCredentialsPrefersTheConfiguredTokenAsUsername(@TempDir Path root) throws Exception {
+    void resolveCredentialsUsesTheConfiguredTokenAsUsernameWhenActive(@TempDir Path root) throws Exception {
         FakeGitAuthSettingsPort authSettings = new FakeGitAuthSettingsPort();
-        authSettings.save(new GitAuthSettings(null, "configured-token"));
+        authSettings.save(new GitAuthSettings(GitAuthType.TOKEN, null, "configured-token", null, null));
         JGitRepositoryAdapter adapter = new JGitRepositoryAdapter(root, authSettings);
 
         CredentialsProvider provider = adapter.resolveCredentials();
@@ -238,6 +239,41 @@ class JGitRepositoryAdapterTest {
 
         assertEquals("configured-token", usernameItem.getValue());
         assertEquals("", new String(passwordItem.getValue()));
+    }
+
+    @Test
+    void resolveCredentialsIgnoresTheTokenWhenActiveTypeIsSsh(@TempDir Path root) throws Exception {
+        FakeGitAuthSettingsPort authSettings = new FakeGitAuthSettingsPort();
+        authSettings.save(new GitAuthSettings(GitAuthType.SSH, Path.of("/some/key"), "configured-token", null, null));
+        JGitRepositoryAdapter adapter = new JGitRepositoryAdapter(root, authSettings);
+
+        CredentialsProvider provider = adapter.resolveCredentials();
+        // Only asserts the token specifically isn't used - not that no provider exists at all,
+        // since RIKIKI_VAULT_GITHUB_TOKEN (a separate, always-on fallback) may be set in the
+        // environment this test runs in.
+        if (provider != null) {
+            CredentialItem.Username usernameItem = new CredentialItem.Username();
+            CredentialItem.Password passwordItem = new CredentialItem.Password();
+            provider.get(new URIish("https://github.com/example/repo.git"), usernameItem, passwordItem);
+            assertFalse("configured-token".equals(usernameItem.getValue()),
+                    "SSH is active - the token must not be applied even though it's configured");
+        }
+    }
+
+    @Test
+    void resolveCredentialsUsesHttpBasicWhenActive(@TempDir Path root) throws Exception {
+        FakeGitAuthSettingsPort authSettings = new FakeGitAuthSettingsPort();
+        authSettings.save(new GitAuthSettings(GitAuthType.HTTP_BASIC, null, null, "jlmc", "hunter2"));
+        JGitRepositoryAdapter adapter = new JGitRepositoryAdapter(root, authSettings);
+
+        CredentialsProvider provider = adapter.resolveCredentials();
+
+        CredentialItem.Username usernameItem = new CredentialItem.Username();
+        CredentialItem.Password passwordItem = new CredentialItem.Password();
+        provider.get(new URIish("https://example.com/repo.git"), usernameItem, passwordItem);
+
+        assertEquals("jlmc", usernameItem.getValue());
+        assertEquals("hunter2", new String(passwordItem.getValue()));
     }
 
     private static void seedBareRepoWithOneCommit(Path bareRepoDir, String fileName, String content) throws Exception {

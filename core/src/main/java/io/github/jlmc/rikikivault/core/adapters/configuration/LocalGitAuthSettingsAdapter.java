@@ -3,6 +3,7 @@ package io.github.jlmc.rikikivault.core.adapters.configuration;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.jlmc.rikikivault.core.adapters.filesystem.LocalFileSystemAdapter;
 import io.github.jlmc.rikikivault.core.configuration.GitAuthSettings;
+import io.github.jlmc.rikikivault.core.configuration.GitAuthType;
 import io.github.jlmc.rikikivault.core.ports.out.GitAuthSettingsPort;
 
 import java.io.IOException;
@@ -49,10 +50,34 @@ public final class LocalGitAuthSettingsAdapter implements GitAuthSettingsPort {
             Path sshKeyPath = dto.sshPrivateKeyPath() != null && !dto.sshPrivateKeyPath().isBlank()
                     ? Path.of(dto.sshPrivateKeyPath())
                     : null;
-            return new GitAuthSettings(sshKeyPath, dto.githubToken());
+            GitAuthType activeType = parseActiveType(dto.activeType(), sshKeyPath, dto.githubToken());
+            return new GitAuthSettings(activeType, sshKeyPath, dto.githubToken(), dto.httpUsername(), dto.httpPassword());
         } catch (IOException | RuntimeException e) {
             return GitAuthSettings.empty();
         }
+    }
+
+    /**
+     * Files written before the exclusive-active-type model (Milestone 17) have no
+     * {@code activeType} - infer it from what's actually configured, so an already-working setup
+     * (e.g. an SSH key that's been in use) keeps working without the user having to reconfigure
+     * anything.
+     */
+    private static GitAuthType parseActiveType(String rawType, Path sshKeyPath, String githubToken) {
+        if (rawType != null) {
+            try {
+                return GitAuthType.valueOf(rawType);
+            } catch (IllegalArgumentException ignored) {
+                // fall through to inference below
+            }
+        }
+        if (sshKeyPath != null) {
+            return GitAuthType.SSH;
+        }
+        if (githubToken != null && !githubToken.isBlank()) {
+            return GitAuthType.TOKEN;
+        }
+        return GitAuthType.NONE;
     }
 
     @Override
@@ -60,8 +85,11 @@ public final class LocalGitAuthSettingsAdapter implements GitAuthSettingsPort {
         Objects.requireNonNull(settings, "settings must not be null");
         try {
             SettingsDto dto = new SettingsDto(
+                    settings.activeType().name(),
                     settings.sshPrivateKeyPath() != null ? settings.sshPrivateKeyPath().toString() : null,
-                    settings.githubToken());
+                    settings.githubToken(),
+                    settings.httpUsername(),
+                    settings.httpPassword());
             String json = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(dto);
             fileStorage.writeFile(SETTINGS_FILE_NAME, json.getBytes(StandardCharsets.UTF_8));
         } catch (IOException e) {
@@ -69,6 +97,7 @@ public final class LocalGitAuthSettingsAdapter implements GitAuthSettingsPort {
         }
     }
 
-    private record SettingsDto(String sshPrivateKeyPath, String githubToken) {
+    private record SettingsDto(
+            String activeType, String sshPrivateKeyPath, String githubToken, String httpUsername, String httpPassword) {
     }
 }

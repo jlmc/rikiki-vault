@@ -21,6 +21,7 @@ import io.github.jlmc.rikikivault.core.application.usecase.PullVaultService;
 import io.github.jlmc.rikikivault.core.application.usecase.RevokeMachineService;
 import io.github.jlmc.rikikivault.core.application.usecase.ScanChangesService;
 import io.github.jlmc.rikikivault.core.configuration.GitAuthSettings;
+import io.github.jlmc.rikikivault.core.configuration.GitAuthType;
 import io.github.jlmc.rikikivault.core.configuration.VaultConfig;
 import io.github.jlmc.rikikivault.core.configuration.VaultPaths;
 import io.github.jlmc.rikikivault.core.domain.exception.PrivateKeyNotFoundException;
@@ -352,7 +353,8 @@ public final class Main {
 
     private static void runGitAuth(VaultContext ctx, String[] rest) {
         if (rest.length < 1) {
-            System.err.println("Uso: git-auth show|set-ssh-key <path>|clear-ssh-key|set-token|clear-token");
+            System.err.println("Uso: git-auth show|set-ssh-key <path>|clear-ssh-key|set-token|clear-token"
+                    + "|set-http-basic <username>|clear-http-basic|use ssh|token|http|none");
             System.exit(1);
             return;
         }
@@ -360,9 +362,15 @@ public final class Main {
         switch (rest[0]) {
             case "show" -> {
                 GitAuthSettings settings = port.load();
-                System.out.println("Chave SSH: " + (settings.sshPrivateKeyPath() != null ? settings.sshPrivateKeyPath() : "nenhuma"));
+                System.out.println("Método ativo: " + describeType(settings.activeType()));
+                System.out.println("Chave SSH: " + (settings.sshPrivateKeyPath() != null ? settings.sshPrivateKeyPath() : "nenhuma")
+                        + activeSuffix(settings.activeType() == GitAuthType.SSH));
                 boolean hasToken = settings.githubToken() != null && !settings.githubToken().isBlank();
-                System.out.println("Token HTTPS: " + (hasToken ? "configurado" : "não configurado"));
+                System.out.println("Token HTTPS: " + (hasToken ? "configurado" : "não configurado")
+                        + activeSuffix(settings.activeType() == GitAuthType.TOKEN));
+                boolean hasHttpBasic = settings.httpUsername() != null && !settings.httpUsername().isBlank();
+                System.out.println("Utilizador/Password HTTP: " + (hasHttpBasic ? "configurado (" + settings.httpUsername() + ")" : "não configurado")
+                        + activeSuffix(settings.activeType() == GitAuthType.HTTP_BASIC));
             }
             case "set-ssh-key" -> {
                 if (rest.length < 2) {
@@ -371,26 +379,80 @@ public final class Main {
                     return;
                 }
                 GitAuthSettings current = port.load();
-                port.save(new GitAuthSettings(Path.of(rest[1]), current.githubToken()));
-                System.out.println("Chave SSH configurada.");
+                port.save(new GitAuthSettings(GitAuthType.SSH, Path.of(rest[1]), current.githubToken(),
+                        current.httpUsername(), current.httpPassword()));
+                System.out.println("Chave SSH configurada e ativa.");
             }
             case "clear-ssh-key" -> {
                 GitAuthSettings current = port.load();
-                port.save(new GitAuthSettings(null, current.githubToken()));
+                GitAuthType newType = current.activeType() == GitAuthType.SSH ? GitAuthType.NONE : current.activeType();
+                port.save(new GitAuthSettings(newType, null, current.githubToken(), current.httpUsername(), current.httpPassword()));
                 System.out.println("Chave SSH removida.");
             }
             case "set-token" -> {
                 // Reads from stdin, never from an argument - an argument would land in shell
                 // history, exactly the mistake that prompted this command in the first place.
-                String token = readTokenFromStdin();
+                String token = readSecretFromStdin("Nenhum token recebido no stdin");
                 GitAuthSettings current = port.load();
-                port.save(new GitAuthSettings(current.sshPrivateKeyPath(), token));
-                System.out.println("Token guardado.");
+                port.save(new GitAuthSettings(GitAuthType.TOKEN, current.sshPrivateKeyPath(), token,
+                        current.httpUsername(), current.httpPassword()));
+                System.out.println("Token guardado e ativo.");
             }
             case "clear-token" -> {
                 GitAuthSettings current = port.load();
-                port.save(new GitAuthSettings(current.sshPrivateKeyPath(), null));
+                GitAuthType newType = current.activeType() == GitAuthType.TOKEN ? GitAuthType.NONE : current.activeType();
+                port.save(new GitAuthSettings(newType, current.sshPrivateKeyPath(), null, current.httpUsername(), current.httpPassword()));
                 System.out.println("Token removido.");
+            }
+            case "set-http-basic" -> {
+                if (rest.length < 2) {
+                    System.err.println("Uso: git-auth set-http-basic <username>");
+                    System.exit(1);
+                    return;
+                }
+                String password = readSecretFromStdin("Nenhuma password recebida no stdin");
+                GitAuthSettings current = port.load();
+                port.save(new GitAuthSettings(GitAuthType.HTTP_BASIC, current.sshPrivateKeyPath(), current.githubToken(),
+                        rest[1], password));
+                System.out.println("Utilizador/Password HTTP configurados e ativos.");
+            }
+            case "clear-http-basic" -> {
+                GitAuthSettings current = port.load();
+                GitAuthType newType = current.activeType() == GitAuthType.HTTP_BASIC ? GitAuthType.NONE : current.activeType();
+                port.save(new GitAuthSettings(newType, current.sshPrivateKeyPath(), current.githubToken(), null, null));
+                System.out.println("Utilizador/Password HTTP removidos.");
+            }
+            case "use" -> {
+                if (rest.length < 2) {
+                    System.err.println("Uso: git-auth use ssh|token|http|none");
+                    System.exit(1);
+                    return;
+                }
+                GitAuthSettings current = port.load();
+                GitAuthType requested = parseRequestedType(rest[1]);
+                if (requested == null) {
+                    System.err.println("Método desconhecido: " + rest[1] + " (usa ssh, token, http ou none)");
+                    System.exit(1);
+                    return;
+                }
+                if (requested == GitAuthType.SSH && current.sshPrivateKeyPath() == null) {
+                    System.err.println("SSH não tem chave configurada - usa 'set-ssh-key' primeiro.");
+                    System.exit(1);
+                    return;
+                }
+                if (requested == GitAuthType.TOKEN && (current.githubToken() == null || current.githubToken().isBlank())) {
+                    System.err.println("Token não está configurado - usa 'set-token' primeiro.");
+                    System.exit(1);
+                    return;
+                }
+                if (requested == GitAuthType.HTTP_BASIC && (current.httpUsername() == null || current.httpUsername().isBlank())) {
+                    System.err.println("Utilizador/Password HTTP não estão configurados - usa 'set-http-basic' primeiro.");
+                    System.exit(1);
+                    return;
+                }
+                port.save(new GitAuthSettings(requested, current.sshPrivateKeyPath(), current.githubToken(),
+                        current.httpUsername(), current.httpPassword()));
+                System.out.println("Método ativo: " + describeType(requested));
             }
             default -> {
                 System.err.println("Subcomando desconhecido: " + rest[0]);
@@ -399,16 +461,39 @@ public final class Main {
         }
     }
 
-    private static String readTokenFromStdin() {
+    private static String activeSuffix(boolean active) {
+        return active ? " (ativo)" : "";
+    }
+
+    private static String describeType(GitAuthType type) {
+        return switch (type) {
+            case SSH -> "SSH";
+            case TOKEN -> "Token GitHub (HTTPS)";
+            case HTTP_BASIC -> "Utilizador/Password (HTTP)";
+            case NONE -> "Nenhum (descoberta automática)";
+        };
+    }
+
+    private static GitAuthType parseRequestedType(String raw) {
+        return switch (raw) {
+            case "ssh" -> GitAuthType.SSH;
+            case "token" -> GitAuthType.TOKEN;
+            case "http" -> GitAuthType.HTTP_BASIC;
+            case "none" -> GitAuthType.NONE;
+            default -> null;
+        };
+    }
+
+    private static String readSecretFromStdin(String errorMessageIfBlank) {
         try {
             java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(System.in, StandardCharsets.UTF_8));
             String line = reader.readLine();
             if (line == null || line.isBlank()) {
-                throw new IllegalArgumentException("Nenhum token recebido no stdin");
+                throw new IllegalArgumentException(errorMessageIfBlank);
             }
             return line.strip();
         } catch (IOException e) {
-            throw new UncheckedIOException("Falha ao ler o token do stdin", e);
+            throw new UncheckedIOException("Falha ao ler do stdin", e);
         }
     }
 
@@ -465,6 +550,7 @@ public final class Main {
                   authorize <label> <public-key-file>
                   revoke <fingerprint-hex>
                   git-auth show|set-ssh-key <path>|clear-ssh-key|set-token|clear-token
+                            |set-http-basic <username>|clear-http-basic|use ssh|token|http|none
                 """);
     }
 

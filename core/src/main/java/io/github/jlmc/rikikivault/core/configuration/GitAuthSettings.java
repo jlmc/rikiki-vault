@@ -5,12 +5,19 @@ import java.nio.file.Path;
 /**
  * Explicit Git authentication overrides the user can configure in the app, instead of relying
  * entirely on implicit discovery (SSH agent/default-named keys/{@code ~/.ssh/config}, or the
- * {@code RIKIKI_VAULT_GITHUB_TOKEN} env var). Either field may be {@code null} - the remote URL's
- * own scheme (ssh vs https) already decides which one, if any, applies to a given operation.
+ * {@code RIKIKI_VAULT_GITHUB_TOKEN} env var). All three credential sets may be stored at once -
+ * only {@link #activeType()} decides which one is actually applied, so trying another method
+ * never discards what was already configured for the others.
  */
-public record GitAuthSettings(Path sshPrivateKeyPath, String githubToken) {
+public record GitAuthSettings(
+        GitAuthType activeType,
+        Path sshPrivateKeyPath,
+        String githubToken,
+        String httpUsername,
+        String httpPassword
+) {
 
     public static GitAuthSettings empty() {
-        return new GitAuthSettings(null, null);
+        return new GitAuthSettings(GitAuthType.NONE, null, null, null, null);
     }
 }
