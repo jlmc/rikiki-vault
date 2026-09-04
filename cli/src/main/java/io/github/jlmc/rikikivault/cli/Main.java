@@ -29,6 +29,7 @@ import io.github.jlmc.rikikivault.core.domain.exception.RikikiVaultException;
 import io.github.jlmc.rikikivault.core.domain.model.KeyFingerprint;
 import io.github.jlmc.rikikivault.core.domain.model.MachineIdentity;
 import io.github.jlmc.rikikivault.core.domain.model.PullResult;
+import io.github.jlmc.rikikivault.core.domain.model.RemoteSyncStatus;
 import io.github.jlmc.rikikivault.core.domain.model.VaultChange;
 import io.github.jlmc.rikikivault.core.domain.model.VaultConflict;
 import io.github.jlmc.rikikivault.core.ports.in.AuthorizeMachineCommand;
@@ -252,7 +253,7 @@ public final class Main {
         ScanChangesService scanChangesService = new ScanChangesService(ctx.localFiles(), ctx.hashPort(), ctx.manifestPort());
         List<VaultChange> changes = scanChangesService.scan();
         if (changes.isEmpty()) {
-            System.out.println("Nada para publicar.");
+            reportNothingToCommit(ctx);
             return;
         }
 
@@ -273,6 +274,43 @@ public final class Main {
             service.pushToRemote();
         } catch (RikikiVaultException e) {
             System.out.println("Aviso: não foi possível publicar para o remoto: " + fullMessage(e));
+        }
+    }
+
+    /**
+     * Nothing new to encrypt doesn't mean there's nothing to push - a previous publish may have
+     * committed locally but never reached the remote. Checking this means a fetch, so it's
+     * best-effort: any failure degrades to the plain "nada para publicar" message instead of a
+     * fatal error. No interactive confirmation here (same as the rest of the CLI) - a local-ahead
+     * remote is pushed straight away.
+     */
+    private static void reportNothingToCommit(VaultContext ctx) {
+        if (!ctx.gitRepositoryPort().hasRemote()) {
+            System.out.println("Nada para publicar.");
+            return;
+        }
+        RemoteSyncStatus status;
+        try {
+            status = ctx.gitRepositoryPort().remoteSyncStatus();
+        } catch (RikikiVaultException e) {
+            System.out.println("Nada para publicar.");
+            return;
+        }
+        if (status.isDiverged()) {
+            System.out.println("Nada para encriptar, mas o histórico local e remoto divergiram (local +"
+                    + status.aheadCount() + " / remoto +" + status.behindCount() + ") - corre 'pull' primeiro.");
+        } else if (status.aheadCount() > 0) {
+            System.out.println("Nada para encriptar, mas há " + status.aheadCount() + " commit(s) locais ainda não publicados.");
+            try {
+                ctx.gitRepositoryPort().push();
+                System.out.println("Publicado para o remoto.");
+            } catch (RikikiVaultException e) {
+                System.out.println("Aviso: não foi possível publicar para o remoto: " + fullMessage(e));
+            }
+        } else if (status.behindCount() > 0) {
+            System.out.println("Nada para publicar localmente, mas o remoto tem alterações que ainda não fizeste pull.");
+        } else {
+            System.out.println("Nada para publicar.");
         }
     }
 

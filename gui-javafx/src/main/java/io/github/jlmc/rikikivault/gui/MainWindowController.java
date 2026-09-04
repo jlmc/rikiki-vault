@@ -348,21 +348,52 @@ public final class MainWindowController {
 
     @FXML
     private void onPublish() {
-        // Purely local - never touches the network, so this can never fail because of a broken
-        // remote/credentials. Whether to publish to the remote is asked separately, inside
-        // ChangeReviewController, only when there's something to publish and only if a remote is
-        // actually configured.
+        // The local scan itself never touches the network, so this first step can never fail
+        // because of a broken remote/credentials. Whether to publish to the remote is asked
+        // separately, inside ChangeReviewController, only when there's something new to encrypt.
         BackgroundTask.run(
                 () -> new ScanChangesService(ctx.localFiles(), ctx.hashPort(), ctx.manifestPort()).scan(),
                 (List<VaultChange> changes) -> {
                     if (changes.isEmpty()) {
-                        Dialogs.showInfo("Publicar", "Não há alterações para publicar.");
+                        offerPushWhenNothingToCommit();
                         return;
                     }
                     Stage owner = (Stage) fileTable.getScene().getWindow();
                     ChangeReviewController.open(owner, ctx, changes, this::refreshAfterPublish);
                 },
                 Dialogs::showError);
+    }
+
+    /**
+     * Nothing new to encrypt doesn't mean there's nothing to push - a previous publish may have
+     * committed locally but never reached the remote (push declined or failed). Checking this
+     * means a fetch, so it's best-effort: any failure degrades to the plain "nothing to publish"
+     * message instead of an error dialog.
+     */
+    private void offerPushWhenNothingToCommit() {
+        BackgroundTask.run(
+                () -> ctx.gitRepositoryPort().hasRemote() ? ctx.gitRepositoryPort().remoteSyncStatus() : RemoteSyncStatus.noRemote(),
+                status -> {
+                    if (!status.hasRemote()) {
+                        Dialogs.showInfo("Publicar", "Não há alterações para publicar.");
+                    } else if (status.isDiverged()) {
+                        Dialogs.showInfo("Publicar", "Não há alterações novas para encriptar, mas o histórico local e remoto"
+                                + " divergiram (local +" + status.aheadCount() + " / remoto +" + status.behindCount()
+                                + "). Faz Pull antes de publicar.");
+                    } else if (status.aheadCount() > 0) {
+                        if (Dialogs.confirm("Publicar para o remoto", "Não há alterações novas, mas há " + status.aheadCount()
+                                + " commit(s) locais ainda não publicados no remoto. Publicar agora?")) {
+                            RemotePush.pushInBackground(ctx.gitRepositoryPort(), this::refreshRemoteSyncStatus);
+                        }
+                    } else if (status.behindCount() > 0) {
+                        Dialogs.showInfo("Publicar",
+                                "Não há alterações locais para publicar, mas o remoto tem alterações que ainda não fizeste pull.");
+                    } else {
+                        Dialogs.showInfo("Publicar", "Não há alterações para publicar.");
+                    }
+                },
+                error -> Dialogs.showInfo("Publicar",
+                        "Não há alterações locais para publicar. Não foi possível confirmar o estado do remoto."));
     }
 
     private void refreshAfterPublish() {

@@ -119,7 +119,7 @@ public final class ChangeReviewController {
         setBusy(true, "A publicar localmente...");
         BackgroundTask.runVoid(
                 () -> service.publishLocally(new PublishVaultCommand(selected, commitMessage)),
-                () -> onLocalPublishSucceeded(service),
+                this::onLocalPublishSucceeded,
                 error -> {
                     setBusy(false, "");
                     Dialogs.showError(error);
@@ -129,7 +129,7 @@ public final class ChangeReviewController {
     // Phase 2 - remote, optional. The local commit from phase 1 already succeeded by this point,
     // so nothing here is ever reported as a blocking "Erro" - at worst a warning that the push
     // itself didn't happen.
-    private void onLocalPublishSucceeded(PublishVaultService service) {
+    private void onLocalPublishSucceeded() {
         BackgroundTask.run(
                 () -> ctx.gitRepositoryPort().hasRemote(),
                 hasRemote -> {
@@ -146,19 +146,7 @@ public final class ChangeReviewController {
                         return;
                     }
                     setBusy(true, "A publicar para o remoto...");
-                    BackgroundTask.run(
-                            service::pushToRemote,
-                            pushed -> {
-                                finishPublish();
-                                if (!pushed) {
-                                    Dialogs.showInfo("Publicado localmente", "Guardado localmente - sem remoto configurado.");
-                                }
-                            },
-                            error -> {
-                                finishPublish();
-                                Dialogs.showWarning("Guardado localmente",
-                                        "Não foi possível publicar para o remoto: " + Dialogs.fullMessage(error));
-                            });
+                    RemotePush.pushInBackground(ctx.gitRepositoryPort(), this::finishPublish);
                 },
                 error -> {
                     finishPublish();
