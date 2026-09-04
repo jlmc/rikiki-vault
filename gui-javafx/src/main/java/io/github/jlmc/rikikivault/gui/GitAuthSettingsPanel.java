@@ -1,14 +1,8 @@
 package io.github.jlmc.rikikivault.gui;
 
-import io.github.jlmc.rikikivault.core.adapters.configuration.LocalGitAuthSettingsAdapter;
 import io.github.jlmc.rikikivault.core.configuration.GitAuthSettings;
 import io.github.jlmc.rikikivault.core.configuration.GitAuthType;
-import io.github.jlmc.rikikivault.core.configuration.VaultPaths;
-import io.github.jlmc.rikikivault.core.ports.out.GitAuthSettingsPort;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.RadioButton;
@@ -16,24 +10,19 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.stage.FileChooser;
-import javafx.stage.Modality;
 import javafx.stage.Stage;
 
 import java.io.File;
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Path;
 
 /**
- * Lets the user configure explicit Git authentication (Milestone 13, reworked in Milestone 17):
- * three methods - an SSH private key, a GitHub token (HTTPS), or an HTTP username/password - all
- * storable at once, but only {@link GitAuthSettings#activeType()} is ever actually applied by
- * {@code JGitRepositoryAdapter}. Persisted via {@link GitAuthSettingsPort} (through
- * {@link LocalGitAuthSettingsAdapter}, inheriting that adapter's atomic write and owner-only
- * permissions). Global to the machine, not tied to any open vault, so it's reachable both before
- * one is opened (Welcome screen) and from the main window's toolbar.
+ * The "Git" section of the Settings screen (Milestone 19) - three explicit authentication
+ * methods (SSH/Token/HTTP-basic), only one active at a time (Milestone 17). Pure UI: it never
+ * touches {@link io.github.jlmc.rikikivault.core.ports.out.GitAuthSettingsPort} itself - the
+ * owning {@link SettingsController} hands it the settings to display via {@link #init} and reads
+ * back the edited value via {@link #buildSettings()} when the user saves.
  */
-public final class GitAuthSettingsController {
+public final class GitAuthSettingsPanel {
 
     @FXML private ToggleGroup authTypeGroup;
     @FXML private RadioButton noneRadio;
@@ -49,35 +38,12 @@ public final class GitAuthSettingsController {
     @FXML private PasswordField httpPasswordField;
     @FXML private TextField httpPasswordRevealField;
     @FXML private ToggleButton httpPasswordEyeToggle;
-    @FXML private Label statusLabel;
 
-    private Stage stage;
-    private final GitAuthSettingsPort gitAuthSettingsPort = new LocalGitAuthSettingsAdapter(VaultPaths.defaultGitAuthDirectory());
+    private Stage ownerStage;
     private Path pendingSshKeyPath;
 
-    static void open(Stage owner) {
-        FXMLLoader loader = new FXMLLoader(GitAuthSettingsController.class.getResource("/fxml/git-auth-settings-view.fxml"));
-        Parent root;
-        try {
-            root = loader.load();
-        } catch (IOException e) {
-            throw new UncheckedIOException("Failed to load git-auth-settings-view.fxml", e);
-        }
-        GitAuthSettingsController controller = loader.getController();
-        Stage stage = new Stage();
-        stage.initOwner(owner);
-        stage.initModality(Modality.APPLICATION_MODAL);
-        stage.setTitle("Definições de Git");
-        Scene scene = new Scene(root, 560, 620);
-        scene.getStylesheets().add(App.class.getResource("/css/app.css").toExternalForm());
-        stage.setScene(scene);
-        controller.init(stage);
-        stage.showAndWait();
-    }
-
-    private void init(Stage stage) {
-        this.stage = stage;
-        GitAuthSettings settings = gitAuthSettingsPort.load();
+    void init(Stage ownerStage, GitAuthSettings settings) {
+        this.ownerStage = ownerStage;
         pendingSshKeyPath = settings.sshPrivateKeyPath();
 
         sshKeyPathField.setText(pendingSshKeyPath != null ? pendingSshKeyPath.toString() : "");
@@ -142,7 +108,7 @@ public final class GitAuthSettingsController {
     private void onChooseSshKey() {
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Escolher chave privada SSH");
-        File file = chooser.showOpenDialog(stage);
+        File file = chooser.showOpenDialog(ownerStage);
         if (file != null) {
             pendingSshKeyPath = file.toPath();
             sshKeyPathField.setText(pendingSshKeyPath.toString());
@@ -175,24 +141,16 @@ public final class GitAuthSettingsController {
         }
     }
 
-    @FXML
-    private void onSave() {
-        GitAuthSettings settings = new GitAuthSettings(
+    GitAuthSettings buildSettings() {
+        return new GitAuthSettings(
                 selectedType(),
                 pendingSshKeyPath,
                 blankToNull(tokenField.getText()),
                 blankToNull(httpUsernameField.getText()),
                 blankToNull(httpPasswordField.getText()));
-        gitAuthSettingsPort.save(settings);
-        statusLabel.setText("Guardado.");
     }
 
     private static String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value;
-    }
-
-    @FXML
-    private void onClose() {
-        stage.close();
     }
 }

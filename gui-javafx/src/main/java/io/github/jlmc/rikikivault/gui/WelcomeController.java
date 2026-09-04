@@ -28,7 +28,8 @@ public final class WelcomeController {
     }
 
     @FXML
-    private void onOpenGitAuthSettings() {
-        GitAuthSettingsController.open(stage);
+    private void onOpenSettings() {
+        SettingsController.open(stage, () -> {
+        });
     }
 }

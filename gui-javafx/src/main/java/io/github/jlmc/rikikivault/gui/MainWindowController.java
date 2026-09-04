@@ -341,9 +341,9 @@ public final class MainWindowController {
     }
 
     @FXML
-    private void onOpenGitAuthSettings() {
+    private void onOpenSettings() {
         Stage owner = (Stage) fileTable.getScene().getWindow();
-        GitAuthSettingsController.open(owner);
+        SettingsController.open(owner, this::refreshAfterPublish);
     }
 
     @FXML

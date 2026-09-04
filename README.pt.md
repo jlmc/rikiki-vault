@@ -64,7 +64,7 @@ java -jar cli/target/rikiki-vault.jar -C /caminho/para/o/vault status
 | `pull` | Faz pull do estado cifrado mais recente e decifra o que mudou remotamente para `local/`. Nunca sobrescreve um ficheiro que também alteraste localmente — isso é reportado como conflito. |
 | `authorize <label> <ficheiro-chave-pública>` | Concede acesso a outra máquina: adiciona-a ao registo de destinatários e reencripta todos os ficheiros já publicados para o novo conjunto. |
 | `revoke <fingerprint-hex>` | Remove o acesso de uma máquina, reencriptando tudo para que a sua chave deixe de conseguir decifrar o que quer que seja de novo. |
-| `git-auth show\|set-ssh-key <caminho>\|clear-ssh-key\|set-token\|clear-token` | Configura autenticação Git explícita, substituindo a descoberta automática — ver "Autenticação Git explícita" abaixo. `set-token` lê o token do stdin, nunca de um argumento, para não ficar no histórico da shell. |
+| `git-auth show\|set-ssh-key <caminho>\|clear-ssh-key\|set-token\|clear-token\|set-http-basic <utilizador>\|clear-http-basic\|use ssh\|token\|http\|none` | Configura autenticação Git explícita, substituindo a descoberta automática — ver "Autenticação Git explícita" abaixo. `set-token`/`set-http-basic` leem o segredo do stdin, nunca de um argumento, para não ficar no histórico da shell. |
 
 ### Um exemplo completo
 
@@ -116,21 +116,47 @@ configuração extra.
 ### Autenticação Git explícita
 
 Se a descoberta automática não funcionar no teu ambiente (ex.: uma chave SSH com nome não-padrão
-que o agente não está a oferecer, ou preferes não exportar uma variável de ambiente), configura-a
-explicitamente — na app desktop através de "Definições de Git..." (no ecrã inicial e na toolbar da
-janela principal), ou na CLI:
+que o agente não está a oferecer, ou preferes não exportar uma variável de ambiente), configura um
+de três métodos explícitos. Só um fica *ativo* de cada vez — podes ter os três configurados ao
+mesmo tempo (trocar entre eles nunca apaga os outros), mas só o ativo é aplicado por
+`clone`/`pull`/`push`, independentemente do esquema do URL do remoto:
+
+- uma **chave SSH** (um ficheiro de chave privada específico)
+- um **token do GitHub** (HTTPS)
+- um **utilizador/password HTTP** (HTTPS, para remotos que não sejam GitHub)
+
+App desktop: "Configurações..." (ecrã inicial ou toolbar da janela principal) → o separador **Git**
+mostra qual o método ativo agora e permite trocar, com um botão "👁" para revelar o valor real dos
+campos de token/password em vez de aparecerem sempre vazios. CLI:
 
 ```
-rikiki-vault git-auth set-ssh-key ~/.ssh/id_jc
-echo "$O_TEU_TOKEN_GITHUB" | rikiki-vault git-auth set-token
+rikiki-vault git-auth set-ssh-key ~/.ssh/id_jc                # configura a chave e torna-a ativa
+echo "$O_TEU_TOKEN_GITHUB" | rikiki-vault git-auth set-token    # configura o token e torna-o ativo
+rikiki-vault git-auth set-http-basic o-meu-utilizador           # a password é lida a seguir do stdin
+rikiki-vault git-auth use ssh|token|http|none                   # troca o método ativo sem reconfigurar nada
 rikiki-vault git-auth show
 ```
 
-Nunca passes um token como argumento do `set-token` — ficaria no histórico da shell. As duas
-definições ficam guardadas em `~/.rikiki-vault/git-auth/settings.json` com permissões só do dono
-(`rw-------`), tal como a chave privada. O esquema do URL do remoto decide sozinho qual se aplica:
-`git@`/`ssh://` usa a chave configurada (com fallback para a descoberta automática se nenhuma
-estiver definida), `https://` usa o token configurado (com fallback para `RIKIKI_VAULT_GITHUB_TOKEN`).
+Nunca passes um token ou password como argumento do `set-token`/`set-http-basic` — o segredo é
+sempre lido do stdin, para não ficar no histórico da shell. Ver "Ficheiros de configuração" abaixo
+para saber onde isto fica guardado.
+
+### Ficheiros de configuração
+
+Tudo o que existe fora de um vault propriamente dito vive em `~/.rikiki-vault/` — global à máquina,
+partilhado por todos os vaults que abras e pela CLI e pela GUI:
+
+| Ficheiro | Para que serve | Como se configura |
+|---|---|---|
+| `~/.rikiki-vault/identity/private.key` / `public.key` | O par de chaves X25519 desta máquina (permissões só do dono) — ver "Identidade da máquina" acima. | Gerado automaticamente na primeira vez que é preciso; não é editável à mão. `whoami`/`export-key` leem-no. |
+| `~/.rikiki-vault/config/config.yaml` | Configuração de arranque da mecânica do vault: onde fica a diretoria de identidade, e os parâmetros de encriptação (algoritmo, tamanhos de chave). Escrito uma vez com valores por omissão sensatos no primeiro arranque. | Não está exposto na UI/CLI — a maioria dos utilizadores nunca precisa de lhe mexer; edita o YAML diretamente só se souberes bem o que estás a mudar. |
+| `~/.rikiki-vault/preferences/preferences.json` | Tudo o que o ecrã de Configurações / comando `git-auth` gerem: qual o método de autenticação Git ativo e os seus valores (caminho da chave SSH, token do GitHub, utilizador/password HTTP), mais o idioma da aplicação. Permissões só do dono (`rw-------`), já que pode conter segredos. | App desktop: "Configurações...". CLI: `git-auth ...` para o lado do Git (ver acima); ainda não há equivalente na CLI para o idioma. |
+
+Um ficheiro de antes deste modelo existir (`~/.rikiki-vault/git-auth/settings.json`) é lido uma
+vez, automaticamente, a primeira vez que o `preferences.json` ainda não existir — para uma chave
+SSH ou token já configurados continuarem a funcionar sem reconfigurar nada. A app nunca o
+reescreve nem apaga; só deixa de o consultar assim que gravares alguma coisa através das
+Configurações/`git-auth`.
 
 ### Notas de robustez
 
@@ -150,10 +176,8 @@ mvn -pl gui-javafx javafx:run
 No arranque, escolhe uma pasta — um vault já existente, ou uma pasta vazia para
 inicializar/clonar. A janela principal mostra a árvore de ficheiros do vault com um indicador de
 estado por ficheiro (sincronizado/novo/modificado/removido), um painel de pré-visualização para
-o ficheiro selecionado (texto, JSON, XML, Markdown, imagens, e a primeira página de PDFs), e
-ações na toolbar para Pull, Publicar (com um passo de revisão e aprovação antes de qualquer coisa
-ser cifrada), e gerir o acesso das máquinas (autorizar/revogar).
-
-Editar ficheiros e ver diffs de alterações na GUI ainda não estão implementados — por agora,
-edita os ficheiros em `local/` com o teu próprio editor e usa o `publish` para rever e publicar o
-resultado.
+o ficheiro selecionado (texto, JSON, XML, Markdown, imagens, e a primeira página de PDFs) que
+também pode passar a editor (Save/Encrypt/Revert/Diff), um indicador "Remoto: ..." do estado de
+sincronização, e ações na toolbar para Pull, Publicar (com um passo de revisão e aprovação antes
+de qualquer coisa ser cifrada, e uma pergunta à parte antes de publicar para o remoto), gerir o
+acesso das máquinas (autorizar/revogar), e Configurações (autenticação Git + idioma).

@@ -61,7 +61,7 @@ java -jar cli/target/rikiki-vault.jar -C /path/to/vault status
 | `pull` | Pulls the latest encrypted state and decrypts what changed remotely into `local/`. Never overwrites a file you've also changed locally — that's reported as a conflict instead. |
 | `authorize <label> <public-key-file>` | Grants another machine access: adds it to the recipient registry and re-encrypts every already-published file for the updated set. |
 | `revoke <fingerprint-hex>` | Removes a machine's access, re-encrypting everything so its key is no longer able to decrypt anything new. |
-| `git-auth show\|set-ssh-key <path>\|clear-ssh-key\|set-token\|clear-token` | Configures explicit Git authentication, overriding implicit discovery - see "Explicit Git authentication" below. `set-token` reads the token from stdin, never an argument, to avoid it ending up in shell history. |
+| `git-auth show\|set-ssh-key <path>\|clear-ssh-key\|set-token\|clear-token\|set-http-basic <username>\|clear-http-basic\|use ssh\|token\|http\|none` | Configures explicit Git authentication, overriding implicit discovery - see "Explicit Git authentication" below. `set-token`/`set-http-basic` read the secret from stdin, never an argument, to avoid it ending up in shell history. |
 
 ### A full walkthrough
 
@@ -113,21 +113,47 @@ no extra configuration needed.
 ### Explicit Git authentication
 
 If implicit discovery doesn't work in your environment (e.g. an SSH key with a non-default
-filename that the agent isn't offering, or you'd rather not export an env var), configure it
-explicitly instead — in the desktop app via "Definições de Git..." (on the Welcome screen and in
-the main window's toolbar), or on the CLI:
+filename that the agent isn't offering, or you'd rather not export an env var), configure one of
+three explicit methods instead. Only one is ever *active* at a time — you can have all three
+configured (switching between them never discards the others), but only the active one is applied
+by `clone`/`pull`/`push`, regardless of the remote URL's scheme:
+
+- an **SSH key** (a specific private key file)
+- a **GitHub token** (HTTPS)
+- an **HTTP username/password** (HTTPS, for non-GitHub remotes)
+
+Desktop app: "Configurações..." (Welcome screen or the main window's toolbar) → the **Git** tab
+shows which method is active right now and lets you switch, with a "👁" toggle to reveal the
+real value of the token/password fields instead of them always looking empty. CLI:
 
 ```
-rikiki-vault git-auth set-ssh-key ~/.ssh/id_jc
-echo "$MY_GITHUB_TOKEN" | rikiki-vault git-auth set-token
+rikiki-vault git-auth set-ssh-key ~/.ssh/id_jc              # configures the key and makes SSH active
+echo "$MY_GITHUB_TOKEN" | rikiki-vault git-auth set-token    # configures the token and makes it active
+rikiki-vault git-auth set-http-basic myusername               # password is then read from stdin
+rikiki-vault git-auth use ssh|token|http|none                 # switch the active method without reconfiguring
 rikiki-vault git-auth show
 ```
 
-Never pass a token as a `set-token` argument — it would land in shell history. Both settings are
-stored in `~/.rikiki-vault/git-auth/settings.json` with owner-only (`rw-------`) permissions, same
-as the private key. The remote URL's own scheme decides which applies: `git@`/`ssh://` uses the
-configured key (falling back to automatic discovery when none is set), `https://` uses the
-configured token (falling back to `RIKIKI_VAULT_GITHUB_TOKEN`).
+Never pass a token or password as a `set-token`/`set-http-basic` argument — the secret is always
+read from stdin, to avoid it landing in shell history. See "Configuration files" below for where
+this is stored.
+
+### Configuration files
+
+Everything outside a vault itself lives under `~/.rikiki-vault/` — machine-global, shared by every
+vault you open and by both the CLI and the GUI:
+
+| File | What it's for | How to configure it |
+|---|---|---|
+| `~/.rikiki-vault/identity/private.key` / `public.key` | This machine's X25519 keypair (owner-only permissions) - see "Machine identity" above. | Generated automatically the first time it's needed; not user-editable. `whoami`/`export-key` read it. |
+| `~/.rikiki-vault/config/config.yaml` | Bootstrap settings for the vault mechanics: where the identity directory lives, and the encryption parameters (algorithm, key sizes). Written once with sensible defaults on first run. | Not exposed in the UI/CLI - most users never need to touch it; edit the YAML directly only if you know what you're changing. |
+| `~/.rikiki-vault/preferences/preferences.json` | Everything the Settings screen / `git-auth` command manage: which Git authentication method is active and its values (SSH key path, GitHub token, HTTP username/password), plus the app's display language. Owner-only (`rw-------`) permissions, since it can hold secrets. | Desktop: "Configurações...". CLI: `git-auth ...` for the Git side (see above); there's no CLI equivalent for the language yet. |
+
+A file from before this layout existed (`~/.rikiki-vault/git-auth/settings.json`) is read once,
+automatically, the first time `preferences.json` doesn't exist yet - so an SSH key or token
+configured before this change keeps working without reconfiguring anything. It's never rewritten
+or deleted by the app; it just stops being consulted as soon as you save anything through
+Settings/`git-auth`.
 
 ### Hardening notes
 
@@ -147,8 +173,7 @@ mvn -pl gui-javafx javafx:run
 On launch, pick a folder — either an existing vault or an empty one to initialize/clone into. The
 main window shows the vault's file tree with a status badge per file (synced/added/modified/
 deleted), a preview pane for the selected file (text, JSON, XML, Markdown, images, and the first
-page of PDFs), and toolbar actions for Pull, Publish (with a review-and-approve step before
-anything is encrypted), and managing machine access (authorize/revoke).
-
-Editing files and diffing changes in the GUI aren't implemented yet — for now, edit files in
-`local/` with your own editor and use `publish` to review and push the result.
+page of PDFs) that can also be switched into an editor (Save/Encrypt/Revert/Diff), a "Remoto: ..."
+sync-status badge, and toolbar actions for Pull, Publish (with a review-and-approve step before
+anything is encrypted, and a separate prompt before pushing to the remote), managing machine
+access (authorize/revoke), and Configurações (Git authentication + language).

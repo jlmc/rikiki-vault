@@ -606,7 +606,7 @@ public final class Main {
 
         static VaultContext at(Path vaultRoot) {
             VaultConfig config = new YamlConfigFileAdapter(VaultPaths.defaultConfigFile()).load();
-            LocalGitAuthSettingsAdapter gitAuthSettingsPort = new LocalGitAuthSettingsAdapter(VaultPaths.defaultGitAuthDirectory());
+            LocalGitAuthSettingsAdapter gitAuthSettingsPort = new LocalGitAuthSettingsAdapter(VaultPaths.defaultPreferencesDirectory());
             return new VaultContext(
                     vaultRoot,
                     new LocalFileSystemAdapter(vaultRoot.resolve("local")),

@@ -22,6 +22,10 @@ public final class VaultPaths {
         return vaultHome().resolve("git-auth");
     }
 
+    public static Path defaultPreferencesDirectory() {
+        return vaultHome().resolve("preferences");
+    }
+
     private static Path vaultHome() {
         return Paths.get(System.getProperty("user.home"), VAULT_HOME_DIR_NAME);
     }

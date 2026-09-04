@@ -39,7 +39,7 @@ public record VaultContext(
                 new LocalFileSystemAdapter(vaultRoot.resolve("documents")),
                 new JsonManifestFileAdapter(vaultRoot.resolve("vault").resolve("manifest.json")),
                 new JsonRecipientRegistryFileAdapter(vaultRoot.resolve("vault").resolve("recipients.json")),
-                new JGitRepositoryAdapter(vaultRoot, new LocalGitAuthSettingsAdapter(VaultPaths.defaultGitAuthDirectory())),
+                new JGitRepositoryAdapter(vaultRoot, new LocalGitAuthSettingsAdapter(VaultPaths.defaultPreferencesDirectory())),
                 new LocalKeyStoreAdapter(config.identityDirectory()),
                 new JceHybridEncryptionAdapter(config.encryptionSettings()),
                 new Sha256HashAdapter());

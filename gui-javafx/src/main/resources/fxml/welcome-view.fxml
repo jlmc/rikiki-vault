@@ -10,5 +10,5 @@
     <Label text="Escolhe a pasta de um vault para abrir, ou uma pasta vazia para criar um novo."
            styleClass="subtitle" wrapText="true"/>
     <Button fx:id="chooseButton" text="Abrir pasta..." styleClass="primary-button" onAction="#onChooseFolder"/>
-    <Button text="Definições de Git..." onAction="#onOpenGitAuthSettings"/>
+    <Button text="Configurações..." onAction="#onOpenSettings"/>
 </VBox>

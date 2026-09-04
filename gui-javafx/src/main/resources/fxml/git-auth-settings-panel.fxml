@@ -5,7 +5,6 @@
 <?import javafx.scene.control.PasswordField?>
 <?import javafx.scene.control.RadioButton?>
 <?import javafx.scene.control.ScrollPane?>
-<?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.control.ToggleButton?>
 <?import javafx.scene.control.ToggleGroup?>
@@ -14,16 +13,14 @@
 <?import javafx.scene.layout.VBox?>
 
 <VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="io.github.jlmc.rikikivault.gui.GitAuthSettingsController"
-      styleClass="git-auth-settings-view" spacing="16">
+      fx:controller="io.github.jlmc.rikikivault.gui.GitAuthSettingsPanel"
+      styleClass="git-auth-panel" spacing="16">
     <padding>
-        <Insets top="24" right="24" bottom="24" left="24"/>
+        <Insets top="16" right="16" bottom="16" left="16"/>
     </padding>
-    <Label text="Definições de Git" styleClass="title"/>
     <Label text="Opcional - só é preciso se a descoberta automática (agente/chaves por omissão/RIKIKI_VAULT_GITHUB_TOKEN) não funcionar. Apenas um método fica ativo de cada vez - os outros ficam guardados, prontos a usar se trocares."
            styleClass="subtitle" wrapText="true"/>
     <Label fx:id="activeTypeLabel" styleClass="section-title"/>
-    <Separator/>
     <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" styleClass="git-auth-scroll">
         <VBox spacing="20">
             <padding>
@@ -70,9 +67,4 @@
             </VBox>
         </VBox>
     </ScrollPane>
-    <HBox spacing="8" alignment="CENTER_RIGHT">
-        <Label fx:id="statusLabel" styleClass="status-label"/>
-        <Button text="Fechar" onAction="#onClose"/>
-        <Button fx:id="saveButton" text="Guardar" styleClass="primary-button" onAction="#onSave"/>
-    </HBox>
 </VBox>
