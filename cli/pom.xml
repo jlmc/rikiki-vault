@@ -4,12 +4,12 @@
   <parent>
     <artifactId>rikiki-vault</artifactId>
     <groupId>io.github.jlmc</groupId>
-    <version>1.0.1-SNAPSHOT</version>
+    <version>1.0.0</version>
   </parent>
 
   <groupId>io.github.jlmc</groupId>
   <artifactId>cli</artifactId>
-  <version>1.0.1-SNAPSHOT</version>
+  <version>1.0.0</version>
 
   <name>cli</name>
 
@@ -35,7 +35,7 @@
     <dependency>
       <groupId>io.github.jlmc</groupId>
       <artifactId>core</artifactId>
-      <version>1.0.1-SNAPSHOT</version>
+      <version>1.0.0</version>
     </dependency>
     <!-- Binds the SLF4J API that JGit/mina-sshd already log through (core stays binding-agnostic,
          only this application module picks one) to plain, dependency-free console output - no
