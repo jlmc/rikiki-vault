@@ -17,6 +17,10 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.release>25</maven.compiler.release>
     <javafx.version>21.0.4</javafx.version>
+    <!-- mvn javafx:run bypasses the "java -jar" launcher check and can point at the
+         Application subclass directly; the packaged jar/jpackage app cannot (see Launcher). -->
+    <app.class>io.github.jlmc.rikikivault.gui.App</app.class>
+    <main.class>io.github.jlmc.rikikivault.gui.Launcher</main.class>
   </properties>
 
   <dependencyManagement>
@@ -87,6 +91,7 @@
   </dependencies>
 
   <build>
+    <finalName>rikiki-vault-gui</finalName>
     <plugins>
       <plugin>
         <groupId>org.openjfx</groupId>
@@ -97,7 +102,44 @@
             <!-- Usage: mvn -pl gui-javafx javafx:run -->
             <id>default-cli</id>
             <configuration>
-              <mainClass>io.github.jlmc.rikikivault.gui.App</mainClass>
+              <mainClass>${app.class}</mainClass>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <!-- Thin jar (project classes only) - no fat/shaded jar. Its manifest's Class-Path is
+             auto-generated below to list every jar copy_dependencies places in target/lib/. -->
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>3.4.1</version>
+        <configuration>
+          <archive>
+            <manifest>
+              <mainClass>${main.class}</mainClass>
+              <addClasspath>true</addClasspath>
+              <classpathPrefix>lib/</classpathPrefix>
+            </manifest>
+          </archive>
+        </configuration>
+      </plugin>
+      <plugin>
+        <!-- Copies every runtime dependency, unmerged, into target/lib/ - this is both what
+             `java -jar target/rikiki-vault-gui.jar` needs alongside the thin jar, and the exact
+             input layout jpackage (scripts/package.sh) expects (its "input" flag). -->
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <version>3.8.1</version>
+        <executions>
+          <execution>
+            <id>copy-dependencies</id>
+            <phase>package</phase>
+            <goals>
+              <goal>copy-dependencies</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${project.build.directory}/lib</outputDirectory>
+              <includeScope>runtime</includeScope>
             </configuration>
           </execution>
         </executions>
