@@ -46,11 +46,15 @@ import javafx.scene.control.TreeTableView;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 public final class MainWindowController {
+
+    private static final Logger log = LoggerFactory.getLogger(MainWindowController.class);
 
     @FXML private Label vaultPathLabel;
     @FXML private Label fingerprintLabel;
@@ -300,6 +304,7 @@ public final class MainWindowController {
 
     @FXML
     private void onPull() {
+        log.info("User triggered Pull");
         BackgroundTask.run(
                 () -> new PullVaultService(
                         new LoadMachineIdentityService(ctx.keyStorePort()),
@@ -363,6 +368,7 @@ public final class MainWindowController {
 
     @FXML
     private void onPublish() {
+        log.info("User triggered Publish");
         // The local scan itself never touches the network, so this first step can never fail
         // because of a broken remote/credentials. Whether to publish to the remote is asked
         // separately, inside ChangeReviewController, only when there's something new to encrypt.

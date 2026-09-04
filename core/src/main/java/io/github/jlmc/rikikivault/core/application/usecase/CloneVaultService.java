@@ -18,6 +18,8 @@ import io.github.jlmc.rikikivault.core.ports.out.FileStoragePort;
 import io.github.jlmc.rikikivault.core.ports.out.GitRepositoryPort;
 import io.github.jlmc.rikikivault.core.ports.out.ManifestPort;
 import io.github.jlmc.rikikivault.core.ports.out.RecipientRegistryPort;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 
@@ -36,6 +38,8 @@ import java.util.Objects;
  * access to any pre-existing file will simply fail to decrypt it.
  */
 public final class CloneVaultService implements CloneVaultUseCase {
+
+    private static final Logger log = LoggerFactory.getLogger(CloneVaultService.class);
 
     private final LoadMachineIdentityUseCase loadMachineIdentityUseCase;
     private final InitializeMachineIdentityUseCase initializeMachineIdentityUseCase;
@@ -87,6 +91,7 @@ public final class CloneVaultService implements CloneVaultUseCase {
             decryptAndWrite(entry, identity);
         }
 
+        log.info("Cloned vault with {} file(s) as {}", manifest.files().size(), identity.id());
         return identity;
     }
 

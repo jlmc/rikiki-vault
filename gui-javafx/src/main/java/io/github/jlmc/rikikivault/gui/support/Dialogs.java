@@ -2,15 +2,26 @@ package io.github.jlmc.rikikivault.gui.support;
 
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
 
 public final class Dialogs {
 
+    private static final Logger log = LoggerFactory.getLogger(Dialogs.class);
+
     private Dialogs() {
     }
 
+    /**
+     * Every controller in this module funnels its errors through here, so logging
+     * the full stack trace once, in this single spot, captures every error dialog in the app -
+     * useful when the app is packaged (jpackage) and there's no visible console, but
+     * {@code scripts/run.sh gui} runs in the terminal that launched it.
+     */
     public static void showError(Throwable error) {
+        log.error("Showing error dialog", error);
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle(Messages.get("common.error.title"));
         alert.setHeaderText(null);

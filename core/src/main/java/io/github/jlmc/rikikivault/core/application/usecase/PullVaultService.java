@@ -20,6 +20,8 @@ import io.github.jlmc.rikikivault.core.ports.out.FileStoragePort;
 import io.github.jlmc.rikikivault.core.ports.out.GitRepositoryPort;
 import io.github.jlmc.rikikivault.core.ports.out.HashPort;
 import io.github.jlmc.rikikivault.core.ports.out.ManifestPort;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -37,6 +39,8 @@ import java.util.Objects;
  * keep reporting it as a local modification, which is the correct and already-existing behavior.
  */
 public final class PullVaultService implements PullVaultUseCase {
+
+    private static final Logger log = LoggerFactory.getLogger(PullVaultService.class);
 
     private final LoadMachineIdentityUseCase loadMachineIdentityUseCase;
     private final DecryptFileUseCase decryptFileUseCase;
@@ -118,6 +122,8 @@ public final class PullVaultService implements PullVaultUseCase {
             }
         }
 
+        log.info("Pull completed: {} updated, {} deleted, {} conflict(s)",
+                updatedPaths.size(), deletedPaths.size(), conflicts.size());
         return new PullResult(updatedPaths, deletedPaths, conflicts, localChanges);
     }
 

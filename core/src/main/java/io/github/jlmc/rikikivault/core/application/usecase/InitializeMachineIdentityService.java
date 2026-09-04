@@ -6,12 +6,15 @@ import io.github.jlmc.rikikivault.core.domain.model.MachineIdentity;
 import io.github.jlmc.rikikivault.core.ports.in.InitializeMachineIdentityUseCase;
 import io.github.jlmc.rikikivault.core.ports.out.KeyPairGeneratorPort;
 import io.github.jlmc.rikikivault.core.ports.out.KeyStorePort;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.security.KeyPair;
 import java.util.Objects;
 
 public final class InitializeMachineIdentityService implements InitializeMachineIdentityUseCase {
 
+    private static final Logger log = LoggerFactory.getLogger(InitializeMachineIdentityService.class);
     private static final String KEY_ALGORITHM = "X25519";
 
     private final KeyPairGeneratorPort keyPairGeneratorPort;
@@ -32,6 +35,7 @@ public final class InitializeMachineIdentityService implements InitializeMachine
         MachineIdentity identity = new MachineIdentity(
                 KeyFingerprint.of(keyPair.getPublic()), keyPair.getPublic(), keyPair.getPrivate(), KEY_ALGORITHM);
         keyStorePort.save(identity);
+        log.info("Generated a new machine identity: {}", identity.id());
         return identity;
     }
 }

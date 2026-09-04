@@ -9,11 +9,16 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class App extends Application {
 
+    private static final Logger log = LoggerFactory.getLogger(App.class);
+
     @Override
     public void start(Stage stage) {
+        log.info("Starting Rikiki Vault GUI");
         stage.setTitle("Rikiki Vault");
         Scene scene = new Scene(loadWelcome(stage), 900, 600);
         scene.getStylesheets().add(App.class.getResource("/css/app.css").toExternalForm());
@@ -33,6 +38,7 @@ public final class App extends Application {
     }
 
     private void openVault(Stage stage, VaultContext ctx) {
+        log.info("Opening vault at {}", ctx.vaultRoot());
         Parent next = ctx.isInitialized() ? loadMainWindow(stage, ctx) : loadInitOrClone(stage, ctx);
         stage.getScene().setRoot(next);
     }

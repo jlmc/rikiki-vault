@@ -48,6 +48,9 @@ on the current directory as the vault root, unless you pass `-C <path>` first (l
 java -jar cli/target/rikiki-vault.jar -C /path/to/vault status
 ```
 
+Or skip the manual build: `scripts/run-cli.sh -- -C /path/to/vault status` builds the jar the
+first time it's missing and runs it the same way (see "Logging" below for its `--log-level` flag).
+
 ### Commands
 
 | Command | What it does |
@@ -166,11 +169,27 @@ local version is always what's kept automatically, and you resolve the rest by h
 
 ### Logging
 
-The CLI and the desktop app both ship a plain [slf4j-simple](https://www.slf4j.org/) binding, so
-whatever Git/SSH library logging already exists (JGit, mina-sshd) prints to the terminal that
-launched them — no separate config file to set up for distribution. By default it's quiet (only
-warnings/errors); for troubleshooting a real push/pull/clone against a remote, run with more
-detail:
+The CLI and the desktop app both ship a plain [slf4j-simple](https://www.slf4j.org/) binding, and
+the app's own code (`core`/`gui-javafx`) logs its operations through it too — vault opens,
+clone/pull/push, publish/authorize/revoke, and every error dialog shown in the GUI. Two layers,
+each with its own default: third-party Git/SSH libraries (JGit, mina-sshd) stay quiet (only
+warnings/errors), while the app's own `io.github.jlmc` packages default to `info`. No separate
+config file to set up for distribution — it's all baked into the `simplelogger.properties`
+shipped in each module's jar.
+
+The simplest way to change the app's own log level is `scripts/run.sh`, which wraps both the CLI
+and the GUI:
+
+```bash
+scripts/run.sh cli -- -C <vault> pull                    # info by default
+scripts/run.sh cli --log-level=debug -- -C <vault> pull
+scripts/run.sh gui --log-level=debug
+```
+
+`scripts/run-cli.sh`/`scripts/run-gui.sh` are thin shortcuts for `scripts/run.sh cli`/`scripts/run.sh gui` — same flags, one less word to type.
+
+For raw control (e.g. to also turn up the Git/SSH libraries), pass the underlying `-D` flags
+directly:
 
 ```bash
 java -Dorg.slf4j.simpleLogger.defaultLogLevel=debug -jar cli/target/rikiki-vault.jar -C <vault> pull
@@ -190,6 +209,9 @@ up in whatever terminal ran that command, alongside the running window.
 ```
 mvn -pl gui-javafx javafx:run
 ```
+
+Or `scripts/run-gui.sh` — builds the packaged jar the first time it's missing, then launches it
+with plain `java -jar` (no Maven at runtime); see "Logging" above for its `--log-level` flag.
 
 On launch, pick a folder — either an existing vault or an empty one to initialize/clone into. The
 main window shows the vault's file tree with a status badge per file (synced/added/modified/

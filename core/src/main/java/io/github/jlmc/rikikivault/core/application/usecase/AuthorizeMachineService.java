@@ -15,6 +15,8 @@ import io.github.jlmc.rikikivault.core.ports.out.FileStoragePort;
 import io.github.jlmc.rikikivault.core.ports.out.GitRepositoryPort;
 import io.github.jlmc.rikikivault.core.ports.out.ManifestPort;
 import io.github.jlmc.rikikivault.core.ports.out.RecipientRegistryPort;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.security.PublicKey;
 import java.util.ArrayList;
@@ -28,6 +30,8 @@ import java.util.Objects;
  * result like {@link PublishVaultService} does (single add/commit/push).
  */
 public final class AuthorizeMachineService implements AuthorizeMachineUseCase {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthorizeMachineService.class);
 
     private final RecipientRegistryPort recipientRegistryPort;
     private final FileStoragePort localFiles;
@@ -73,6 +77,7 @@ public final class AuthorizeMachineService implements AuthorizeMachineUseCase {
 
         gitRepositoryPort.add(List.of("."));
         gitRepositoryPort.commit("authorize machine: " + command.label());
+        log.info("Authorized machine '{}' ({})", command.label(), fingerprint);
         return gitRepositoryPort.push();
     }
 

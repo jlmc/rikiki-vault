@@ -50,6 +50,14 @@
       <artifactId>jackson-dataformat-yaml</artifactId>
     </dependency>
     <dependency>
+      <!-- Only the API - core never picks a binding, that stays a decision for whoever composes
+           the application (cli/gui-javafx), same as JGit's own logging convention. Already
+           arrives transitively via JGit, but declared directly since core code calls it too. -->
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>2.0.18</version>
+    </dependency>
+    <dependency>
       <groupId>org.eclipse.jgit</groupId>
       <artifactId>org.eclipse.jgit</artifactId>
       <version>${jgit.version}</version>

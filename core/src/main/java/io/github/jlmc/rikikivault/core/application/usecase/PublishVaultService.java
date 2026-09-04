@@ -15,6 +15,8 @@ import io.github.jlmc.rikikivault.core.ports.out.GitRepositoryPort;
 import io.github.jlmc.rikikivault.core.ports.out.HashPort;
 import io.github.jlmc.rikikivault.core.ports.out.ManifestPort;
 import io.github.jlmc.rikikivault.core.ports.out.RecipientRegistryPort;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.security.PublicKey;
 import java.util.LinkedHashMap;
@@ -29,6 +31,8 @@ import java.util.Objects;
  * never accidentally omit an authorized machine.
  */
 public final class PublishVaultService implements PublishVaultUseCase {
+
+    private static final Logger log = LoggerFactory.getLogger(PublishVaultService.class);
 
     private final FileStoragePort localFiles;
     private final FileStoragePort documentsFiles;
@@ -91,11 +95,14 @@ public final class PublishVaultService implements PublishVaultUseCase {
 
         gitRepositoryPort.add(List.of("."));
         gitRepositoryPort.commit(command.commitMessage());
+        log.info("Published {} change(s) locally: \"{}\"", command.approvedChanges().size(), command.commitMessage());
     }
 
     @Override
     public boolean pushToRemote() {
-        return gitRepositoryPort.push();
+        boolean pushed = gitRepositoryPort.push();
+        log.info(pushed ? "Pushed the published changes to the remote" : "No remote configured - changes stayed local only");
+        return pushed;
     }
 
     private ManifestEntry encryptAndStore(String plaintextPath, List<PublicKey> recipients) {

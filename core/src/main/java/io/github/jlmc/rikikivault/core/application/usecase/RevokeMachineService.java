@@ -14,6 +14,8 @@ import io.github.jlmc.rikikivault.core.ports.out.FileStoragePort;
 import io.github.jlmc.rikikivault.core.ports.out.GitRepositoryPort;
 import io.github.jlmc.rikikivault.core.ports.out.ManifestPort;
 import io.github.jlmc.rikikivault.core.ports.out.RecipientRegistryPort;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.security.PublicKey;
 import java.util.List;
@@ -27,6 +29,8 @@ import java.util.Objects;
  * {@link PublishVaultService} does (single add/commit/push).
  */
 public final class RevokeMachineService implements RevokeMachineUseCase {
+
+    private static final Logger log = LoggerFactory.getLogger(RevokeMachineService.class);
 
     private final RecipientRegistryPort recipientRegistryPort;
     private final FileStoragePort localFiles;
@@ -76,6 +80,7 @@ public final class RevokeMachineService implements RevokeMachineUseCase {
 
         gitRepositoryPort.add(List.of("."));
         gitRepositoryPort.commit("revoke machine: " + command.fingerprint());
+        log.info("Revoked machine {}", command.fingerprint());
         return gitRepositoryPort.push();
     }
 

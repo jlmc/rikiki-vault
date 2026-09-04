@@ -28,6 +28,8 @@ import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.treewalk.EmptyTreeIterator;
 import org.eclipse.jgit.treewalk.FileTreeIterator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -47,6 +49,7 @@ import java.util.Objects;
  */
 public final class JGitRepositoryAdapter implements GitRepositoryPort {
 
+    private static final Logger log = LoggerFactory.getLogger(JGitRepositoryAdapter.class);
     private static final String GITHUB_TOKEN_ENV_VAR = "RIKIKI_VAULT_GITHUB_TOKEN";
 
     private final Path root;
@@ -61,8 +64,9 @@ public final class JGitRepositoryAdapter implements GitRepositoryPort {
     @Override
     public void init() {
         try (Git ignored = Git.init().setDirectory(root.toFile()).call()) {
-            // repository created; nothing else to do
+            log.info("Initialized a Git repository at {}", root);
         } catch (GitAPIException e) {
+            log.warn("Failed to initialize a Git repository at {}", root, e);
             throw new GitOperationException("Failed to initialize a Git repository at " + root, e);
         }
     }
@@ -73,7 +77,9 @@ public final class JGitRepositoryAdapter implements GitRepositoryPort {
         Objects.requireNonNull(url, "url must not be null");
         try (Git git = openGit()) {
             git.remoteAdd().setName(name).setUri(new URIish(url)).call();
+            log.info("Added remote '{}' ({}) in {}", name, url, root);
         } catch (GitAPIException | URISyntaxException e) {
+            log.warn("Failed to add remote '{}' ({}) in {}", name, url, root, e);
             throw new GitOperationException("Failed to add remote '" + name + "' (" + url + ") in " + root, e);
         }
     }
@@ -81,29 +87,35 @@ public final class JGitRepositoryAdapter implements GitRepositoryPort {
     @Override
     public void clone(String remoteUri) {
         Objects.requireNonNull(remoteUri, "remoteUri must not be null");
+        log.info("Cloning {} into {}", remoteUri, root);
         try (Git ignored = Git.cloneRepository()
                 .setURI(remoteUri)
                 .setDirectory(root.toFile())
                 .setCredentialsProvider(resolveCredentials())
                 .setTransportConfigCallback(resolveSshTransportConfigCallback())
                 .call()) {
-            // repository cloned; nothing else to do
+            log.info("Cloned {} into {}", remoteUri, root);
         } catch (GitAPIException | JGitInternalException e) {
+            log.warn("Failed to clone {} into {}", remoteUri, root, e);
             throw new GitOperationException("Failed to clone into " + root, e);
         }
     }
 
     @Override
     public void pull() {
+        log.info("Pulling into {}", root);
         try (Git git = openGit()) {
             PullResult result = git.pull()
                     .setCredentialsProvider(resolveCredentials())
                     .setTransportConfigCallback(resolveSshTransportConfigCallback())
                     .call();
             if (!result.isSuccessful()) {
+                log.warn("git pull did not complete successfully in {}", root);
                 throw new GitOperationException("git pull did not complete successfully in " + root);
             }
+            log.info("Pull completed in {}", root);
         } catch (GitAPIException e) {
+            log.warn("Failed to pull in {}", root, e);
             throw new GitOperationException("Failed to pull in " + root, e);
         }
     }
@@ -185,14 +197,17 @@ public final class JGitRepositoryAdapter implements GitRepositoryPort {
         // caveat left on LocalFileSystemAdapter in Milestone 2.
         try (Git git = openGit()) {
             if (git.remoteList().call().isEmpty()) {
+                log.info("Skipping push from {} - no remote configured", root);
                 return false;
             }
             git.push()
                     .setCredentialsProvider(resolveCredentials())
                     .setTransportConfigCallback(resolveSshTransportConfigCallback())
                     .call();
+            log.info("Pushed from {}", root);
             return true;
         } catch (GitAPIException e) {
+            log.warn("Failed to push from {}", root, e);
             throw new GitOperationException("Failed to push from " + root, e);
         }
     }
