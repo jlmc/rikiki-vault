@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4C6EF5"/>
+      <stop offset="100%" stop-color="#25348C"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.16"/>
+      <stop offset="55%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="1024" height="1024" rx="224" ry="224" fill="url(#bg)"/>
+  <rect x="0" y="0" width="1024" height="1024" rx="224" ry="224" fill="url(#shine)"/>
+
+  <!-- padlock shackle -->
+  <path d="M 392 468 L 392 380 C 392 281 452 216 512 216 C 572 216 632 281 632 380 L 632 468"
+        fill="none" stroke="#FFFFFF" stroke-width="64" stroke-linecap="round"/>
+
+  <!-- padlock body -->
+  <rect x="322" y="440" width="380" height="330" rx="56" ry="56" fill="#FFFFFF"/>
+
+  <!-- keyhole, cut into the body using the background's deep shade -->
+  <circle cx="512" cy="565" r="46" fill="#25348C"/>
+  <path d="M 486 600 L 538 600 L 522 668 L 502 668 Z" fill="#25348C"/>
+</svg>
