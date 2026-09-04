@@ -272,3 +272,13 @@ A app empacotada da CLI continua a ser uma ferramenta de consola - corre-se a pa
 terminal (ex. `dist/rikiki-vault-cli.app/Contents/MacOS/rikiki-vault-cli` no macOS), só deixa de
 precisar de uma instalação de Java à parte. O ícone da app vive em `branding/icon.svg` (fonte),
 com os `branding/icon.icns`/`.ico`/`.png` específicos de cada SO derivados a partir dele.
+
+## Licença
+
+[PolyForm Strict License 1.0.0](https://polyformproject.org/licenses/strict/1.0.0) (texto integral
+em [`LICENSE`](LICENSE)) - uma licença *source-available*, não é open source aprovada pela OSI.
+Podes descarregar, ler e correr este código para qualquer fim não comercial (uso pessoal,
+investigação, projetos de hobby, organizações sem fins lucrativos/educação/governo), mas não podes
+modificá-lo, distribuir uma versão alterada, nem usá-lo comercialmente. Nada disto restringe o uso
+do próprio titular dos direitos de autor - só afeta terceiros que obtenham o código sob esta
+licença.

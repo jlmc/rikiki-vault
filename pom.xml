@@ -4,6 +4,14 @@
   <artifactId>rikiki-vault</artifactId>
   <version>1.0.1-SNAPSHOT</version>
   <packaging>pom</packaging>
+
+  <licenses>
+    <license>
+      <name>PolyForm Strict License 1.0.0</name>
+      <url>https://polyformproject.org/licenses/strict/1.0.0</url>
+    </license>
+  </licenses>
+
   <properties>
     <maven.compiler.release>25</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
