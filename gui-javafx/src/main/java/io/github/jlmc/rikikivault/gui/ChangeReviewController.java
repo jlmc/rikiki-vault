@@ -106,28 +106,71 @@ public final class ChangeReviewController {
             statusLabel.setText("Seleciona pelo menos uma alteração.");
             return;
         }
-        if (!Dialogs.confirm("Publicar", "Encriptar e publicar " + selected.size() + " alteração(ões)?")) {
+        if (!Dialogs.confirm("Publicar", "Encriptar e publicar " + selected.size() + " alteração(ões) localmente?")) {
             return;
         }
 
-        setBusy(true, "A publicar...");
-        BackgroundTask.run(
-                () -> new PublishVaultService(
-                        ctx.localFiles(), ctx.documentsFiles(), ctx.encryptionPort(), ctx.hashPort(),
-                        ctx.manifestPort(), ctx.recipientRegistryPort(), ctx.gitRepositoryPort())
-                        .publish(new PublishVaultCommand(selected, commitMessage)),
-                (Boolean pushed) -> {
-                    setBusy(false, "");
-                    onPublished.run();
-                    stage.close();
-                    if (!pushed) {
-                        Dialogs.showInfo("Publicado localmente", "Guardado localmente - sem remoto configurado.");
-                    }
-                },
+        PublishVaultService service = new PublishVaultService(
+                ctx.localFiles(), ctx.documentsFiles(), ctx.encryptionPort(), ctx.hashPort(),
+                ctx.manifestPort(), ctx.recipientRegistryPort(), ctx.gitRepositoryPort());
+
+        // Phase 1 - local only. Must never fail because of the remote; a failure here means
+        // nothing was actually saved, so it's a genuine blocking error.
+        setBusy(true, "A publicar localmente...");
+        BackgroundTask.runVoid(
+                () -> service.publishLocally(new PublishVaultCommand(selected, commitMessage)),
+                () -> onLocalPublishSucceeded(service),
                 error -> {
                     setBusy(false, "");
                     Dialogs.showError(error);
                 });
+    }
+
+    // Phase 2 - remote, optional. The local commit from phase 1 already succeeded by this point,
+    // so nothing here is ever reported as a blocking "Erro" - at worst a warning that the push
+    // itself didn't happen.
+    private void onLocalPublishSucceeded(PublishVaultService service) {
+        BackgroundTask.run(
+                () -> ctx.gitRepositoryPort().hasRemote(),
+                hasRemote -> {
+                    if (!hasRemote) {
+                        finishPublish();
+                        Dialogs.showInfo("Publicado localmente", "Guardado localmente - sem remoto configurado.");
+                        return;
+                    }
+                    setBusy(false, "");
+                    if (!Dialogs.confirm("Publicar para o remoto",
+                            "Alterações guardadas localmente. Publicar agora para o remoto (origin)?")) {
+                        finishPublish();
+                        Dialogs.showInfo("Publicado localmente", "Guardado localmente. Publica para o remoto quando quiseres.");
+                        return;
+                    }
+                    setBusy(true, "A publicar para o remoto...");
+                    BackgroundTask.run(
+                            service::pushToRemote,
+                            pushed -> {
+                                finishPublish();
+                                if (!pushed) {
+                                    Dialogs.showInfo("Publicado localmente", "Guardado localmente - sem remoto configurado.");
+                                }
+                            },
+                            error -> {
+                                finishPublish();
+                                Dialogs.showWarning("Guardado localmente",
+                                        "Não foi possível publicar para o remoto: " + Dialogs.fullMessage(error));
+                            });
+                },
+                error -> {
+                    finishPublish();
+                    Dialogs.showWarning("Guardado localmente",
+                            "Não foi possível verificar se há um remoto configurado: " + Dialogs.fullMessage(error));
+                });
+    }
+
+    private void finishPublish() {
+        setBusy(false, "");
+        onPublished.run();
+        stage.close();
     }
 
     private void setBusy(boolean busy, String message) {

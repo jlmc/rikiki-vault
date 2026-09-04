@@ -3,6 +3,7 @@ package io.github.jlmc.rikikivault.core.adapters.git;
 import io.github.jlmc.rikikivault.core.configuration.GitAuthSettings;
 import io.github.jlmc.rikikivault.core.domain.exception.GitOperationException;
 import io.github.jlmc.rikikivault.core.domain.model.GitStatus;
+import io.github.jlmc.rikikivault.core.domain.model.RemoteSyncStatus;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.transport.CredentialItem;
 import org.eclipse.jgit.transport.CredentialsProvider;
@@ -113,24 +114,41 @@ class JGitRepositoryAdapterTest {
     }
 
     @Test
-    void isRemoteAheadIsFalseWithNoRemoteConfigured(@TempDir Path root) {
+    void hasRemoteIsFalseWithNoRemoteConfigured(@TempDir Path root) {
         JGitRepositoryAdapter adapter = new JGitRepositoryAdapter(root, new FakeGitAuthSettingsPort());
         adapter.init();
 
-        assertFalse(adapter.isRemoteAhead());
+        assertFalse(adapter.hasRemote());
     }
 
     @Test
-    void isRemoteAheadIsFalseWhenNothingNewWasPushed(@TempDir Path bareRepoDir, @TempDir Path workDirs) throws Exception {
+    void hasRemoteIsTrueAfterAddingOne(@TempDir Path root) {
+        JGitRepositoryAdapter adapter = new JGitRepositoryAdapter(root, new FakeGitAuthSettingsPort());
+        adapter.init();
+        adapter.addRemote("origin", "file:///some/remote.git");
+
+        assertTrue(adapter.hasRemote());
+    }
+
+    @Test
+    void remoteSyncStatusIsNoRemoteWithNoRemoteConfigured(@TempDir Path root) {
+        JGitRepositoryAdapter adapter = new JGitRepositoryAdapter(root, new FakeGitAuthSettingsPort());
+        adapter.init();
+
+        assertEquals(RemoteSyncStatus.noRemote(), adapter.remoteSyncStatus());
+    }
+
+    @Test
+    void remoteSyncStatusIsSyncedWhenNothingNewWasPushed(@TempDir Path bareRepoDir, @TempDir Path workDirs) throws Exception {
         seedBareRepoWithOneCommit(bareRepoDir, "notes.md", "original");
         JGitRepositoryAdapter adapter = new JGitRepositoryAdapter(workDirs.resolve("a"), new FakeGitAuthSettingsPort());
         adapter.clone("file://" + bareRepoDir);
 
-        assertFalse(adapter.isRemoteAhead());
+        assertTrue(adapter.remoteSyncStatus().isSynced());
     }
 
     @Test
-    void isRemoteAheadIsTrueAfterAnotherCloneHasPushedAndThisOneHasNotPulled(
+    void remoteSyncStatusIsBehindAfterAnotherCloneHasPushedAndThisOneHasNotPulled(
             @TempDir Path bareRepoDir, @TempDir Path workDirs) throws Exception {
         seedBareRepoWithOneCommit(bareRepoDir, "notes.md", "original");
         Path dirA = workDirs.resolve("a");
@@ -145,11 +163,13 @@ class JGitRepositoryAdapterTest {
         adapterA.commit("add new.txt");
         adapterA.push();
 
-        assertTrue(adapterB.isRemoteAhead(), "B has not pulled A's new commit yet");
+        RemoteSyncStatus behind = adapterB.remoteSyncStatus();
+        assertTrue(behind.hasRemote());
+        assertEquals(1, behind.behindCount(), "B has not pulled A's new commit yet");
 
         adapterB.pull();
 
-        assertFalse(adapterB.isRemoteAhead(), "after pulling, B is caught up");
+        assertTrue(adapterB.remoteSyncStatus().isSynced(), "after pulling, B is caught up");
     }
 
     @Test

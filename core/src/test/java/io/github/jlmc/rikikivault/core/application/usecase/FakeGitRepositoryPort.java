@@ -1,6 +1,7 @@
 package io.github.jlmc.rikikivault.core.application.usecase;
 
 import io.github.jlmc.rikikivault.core.domain.model.GitStatus;
+import io.github.jlmc.rikikivault.core.domain.model.RemoteSyncStatus;
 import io.github.jlmc.rikikivault.core.ports.out.GitRepositoryPort;
 
 import java.util.ArrayList;
@@ -14,7 +15,8 @@ final class FakeGitRepositoryPort implements GitRepositoryPort {
     int initCallCount = 0;
     String clonedRemoteUri;
     int pullCallCount = 0;
-    boolean isRemoteAheadReturnValue = false;
+    boolean hasRemoteReturnValue = false;
+    RemoteSyncStatus remoteSyncStatusToReturn = RemoteSyncStatus.noRemote();
     int pushCallCount = 0;
     boolean pushReturnValue = true;
     final Map<String, String> addedRemotes = new LinkedHashMap<>();
@@ -44,8 +46,13 @@ final class FakeGitRepositoryPort implements GitRepositoryPort {
     }
 
     @Override
-    public boolean isRemoteAhead() {
-        return isRemoteAheadReturnValue;
+    public boolean hasRemote() {
+        return hasRemoteReturnValue;
+    }
+
+    @Override
+    public RemoteSyncStatus remoteSyncStatus() {
+        return remoteSyncStatusToReturn;
     }
 
     @Override

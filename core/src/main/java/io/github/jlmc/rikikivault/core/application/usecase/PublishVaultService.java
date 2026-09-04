@@ -59,6 +59,12 @@ public final class PublishVaultService implements PublishVaultUseCase {
 
     @Override
     public boolean publish(PublishVaultCommand command) {
+        publishLocally(command);
+        return pushToRemote();
+    }
+
+    @Override
+    public void publishLocally(PublishVaultCommand command) {
         Objects.requireNonNull(command, "command must not be null");
 
         List<PublicKey> recipients = recipientRegistryPort.load().recipients().stream().map(Recipient::publicKey).toList();
@@ -86,6 +92,10 @@ public final class PublishVaultService implements PublishVaultUseCase {
 
         gitRepositoryPort.add(List.of("."));
         gitRepositoryPort.commit(command.commitMessage());
+    }
+
+    @Override
+    public boolean pushToRemote() {
         return gitRepositoryPort.push();
     }
 

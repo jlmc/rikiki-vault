@@ -1,6 +1,7 @@
 package io.github.jlmc.rikikivault.core.ports.out;
 
 import io.github.jlmc.rikikivault.core.domain.model.GitStatus;
+import io.github.jlmc.rikikivault.core.domain.model.RemoteSyncStatus;
 
 import java.util.List;
 
@@ -15,11 +16,20 @@ public interface GitRepositoryPort {
     void pull();
 
     /**
-     * @return {@code true} if the remote has commits this local branch doesn't have yet (fetched
-     * but not merged in) - {@code false} when there's no remote configured, so callers don't need
-     * to special-case a local-only vault themselves.
+     * Local-only check (reads the repository's own config, no network) - {@code true} if any
+     * remote is configured. Safe to call from a flow that must never fail because of a broken
+     * network/authentication, unlike {@link #remoteSyncStatus()}.
      */
-    boolean isRemoteAhead();
+    boolean hasRemote();
+
+    /**
+     * Fetches from the remote and compares it to the local branch. A best-effort, on-demand check
+     * (e.g. for a status badge) - never wire this into a flow that must succeed even without
+     * network access or working credentials; call {@link #hasRemote()} first if that's needed.
+     *
+     * @return {@link RemoteSyncStatus#noRemote()} when there's no remote configured
+     */
+    RemoteSyncStatus remoteSyncStatus();
 
     GitStatus status();
 

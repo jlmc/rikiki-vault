@@ -162,4 +162,34 @@ class PublishVaultServiceTest {
         gitRepositoryPort.pushReturnValue = false;
         assertEquals(false, service.publish(command), "sem remoto configurado, publish deveria devolver false");
     }
+
+    @Test
+    void publishLocallyNeverCallsPush() throws Exception {
+        FakeFileStoragePort localFiles = new FakeFileStoragePort().withFile("cv.pdf", "cv content");
+        FakeGitRepositoryPort gitRepositoryPort = new FakeGitRepositoryPort();
+        PublishVaultService service = new PublishVaultService(
+                localFiles, new FakeFileStoragePort(), new FakeEncryptionPort(), new Sha256HashAdapter(),
+                new FakeManifestPort(), registryWithOneRecipient(someRecipientKey()), gitRepositoryPort);
+
+        service.publishLocally(new PublishVaultCommand(List.of(new VaultChange(ChangeType.ADDED, "cv.pdf")), "publish cv.pdf"));
+
+        assertEquals(1, gitRepositoryPort.commitMessages.size());
+        assertEquals(0, gitRepositoryPort.pushCallCount);
+    }
+
+    @Test
+    void pushToRemoteDelegatesToGitRepositoryPort() {
+        FakeGitRepositoryPort gitRepositoryPort = new FakeGitRepositoryPort();
+        PublishVaultService service = new PublishVaultService(
+                new FakeFileStoragePort(), new FakeFileStoragePort(), new FakeEncryptionPort(), new Sha256HashAdapter(),
+                new FakeManifestPort(), new FakeRecipientRegistryPort(), gitRepositoryPort);
+
+        gitRepositoryPort.pushReturnValue = false;
+        assertEquals(false, service.pushToRemote());
+        assertEquals(1, gitRepositoryPort.pushCallCount);
+
+        gitRepositoryPort.pushReturnValue = true;
+        assertEquals(true, service.pushToRemote());
+        assertEquals(2, gitRepositoryPort.pushCallCount);
+    }
 }

@@ -2,6 +2,7 @@ package io.github.jlmc.rikikivault.core.adapters.git;
 
 import io.github.jlmc.rikikivault.core.domain.exception.GitOperationException;
 import io.github.jlmc.rikikivault.core.domain.model.GitStatus;
+import io.github.jlmc.rikikivault.core.domain.model.RemoteSyncStatus;
 import io.github.jlmc.rikikivault.core.ports.out.GitAuthSettingsPort;
 import io.github.jlmc.rikikivault.core.ports.out.GitRepositoryPort;
 import org.eclipse.jgit.api.AddCommand;
@@ -106,10 +107,19 @@ public final class JGitRepositoryAdapter implements GitRepositoryPort {
     }
 
     @Override
-    public boolean isRemoteAhead() {
+    public boolean hasRemote() {
+        try (Git git = openGit()) {
+            return !git.remoteList().call().isEmpty();
+        } catch (GitAPIException e) {
+            throw new GitOperationException("Failed to read remotes of " + root, e);
+        }
+    }
+
+    @Override
+    public RemoteSyncStatus remoteSyncStatus() {
         try (Git git = openGit()) {
             if (git.remoteList().call().isEmpty()) {
-                return false;
+                return RemoteSyncStatus.noRemote();
             }
             git.fetch()
                     .setCredentialsProvider(resolveCredentials())
@@ -117,7 +127,10 @@ public final class JGitRepositoryAdapter implements GitRepositoryPort {
                     .call();
             String branch = git.getRepository().getBranch();
             BranchTrackingStatus trackingStatus = BranchTrackingStatus.of(git.getRepository(), branch);
-            return trackingStatus != null && trackingStatus.getBehindCount() > 0;
+            if (trackingStatus == null) {
+                return new RemoteSyncStatus(true, 0, 0);
+            }
+            return new RemoteSyncStatus(true, trackingStatus.getAheadCount(), trackingStatus.getBehindCount());
         } catch (GitAPIException | IOException e) {
             throw new GitOperationException("Failed to check remote status of " + root, e);
         }

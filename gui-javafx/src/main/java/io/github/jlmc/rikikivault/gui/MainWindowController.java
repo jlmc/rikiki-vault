@@ -12,6 +12,7 @@ import io.github.jlmc.rikikivault.core.application.usecase.ScanChangesService;
 import io.github.jlmc.rikikivault.core.domain.exception.PrivateKeyNotFoundException;
 import io.github.jlmc.rikikivault.core.domain.model.MachineIdentity;
 import io.github.jlmc.rikikivault.core.domain.model.PullResult;
+import io.github.jlmc.rikikivault.core.domain.model.RemoteSyncStatus;
 import io.github.jlmc.rikikivault.core.domain.model.VaultChange;
 import io.github.jlmc.rikikivault.core.ports.in.DiffFileCommand;
 import io.github.jlmc.rikikivault.core.ports.in.RevertFileCommand;
@@ -37,6 +38,7 @@ public final class MainWindowController {
 
     @FXML private Label vaultPathLabel;
     @FXML private Label fingerprintLabel;
+    @FXML private Label remoteSyncLabel;
     @FXML private TreeTableView<FolderTreeNode> fileTable;
     @FXML private TreeTableColumn<FolderTreeNode, String> nameColumn;
     @FXML private TreeTableColumn<FolderTreeNode, FolderTreeNode> statusColumn;
@@ -68,6 +70,7 @@ public final class MainWindowController {
         showPreview(null);
 
         refresh();
+        refreshRemoteSyncStatus();
         startAutoRefresh();
     }
 
@@ -277,6 +280,7 @@ public final class MainWindowController {
     @FXML
     private void onRefresh() {
         refresh(true);
+        refreshRemoteSyncStatus();
     }
 
     @FXML
@@ -292,8 +296,42 @@ public final class MainWindowController {
                     Stage owner = (Stage) fileTable.getScene().getWindow();
                     PullResultController.open(owner, result);
                     refresh();
+                    refreshRemoteSyncStatus();
                 },
                 Dialogs::showError);
+    }
+
+    /**
+     * Best-effort, on-demand "is local in sync with the remote" indicator - never wired into a
+     * blocking flow (that was the exact bug this replaced). A fetch failure (broken network/auth)
+     * just shows "desconhecido", never an error dialog.
+     */
+    private void refreshRemoteSyncStatus() {
+        BackgroundTask.run(
+                () -> ctx.gitRepositoryPort().remoteSyncStatus(),
+                this::showRemoteSyncStatus,
+                error -> showRemoteSyncStatus(null));
+    }
+
+    private void showRemoteSyncStatus(RemoteSyncStatus status) {
+        remoteSyncLabel.getStyleClass().removeAll("status-synced", "status-added", "status-modified", "status-deleted");
+        if (status == null) {
+            remoteSyncLabel.setText("Remoto: desconhecido");
+        } else if (!status.hasRemote()) {
+            remoteSyncLabel.setText("Remoto: não configurado");
+        } else if (status.isSynced()) {
+            remoteSyncLabel.setText("Remoto: sincronizado");
+            remoteSyncLabel.getStyleClass().add("status-synced");
+        } else if (status.isDiverged()) {
+            remoteSyncLabel.setText("Remoto: divergente (local +" + status.aheadCount() + " / remoto +" + status.behindCount() + ")");
+            remoteSyncLabel.getStyleClass().add("status-deleted");
+        } else if (status.aheadCount() > 0) {
+            remoteSyncLabel.setText("Remoto: " + status.aheadCount() + " por publicar");
+            remoteSyncLabel.getStyleClass().add("status-added");
+        } else {
+            remoteSyncLabel.setText("Remoto: " + status.behindCount() + " por fazer pull");
+            remoteSyncLabel.getStyleClass().add("status-modified");
+        }
     }
 
     @FXML
@@ -310,29 +348,26 @@ public final class MainWindowController {
 
     @FXML
     private void onPublish() {
+        // Purely local - never touches the network, so this can never fail because of a broken
+        // remote/credentials. Whether to publish to the remote is asked separately, inside
+        // ChangeReviewController, only when there's something to publish and only if a remote is
+        // actually configured.
         BackgroundTask.run(
-                () -> {
-                    List<VaultChange> changes = new ScanChangesService(ctx.localFiles(), ctx.hashPort(), ctx.manifestPort()).scan();
-                    // Only worth checking the remote when there's nothing local to publish -
-                    // otherwise ChangeReviewController opens regardless, no need for a fetch first.
-                    boolean remoteAhead = changes.isEmpty() && ctx.gitRepositoryPort().isRemoteAhead();
-                    return new PublishCheck(changes, remoteAhead);
-                },
-                check -> {
-                    if (check.changes().isEmpty()) {
-                        String message = check.remoteAhead()
-                                ? "Nada para publicar localmente, mas o remoto tem alterações que ainda não fizeste Pull."
-                                : "Não há alterações para publicar.";
-                        Dialogs.showInfo("Publicar", message);
+                () -> new ScanChangesService(ctx.localFiles(), ctx.hashPort(), ctx.manifestPort()).scan(),
+                (List<VaultChange> changes) -> {
+                    if (changes.isEmpty()) {
+                        Dialogs.showInfo("Publicar", "Não há alterações para publicar.");
                         return;
                     }
                     Stage owner = (Stage) fileTable.getScene().getWindow();
-                    ChangeReviewController.open(owner, ctx, check.changes(), this::refresh);
+                    ChangeReviewController.open(owner, ctx, changes, this::refreshAfterPublish);
                 },
                 Dialogs::showError);
     }
 
-    private record PublishCheck(List<VaultChange> changes, boolean remoteAhead) {
+    private void refreshAfterPublish() {
+        refresh();
+        refreshRemoteSyncStatus();
     }
 
     private void refresh() {

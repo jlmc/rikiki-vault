@@ -18,7 +18,16 @@ final class Dialogs {
         alert.showAndWait();
     }
 
-    private static String fullMessage(Throwable error) {
+    static void showWarning(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    /** Walks to the deepest cause with its own distinct message - same composition {@link #showError} uses. */
+    static String fullMessage(Throwable error) {
         String topMessage = error.getMessage() != null ? error.getMessage() : error.toString();
         Throwable rootCause = error;
         while (rootCause.getCause() != null) {

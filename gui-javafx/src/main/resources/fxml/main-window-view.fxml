@@ -20,6 +20,7 @@
             <Label fx:id="vaultPathLabel" styleClass="toolbar-title"/>
             <Region HBox.hgrow="ALWAYS"/>
             <Label fx:id="fingerprintLabel" styleClass="fingerprint-label"/>
+            <Label fx:id="remoteSyncLabel" styleClass="status-label"/>
             <Button fx:id="refreshButton" text="Atualizar" onAction="#onRefresh"/>
             <Button fx:id="pullButton" text="Pull" onAction="#onPull"/>
             <Button fx:id="manageAccessButton" text="Gerir acesso..." onAction="#onManageAccess"/>

@@ -251,22 +251,27 @@ public final class Main {
         ScanChangesService scanChangesService = new ScanChangesService(ctx.localFiles(), ctx.hashPort(), ctx.manifestPort());
         List<VaultChange> changes = scanChangesService.scan();
         if (changes.isEmpty()) {
-            if (ctx.gitRepositoryPort().isRemoteAhead()) {
-                System.out.println("Nada para publicar localmente, mas o remoto tem alterações que ainda não fizeste pull - corre 'pull' primeiro.");
-            } else {
-                System.out.println("Nada para publicar.");
-            }
+            System.out.println("Nada para publicar.");
             return;
         }
 
+        // Phase 1 - local only, never touches the network. Must succeed and be reported on its
+        // own before anything remote is attempted, so a broken remote never hides a successful
+        // local commit behind a fatal "Erro:" exit.
         PublishVaultService service = new PublishVaultService(
                 ctx.localFiles(), ctx.documentsFiles(), ctx.encryptionPort(), ctx.hashPort(),
                 ctx.manifestPort(), ctx.recipientRegistryPort(), ctx.gitRepositoryPort());
-        boolean pushed = service.publish(new PublishVaultCommand(changes, message));
+        service.publishLocally(new PublishVaultCommand(changes, message));
+        System.out.println("Publicadas " + changes.size() + " alterações (guardadas localmente).");
 
-        System.out.println("Publicadas " + changes.size() + " alterações.");
-        if (!pushed) {
-            System.out.println("(guardado localmente - sem remoto configurado)");
+        if (!ctx.gitRepositoryPort().hasRemote()) {
+            System.out.println("(sem remoto configurado)");
+            return;
+        }
+        try {
+            service.pushToRemote();
+        } catch (RikikiVaultException e) {
+            System.out.println("Aviso: não foi possível publicar para o remoto: " + fullMessage(e));
         }
     }
 
