@@ -13,7 +13,7 @@
 <?import javafx.scene.layout.VBox?>
 
 <VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="io.github.jlmc.rikikivault.gui.GitAuthSettingsPanel"
+      fx:controller="io.github.jlmc.rikikivault.gui.controllers.GitAuthSettingsPanel"
       styleClass="git-auth-panel" spacing="16">
     <padding>
         <Insets top="16" right="16" bottom="16" left="16"/>

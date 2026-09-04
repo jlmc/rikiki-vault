@@ -11,7 +11,7 @@
 <?import javafx.scene.layout.VBox?>
 
 <BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="io.github.jlmc.rikikivault.gui.SettingsController"
+            fx:controller="io.github.jlmc.rikikivault.gui.controllers.SettingsController"
             styleClass="settings-view">
     <top>
         <Label text="%settings.title" styleClass="title">

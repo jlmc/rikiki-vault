@@ -1,5 +1,9 @@
 package io.github.jlmc.rikikivault.gui;
 
+import io.github.jlmc.rikikivault.gui.controllers.InitOrCloneController;
+import io.github.jlmc.rikikivault.gui.controllers.MainWindowController;
+import io.github.jlmc.rikikivault.gui.controllers.WelcomeController;
+import io.github.jlmc.rikikivault.gui.support.Fxml;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;

@@ -11,7 +11,7 @@
 <?import javafx.scene.layout.StackPane?>
 
 <BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="io.github.jlmc.rikikivault.gui.MainWindowController">
+            fx:controller="io.github.jlmc.rikikivault.gui.controllers.MainWindowController">
     <top>
         <HBox styleClass="toolbar" spacing="12" alignment="CENTER_LEFT">
             <padding>

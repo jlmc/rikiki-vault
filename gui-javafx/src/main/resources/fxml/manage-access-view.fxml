@@ -9,7 +9,7 @@
 <?import javafx.scene.layout.VBox?>
 
 <VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="io.github.jlmc.rikikivault.gui.ManageAccessController"
+      fx:controller="io.github.jlmc.rikikivault.gui.controllers.ManageAccessController"
       styleClass="manage-access-view" spacing="24">
     <padding>
         <Insets top="24" right="24" bottom="24" left="24"/>

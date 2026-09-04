@@ -7,7 +7,7 @@
 <?import javafx.scene.layout.VBox?>
 
 <VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="io.github.jlmc.rikikivault.gui.DiffResultController"
+      fx:controller="io.github.jlmc.rikikivault.gui.controllers.DiffResultController"
       styleClass="diff-result-view" spacing="12">
     <padding>
         <Insets top="20" right="20" bottom="20" left="20"/>

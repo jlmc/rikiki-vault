@@ -4,7 +4,7 @@
 <?import javafx.scene.layout.VBox?>
 
 <VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="io.github.jlmc.rikikivault.gui.WelcomeController"
+      fx:controller="io.github.jlmc.rikikivault.gui.controllers.WelcomeController"
       styleClass="welcome-view" alignment="CENTER" spacing="16">
     <Label text="Rikiki Vault" styleClass="title"/>
     <Label text="%welcome.subtitle" styleClass="subtitle" wrapText="true"/>

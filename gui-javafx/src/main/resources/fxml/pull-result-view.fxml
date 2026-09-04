@@ -7,7 +7,7 @@
 <?import javafx.scene.layout.VBox?>
 
 <VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="io.github.jlmc.rikikivault.gui.PullResultController"
+      fx:controller="io.github.jlmc.rikikivault.gui.controllers.PullResultController"
       styleClass="pull-result-view" spacing="16">
     <padding>
         <Insets top="20" right="20" bottom="20" left="20"/>

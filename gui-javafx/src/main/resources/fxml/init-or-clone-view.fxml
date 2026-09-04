@@ -10,7 +10,7 @@
 <?import javafx.scene.layout.VBox?>
 
 <VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="io.github.jlmc.rikikivault.gui.InitOrCloneController"
+      fx:controller="io.github.jlmc.rikikivault.gui.controllers.InitOrCloneController"
       styleClass="init-or-clone-view" spacing="24">
     <padding>
         <Insets top="32" right="32" bottom="32" left="32"/>
