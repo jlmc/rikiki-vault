@@ -64,6 +64,18 @@
       <artifactId>org.eclipse.jgit.ssh.apache.agent</artifactId>
       <version>${jgit.version}</version>
     </dependency>
+    <!-- Apache MINA SSHD (JGit's SSH transport) only recognizes Ed25519/EdDSA keys - both from an
+         SSH agent and from a key file - when this optional provider is on the classpath; without
+         it, every Ed25519 identity fails with "NoSuchAlgorithmException: EdDSA provider not
+         supported", surfacing to the user as the generic "No more authentication methods
+         available". Confirmed by reproducing against a real GitHub remote with SLF4J debug
+         logging enabled - the JDK's own native Ed25519 support (Java 15+) is not picked up by
+         this mina-sshd version's provider-detection on its own. -->
+    <dependency>
+      <groupId>net.i2p.crypto</groupId>
+      <artifactId>eddsa</artifactId>
+      <version>0.3.0</version>
+    </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-api</artifactId>
