@@ -167,6 +167,27 @@ uma interrupção ou falha a meio da escrita nunca deixa um ficheiro truncado no
 distingui-las antes de reconciliar manualmente; continua sem ação de "manter remoto"/"comparar" —
 a versão local é sempre a que fica automaticamente, e o resto resolve-se à mão.
 
+### Logging
+
+Tanto a CLI como a app desktop trazem um *binding* simples do [slf4j-simple](https://www.slf4j.org/),
+para que os logs que já existem nas bibliotecas de Git/SSH (JGit, mina-sshd) apareçam no terminal
+que as lançou - sem nenhum ficheiro de configuração extra a preparar para distribuição. Por omissão
+fica silencioso (só avisos/erros); para diagnosticar um push/pull/clone real contra um remoto, corre
+com mais detalhe:
+
+```bash
+java -Dorg.slf4j.simpleLogger.defaultLogLevel=debug -jar cli/target/rikiki-vault.jar -C <vault> pull
+```
+
+ou só os pacotes de Git/SSH, para manter o resto silencioso:
+
+```bash
+java -Dorg.slf4j.simpleLogger.log.org.apache.sshd=debug -Dorg.slf4j.simpleLogger.log.org.eclipse.jgit=debug -jar cli/target/rikiki-vault.jar -C <vault> pull
+```
+
+As mesmas *flags* funcionam com `mvn -pl gui-javafx javafx:run -D...` para a app desktop - os logs
+aparecem no terminal que correu esse comando, ao lado da janela aberta.
+
 ## Aplicação desktop (JavaFX)
 
 ```

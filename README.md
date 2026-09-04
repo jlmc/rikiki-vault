@@ -164,6 +164,27 @@ conflict, both the local and remote SHA-256 hashes are shown so you can tell the
 before manually reconciling them; there's still no "keep remote"/"compare" action built in — the
 local version is always what's kept automatically, and you resolve the rest by hand.
 
+### Logging
+
+The CLI and the desktop app both ship a plain [slf4j-simple](https://www.slf4j.org/) binding, so
+whatever Git/SSH library logging already exists (JGit, mina-sshd) prints to the terminal that
+launched them — no separate config file to set up for distribution. By default it's quiet (only
+warnings/errors); for troubleshooting a real push/pull/clone against a remote, run with more
+detail:
+
+```bash
+java -Dorg.slf4j.simpleLogger.defaultLogLevel=debug -jar cli/target/rikiki-vault.jar -C <vault> pull
+```
+
+or just the Git/SSH packages, to keep the rest quiet:
+
+```bash
+java -Dorg.slf4j.simpleLogger.log.org.apache.sshd=debug -Dorg.slf4j.simpleLogger.log.org.eclipse.jgit=debug -jar cli/target/rikiki-vault.jar -C <vault> pull
+```
+
+The same flags work with `mvn -pl gui-javafx javafx:run -D...` for the desktop app — the logs show
+up in whatever terminal ran that command, alongside the running window.
+
 ## Desktop app (JavaFX)
 
 ```
