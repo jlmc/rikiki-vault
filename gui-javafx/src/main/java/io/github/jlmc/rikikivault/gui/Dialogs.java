@@ -14,15 +14,22 @@ final class Dialogs {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle(Messages.get("common.error.title"));
         alert.setHeaderText(null);
-        alert.setContentText(fullMessage(error));
+        ErrorAdvice advice = ErrorAdvice.forError(error);
+        String content = fullMessage(error)
+                + "\n\n" + Messages.get("errorAdvice.why") + ": " + advice.explanation()
+                + "\n" + Messages.get("errorAdvice.suggestion") + ": " + advice.suggestion();
+        // advice.explanation()/suggestion() always resolve to a real bundle entry, so content here
+        // can never actually be blank - safe() is just the same net showInfo/showWarning use, kept
+        // consistent rather than assumed.
+        alert.setContentText(safe(content, Messages.get("errorAdvice.generic.explanation")));
         alert.showAndWait();
     }
 
     static void showWarning(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.WARNING);
-        alert.setTitle(title);
+        alert.setTitle(safe(title, Messages.get("common.warning.title")));
         alert.setHeaderText(null);
-        alert.setContentText(message);
+        alert.setContentText(safe(message, Messages.get("dialogs.fallback.warning")));
         alert.showAndWait();
     }
 
@@ -43,7 +50,7 @@ final class Dialogs {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle(title);
         alert.setHeaderText(null);
-        alert.setContentText(message);
+        alert.setContentText(safe(message, Messages.get("dialogs.fallback.info")));
         Optional<ButtonType> result = alert.showAndWait();
         return result.isPresent() && result.get() == ButtonType.OK;
     }
@@ -52,7 +59,17 @@ final class Dialogs {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(title);
         alert.setHeaderText(null);
-        alert.setContentText(message);
+        alert.setContentText(safe(message, Messages.get("dialogs.fallback.info")));
         alert.showAndWait();
+    }
+
+    /**
+     * Defensive net (Milestone 21): whatever the cause, no {@code Alert} built through this class
+     * can ever render with blank content - a reported bug the exact trigger of which was never
+     * pinned down, so this closes off the whole class of "some string ended up empty" causes
+     * rather than one specific one.
+     */
+    private static String safe(String text, String fallback) {
+        return text == null || text.isBlank() ? fallback : text;
     }
 }
