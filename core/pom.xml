@@ -8,7 +8,7 @@
   </parent>
 
   <groupId>io.github.jlmc</groupId>
-  <artifactId>core</artifactId>
+  <artifactId>rikiki-vault-core</artifactId>
   <version>1.0.2</version>
 
   <name>core</name>

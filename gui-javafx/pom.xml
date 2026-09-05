@@ -8,7 +8,7 @@
   </parent>
 
   <groupId>io.github.jlmc</groupId>
-  <artifactId>gui-javafx</artifactId>
+  <artifactId>rikiki-vault-gui-javafx</artifactId>
   <version>1.0.2</version>
 
   <name>gui-javafx</name>
@@ -38,7 +38,7 @@
   <dependencies>
     <dependency>
       <groupId>io.github.jlmc</groupId>
-      <artifactId>core</artifactId>
+      <artifactId>rikiki-vault-core</artifactId>
       <version>1.0.2</version>
     </dependency>
     <dependency>

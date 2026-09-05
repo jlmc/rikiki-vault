@@ -41,10 +41,12 @@ mvn install
 
 This builds all three modules:
 
-- **`core`** — domain model, ports & adapters, all the application use cases. No UI, no `main`.
-- **`cli`** — a console application (`cli/target/rikiki-vault.jar`) exposing every use case as a
-  command.
-- **`gui-javafx`** — a desktop JavaFX application wrapping the same use cases.
+- **`core`** (Maven artifactId `rikiki-vault-core`) — domain model, ports & adapters, all the
+  application use cases. No UI, no `main`.
+- **`cli`** (Maven artifactId `rikiki-vault-cli`) — a console application
+  (`cli/target/rikiki-vault.jar`) exposing every use case as a command.
+- **`gui-javafx`** (Maven artifactId `rikiki-vault-gui-javafx`) — a desktop JavaFX application
+  wrapping the same use cases.
 
 ## Machine identity
 

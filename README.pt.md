@@ -42,11 +42,12 @@ mvn install
 
 Isto compila os três módulos:
 
-- **`core`** — modelo de domínio, ports & adapters, todos os casos de uso da aplicação. Sem UI,
-  sem `main`.
-- **`cli`** — uma aplicação de consola (`cli/target/rikiki-vault.jar`) que expõe cada caso de uso
-  como um comando.
-- **`gui-javafx`** — uma aplicação desktop JavaFX que usa os mesmos casos de uso.
+- **`core`** (artifactId Maven `rikiki-vault-core`) — modelo de domínio, ports & adapters, todos os
+  casos de uso da aplicação. Sem UI, sem `main`.
+- **`cli`** (artifactId Maven `rikiki-vault-cli`) — uma aplicação de consola
+  (`cli/target/rikiki-vault.jar`) que expõe cada caso de uso como um comando.
+- **`gui-javafx`** (artifactId Maven `rikiki-vault-gui-javafx`) — uma aplicação desktop JavaFX que
+  usa os mesmos casos de uso.
 
 ## Identidade da máquina
 
