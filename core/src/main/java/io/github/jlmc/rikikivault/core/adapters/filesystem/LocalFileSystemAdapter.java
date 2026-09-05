@@ -11,6 +11,7 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
@@ -72,7 +73,7 @@ public final class LocalFileSystemAdapter implements FileStoragePort {
         try {
             Path parent = resolved.getParent();
             if (parent != null) {
-                Files.createDirectories(parent);
+                createDirectoriesSecurely(parent);
             }
             Path tempFile = Files.createTempFile(parent, resolved.getFileName().toString(), ".tmp");
             try {
@@ -106,6 +107,33 @@ public final class LocalFileSystemAdapter implements FileStoragePort {
             // back still avoids ever writing a truncated file directly at the destination.
             Files.move(tempFile, destination, StandardCopyOption.REPLACE_EXISTING);
         }
+    }
+
+    private static void createDirectoriesSecurely(Path directory) throws IOException {
+        // Only restricts newly created directories - one already sitting there from before this
+        // method existed keeps whatever permissions it already had (no retroactive migration).
+        if (Files.exists(directory)) {
+            return;
+        }
+        if (supportsPosixPermissions(directory)) {
+            Set<PosixFilePermission> ownerOnly = EnumSet.of(
+                    PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE, PosixFilePermission.OWNER_EXECUTE);
+            Files.createDirectories(directory, PosixFilePermissions.asFileAttribute(ownerOnly));
+        } else {
+            // Non-POSIX filesystem (e.g. Windows): no atomic "create with permissions" available.
+            Files.createDirectories(directory);
+            java.io.File asFile = directory.toFile();
+            asFile.setReadable(false, false);
+            asFile.setReadable(true, true);
+            asFile.setWritable(false, false);
+            asFile.setWritable(true, true);
+            asFile.setExecutable(false, false);
+            asFile.setExecutable(true, true);
+        }
+    }
+
+    private static boolean supportsPosixPermissions(Path path) {
+        return Files.getFileAttributeView(path, PosixFileAttributeView.class) != null;
     }
 
     private static void restrictToOwnerOnly(Path file) throws IOException {

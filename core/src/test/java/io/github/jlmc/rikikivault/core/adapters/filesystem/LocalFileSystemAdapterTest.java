@@ -141,6 +141,21 @@ class LocalFileSystemAdapterTest {
     }
 
     @Test
+    void writeFileProducesOwnerOnlyDirectoriesOnPosixFilesystems(@TempDir Path tempDir) throws IOException {
+        Assumptions.assumeTrue(Files.getFileAttributeView(tempDir, PosixFileAttributeView.class) != null,
+                "POSIX permissions are not supported on this filesystem");
+        Path root = tempDir.resolve("local");
+        LocalFileSystemAdapter adapter = new LocalFileSystemAdapter(root);
+
+        adapter.writeFile("a/b/c/deep.txt", "content".getBytes(StandardCharsets.UTF_8));
+
+        assertEquals(PosixFilePermissions.fromString("rwx------"), Files.getPosixFilePermissions(root));
+        assertEquals(PosixFilePermissions.fromString("rwx------"), Files.getPosixFilePermissions(root.resolve("a")));
+        assertEquals(PosixFilePermissions.fromString("rwx------"), Files.getPosixFilePermissions(root.resolve("a/b")));
+        assertEquals(PosixFilePermissions.fromString("rwx------"), Files.getPosixFilePermissions(root.resolve("a/b/c")));
+    }
+
+    @Test
     void writeFileLeavesNoTempFileBehind(@TempDir Path tempDir) throws IOException {
         Path root = tempDir.resolve("local");
         LocalFileSystemAdapter adapter = new LocalFileSystemAdapter(root);
