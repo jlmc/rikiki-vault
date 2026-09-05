@@ -66,6 +66,20 @@ class MainCliSmokeTest {
             assertTrue(restoreOutput.contains("cv.pdf"), "restore deveria reportar cv.pdf restaurado, foi: " + restoreOutput);
             assertTrue(Files.exists(vaultDir.resolve("local").resolve("cv.pdf")));
             assertTrue("cv content".equals(Files.readString(vaultDir.resolve("local").resolve("cv.pdf"), StandardCharsets.UTF_8)));
+
+            // clear-local é o inverso: cv.pdf (publicado, sem alterações) é seguro para apagar;
+            // um ficheiro novo nunca publicado (draft.md) fica de fora por omissão.
+            Files.writeString(vaultDir.resolve("local").resolve("draft.md"), "rascunho", StandardCharsets.UTF_8);
+
+            String clearLocalOutput = run("-C", vaultDir.toString(), "clear-local");
+            assertTrue(clearLocalOutput.contains("cv.pdf"), "clear-local deveria reportar cv.pdf limpo, foi: " + clearLocalOutput);
+            assertTrue(clearLocalOutput.contains("draft.md"), "clear-local deveria reportar draft.md mantido, foi: " + clearLocalOutput);
+            assertTrue(Files.notExists(vaultDir.resolve("local").resolve("cv.pdf")));
+            assertTrue(Files.exists(vaultDir.resolve("local").resolve("draft.md")));
+
+            String clearLocalForcedOutput = run("-C", vaultDir.toString(), "clear-local", "--include-unpublished");
+            assertTrue(clearLocalForcedOutput.contains("draft.md"), "clear-local --include-unpublished deveria reportar draft.md limpo, foi: " + clearLocalForcedOutput);
+            assertTrue(Files.notExists(vaultDir.resolve("local").resolve("draft.md")));
         } finally {
             System.setProperty("user.home", originalUserHome);
         }

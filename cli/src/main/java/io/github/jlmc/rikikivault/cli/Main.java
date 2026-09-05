@@ -11,6 +11,7 @@ import io.github.jlmc.rikikivault.core.adapters.keystore.LocalKeyStoreAdapter;
 import io.github.jlmc.rikikivault.core.adapters.manifest.JsonManifestFileAdapter;
 import io.github.jlmc.rikikivault.core.adapters.recipients.JsonRecipientRegistryFileAdapter;
 import io.github.jlmc.rikikivault.core.application.usecase.AuthorizeMachineService;
+import io.github.jlmc.rikikivault.core.application.usecase.ClearLocalFilesService;
 import io.github.jlmc.rikikivault.core.application.usecase.CloneVaultService;
 import io.github.jlmc.rikikivault.core.application.usecase.DecryptFileService;
 import io.github.jlmc.rikikivault.core.application.usecase.InitializeMachineIdentityService;
@@ -27,6 +28,7 @@ import io.github.jlmc.rikikivault.core.configuration.VaultConfig;
 import io.github.jlmc.rikikivault.core.configuration.VaultPaths;
 import io.github.jlmc.rikikivault.core.domain.exception.PrivateKeyNotFoundException;
 import io.github.jlmc.rikikivault.core.domain.exception.RikikiVaultException;
+import io.github.jlmc.rikikivault.core.domain.model.ClearLocalFilesResult;
 import io.github.jlmc.rikikivault.core.domain.model.KeyFingerprint;
 import io.github.jlmc.rikikivault.core.domain.model.MachineIdentity;
 import io.github.jlmc.rikikivault.core.domain.model.PullResult;
@@ -35,6 +37,7 @@ import io.github.jlmc.rikikivault.core.domain.model.RestoreLocalFilesResult;
 import io.github.jlmc.rikikivault.core.domain.model.VaultChange;
 import io.github.jlmc.rikikivault.core.domain.model.VaultConflict;
 import io.github.jlmc.rikikivault.core.ports.in.AuthorizeMachineCommand;
+import io.github.jlmc.rikikivault.core.ports.in.ClearLocalFilesCommand;
 import io.github.jlmc.rikikivault.core.ports.in.CloneVaultCommand;
 import io.github.jlmc.rikikivault.core.ports.in.InitializeVaultCommand;
 import io.github.jlmc.rikikivault.core.ports.in.PublishVaultCommand;
@@ -123,6 +126,7 @@ public final class Main {
             case "publish" -> runPublish(ctx, rest);
             case "pull" -> runPull(ctx);
             case "restore" -> runRestore(ctx, rest);
+            case "clear-local" -> runClearLocal(ctx, rest);
             case "authorize" -> runAuthorize(ctx, rest);
             case "revoke" -> runRevoke(ctx, rest);
             case "git-auth" -> runGitAuth(ctx, rest);
@@ -378,6 +382,33 @@ public final class Main {
         }
         if (!result.skippedPaths().isEmpty() && !force) {
             System.out.println(CliMessages.get("restore.skippedSummary", result.skippedPaths().size()));
+        }
+    }
+
+    private static void runClearLocal(VaultContext ctx, String[] rest) {
+        boolean includeUnpublished = false;
+        for (String arg : rest) {
+            if (arg.equals("--include-unpublished")) {
+                includeUnpublished = true;
+            }
+        }
+
+        ClearLocalFilesService service = new ClearLocalFilesService(
+                new ScanChangesService(ctx.localFiles(), ctx.hashPort(), ctx.manifestPort()), ctx.localFiles());
+
+        ClearLocalFilesResult result = service.clear(new ClearLocalFilesCommand(includeUnpublished));
+
+        for (String path : result.clearedPaths()) {
+            System.out.println(CliMessages.get("clearLocal.cleared", path));
+        }
+        if (result.clearedPaths().isEmpty()) {
+            System.out.println(CliMessages.get("clearLocal.nothingToClear"));
+        }
+        if (!result.unpublishedPaths().isEmpty() && !includeUnpublished) {
+            System.out.println(CliMessages.get("clearLocal.unpublishedSummary", result.unpublishedPaths().size()));
+            for (String path : result.unpublishedPaths()) {
+                System.out.println("  " + path);
+            }
         }
     }
 
