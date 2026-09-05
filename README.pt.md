@@ -282,3 +282,8 @@ investigação, projetos de hobby, organizações sem fins lucrativos/educação
 modificá-lo, distribuir uma versão alterada, nem usá-lo comercialmente. Nada disto restringe o uso
 do próprio titular dos direitos de autor - só afeta terceiros que obtenham o código sob esta
 licença.
+
+## FAQ
+
+Perguntas práticas sobre o uso real de um vault (backups, recuperação de desastre, ...) têm
+resposta em [`docs/faq/`](docs/faq/README.pt.md).

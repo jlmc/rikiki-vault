@@ -275,3 +275,8 @@ download, read, and run this code for any noncommercial purpose (personal use, r
 projects, nonprofits/education/government), but you may not modify it, distribute a changed
 version, or use it commercially. None of this restricts the copyright holder's own use of the
 code — only third parties who obtain it under this license.
+
+## FAQ
+
+Practical questions about actually using a vault (backups, disaster recovery, ...) are answered in
+[`docs/faq/`](docs/faq/README.md).
