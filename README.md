@@ -278,5 +278,9 @@ code — only third parties who obtain it under this license.
 
 ## FAQ
 
-Practical questions about actually using a vault (backups, disaster recovery, ...) are answered in
-[`docs/faq/`](docs/faq/README.md).
+Practical questions about actually using a vault, answered in [`docs/faq/`](docs/faq/README.md):
+
+1. [What if my SSD dies — how do I make sure I never lose access to my data?](docs/faq/01-disk-failure-and-backups.md)
+2. [I lost my SSD, the remote is up to date, and I backed up both `private.key` and `public.key` — how do I recover?](docs/faq/02-recovering-with-both-keys-backed-up.md)
+3. [I lost my SSD, the remote is up to date, but I only backed up `private.key`, not `public.key` — how do I recover?](docs/faq/03-recovering-with-only-the-private-key.md)
+4. [I don't want to use the app anymore. I have the data and both keys — how do I decrypt everything without it?](docs/faq/04-decrypting-without-the-app.md)

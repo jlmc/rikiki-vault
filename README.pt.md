@@ -285,5 +285,9 @@ licença.
 
 ## FAQ
 
-Perguntas práticas sobre o uso real de um vault (backups, recuperação de desastre, ...) têm
-resposta em [`docs/faq/`](docs/faq/README.pt.md).
+Perguntas práticas sobre o uso real de um vault, com resposta em [`docs/faq/`](docs/faq/README.pt.md):
+
+1. [Como garantir que não perco acesso aos dados mesmo se o meu SSD se perder?](docs/faq/01-disk-failure-and-backups.pt.md)
+2. [Perdi o SSD, o remoto está atualizado, e fiz backup de `private.key` e `public.key` — como recupero?](docs/faq/02-recovering-with-both-keys-backed-up.pt.md)
+3. [Perdi o SSD, o remoto está atualizado, mas só fiz backup do `private.key`, não do `public.key` — como recupero?](docs/faq/03-recovering-with-only-the-private-key.pt.md)
+4. [Não quero mais usar a app. Tenho os dados e as duas chaves — como decifro tudo sem ela?](docs/faq/04-decrypting-without-the-app.pt.md)
