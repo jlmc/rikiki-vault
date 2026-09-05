@@ -81,6 +81,7 @@ so it's already there in the app source you cloned in the prerequisites above) f
 real OpenSSL automatically, and tells you to `brew install openssl@3` first if it can't:
 
 ```bash
+chmod +x docs/faq/scripts/derive-public-key.sh   # not needed if it kept its permissions from git
 docs/faq/scripts/derive-public-key.sh /path/to/backup/private.key public.key
 ```
 

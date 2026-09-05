@@ -181,6 +181,7 @@ decrypt_one() {
   mkdir -p "$(dirname "$out_file")"
   "$OSSL" enc -aes-256-ctr -d -K "$content_key_hex" -iv "${content_nonce_hex}00000002" \
     -in "$WORKDIR/sealed_ct.bin" -out "$out_file" 2>/dev/null
+  chmod 600 "$out_file" 2>/dev/null || true   # decrypted content is sensitive, same as the real app's local/
 
   echo "  decrypted -> $out_file"
 }

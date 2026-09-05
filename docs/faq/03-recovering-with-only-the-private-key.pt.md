@@ -85,6 +85,7 @@ sozinho o OpenSSL a sério do Homebrew, e diz-te para correres `brew install ope
 não o encontrar:
 
 ```bash
+chmod +x docs/faq/scripts/derive-public-key.sh   # não é preciso se mantiver as permissões vindas do git
 docs/faq/scripts/derive-public-key.sh /caminho/para/o/backup/private.key public.key
 ```
 

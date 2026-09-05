@@ -44,5 +44,6 @@ if [[ ! -f "$1" ]]; then
 fi
 
 "$OSSL" pkey -in "$1" -inform DER -pubout -outform DER -out "$2"
+chmod 600 "$2" 2>/dev/null || true   # matches the app's own key-file permissions (best-effort on non-POSIX filesystems)
 echo "Wrote $2"
 echo "Fingerprint: $("$OSSL" dgst -sha256 -binary "$2" | xxd -p -c 256)"
