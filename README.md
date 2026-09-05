@@ -7,6 +7,25 @@ keep plaintext files in a `local/` working copy; `publish` encrypts them (X25519
 `documents/` and pushes the result. Any authorized machine can `clone`/`pull` the repository and
 decrypt back to its own `local/` copy. Nothing ever reaches Git in plaintext.
 
+## Contents
+
+- [Requirements](#requirements)
+- [Building](#building)
+- [Machine identity](#machine-identity)
+- [CLI](#cli)
+  - [Commands](#commands)
+  - [A full walkthrough](#a-full-walkthrough)
+  - [Pushing to a real remote](#pushing-to-a-real-remote)
+  - [Explicit Git authentication](#explicit-git-authentication)
+  - [Configuration files](#configuration-files)
+  - [Hardening notes](#hardening-notes)
+  - [Logging](#logging)
+- [Desktop app (JavaFX)](#desktop-app-javafx)
+- [Distribution](#distribution)
+  - [Native apps (no Java required on the target machine)](#native-apps-no-java-required-on-the-target-machine)
+- [License](#license)
+- [FAQ](#faq)
+
 ## Requirements
 
 - Java 25

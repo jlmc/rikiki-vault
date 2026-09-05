@@ -8,6 +8,25 @@ repositório Git privado. Mantém os ficheiros em claro numa cópia de trabalho 
 autorizada pode fazer `clone`/`pull` do repositório e decifrar de volta para a sua própria cópia
 `local/`. Nada chega ao Git em claro.
 
+## Índice
+
+- [Requisitos](#requisitos)
+- [Compilar](#compilar)
+- [Identidade da máquina](#identidade-da-máquina)
+- [CLI](#cli)
+  - [Comandos](#comandos)
+  - [Um exemplo completo](#um-exemplo-completo)
+  - [Publicar num remoto a sério](#publicar-num-remoto-a-sério)
+  - [Autenticação Git explícita](#autenticação-git-explícita)
+  - [Ficheiros de configuração](#ficheiros-de-configuração)
+  - [Notas de robustez](#notas-de-robustez)
+  - [Logging](#logging)
+- [Aplicação desktop (JavaFX)](#aplicação-desktop-javafx)
+- [Distribuição](#distribuição)
+  - [Apps nativas (sem precisar de Java na máquina de destino)](#apps-nativas-sem-precisar-de-java-na-máquina-de-destino)
+- [Licença](#licença)
+- [FAQ](#faq)
+
 ## Requisitos
 
 - Java 25
