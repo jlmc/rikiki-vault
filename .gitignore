@@ -211,3 +211,6 @@ nbdist/
 .nb-gradle/
 
 # End of https://www.toptal.com/developers/gitignore/api/maven,intellij+all,java,eclipse,netbeans
+
+### macOS ###
+.DS_Store
