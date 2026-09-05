@@ -98,6 +98,35 @@
     -fx-font-size: 12px;
 }
 
+/* --- Dropdown menus (ex. "Mais ▾") --- */
+
+.context-menu {
+    -fx-background-color: -fx-card-bg;
+    -fx-border-color: -fx-border-subtle;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-padding: 6px;
+}
+
+.menu-item {
+    -fx-padding: 6px 10px;
+    -fx-background-radius: 6px;
+}
+
+.menu-item:focused {
+    -fx-background-color: -fx-accent-soft;
+}
+
+.menu-item .label {
+    -fx-text-fill: -fx-text-primary;
+    -fx-font-size: 12px;
+}
+
+.menu-item-icon {
+    -fx-font-size: 13px;
+    -fx-padding: 0 2px 0 0;
+}
+
 /* --- Welcome screen --- */
 
 .welcome-view {

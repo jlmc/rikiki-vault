@@ -2,6 +2,7 @@ package io.github.jlmc.rikikivault.gui.controllers;
 
 import io.github.jlmc.rikikivault.core.adapters.diff.TextDiffAdapter;
 import io.github.jlmc.rikikivault.core.adapters.encryption.X25519KeyPairGeneratorAdapter;
+import io.github.jlmc.rikikivault.core.application.usecase.ClearLocalFilesService;
 import io.github.jlmc.rikikivault.core.application.usecase.DecryptFileService;
 import io.github.jlmc.rikikivault.core.application.usecase.DiffFileService;
 import io.github.jlmc.rikikivault.core.application.usecase.InitializeMachineIdentityService;
@@ -11,11 +12,13 @@ import io.github.jlmc.rikikivault.core.application.usecase.RestoreLocalFilesServ
 import io.github.jlmc.rikikivault.core.application.usecase.RevertFileService;
 import io.github.jlmc.rikikivault.core.application.usecase.ScanChangesService;
 import io.github.jlmc.rikikivault.core.domain.exception.PrivateKeyNotFoundException;
+import io.github.jlmc.rikikivault.core.domain.model.ClearLocalFilesResult;
 import io.github.jlmc.rikikivault.core.domain.model.MachineIdentity;
 import io.github.jlmc.rikikivault.core.domain.model.PullResult;
 import io.github.jlmc.rikikivault.core.domain.model.RemoteSyncStatus;
 import io.github.jlmc.rikikivault.core.domain.model.RestoreLocalFilesResult;
 import io.github.jlmc.rikikivault.core.domain.model.VaultChange;
+import io.github.jlmc.rikikivault.core.ports.in.ClearLocalFilesCommand;
 import io.github.jlmc.rikikivault.core.ports.in.DiffFileCommand;
 import io.github.jlmc.rikikivault.core.ports.in.RestoreLocalFilesCommand;
 import io.github.jlmc.rikikivault.core.ports.in.RevertFileCommand;
@@ -374,6 +377,42 @@ public final class MainWindowController {
             runRestore(true, forced -> {
                 Dialogs.showInfo(Messages.get("mainWindow.restore.title"),
                         Messages.get("mainWindow.restore.summary", forced.restoredPaths().size(), forced.unauthorizedPaths().size()));
+                refresh();
+            });
+        }
+    }
+
+    @FXML
+    private void onClearLocal() {
+        if (!Dialogs.confirm(Messages.get("mainWindow.clearLocal.confirmTitle"), Messages.get("mainWindow.clearLocal.confirmBody"))) {
+            return;
+        }
+        log.info("User triggered Clear Local");
+        runClearLocal(false, this::afterClearLocal);
+    }
+
+    private void runClearLocal(boolean includeUnpublished, java.util.function.Consumer<ClearLocalFilesResult> onDone) {
+        BackgroundTask.run(
+                () -> new ClearLocalFilesService(
+                        new ScanChangesService(ctx.localFiles(), ctx.hashPort(), ctx.manifestPort()), ctx.localFiles())
+                        .clear(new ClearLocalFilesCommand(includeUnpublished)),
+                onDone,
+                Dialogs::showError);
+    }
+
+    private void afterClearLocal(ClearLocalFilesResult result) {
+        Dialogs.showInfo(Messages.get("mainWindow.clearLocal.title"),
+                Messages.get("mainWindow.clearLocal.summary", result.clearedPaths().size()));
+        if (!result.clearedPaths().isEmpty()) {
+            refresh();
+        }
+        if (!result.unpublishedPaths().isEmpty()
+                && Dialogs.confirm(Messages.get("mainWindow.clearLocal.forceTitle"),
+                        Messages.get("mainWindow.clearLocal.forceConfirm",
+                                result.unpublishedPaths().size(), String.join("\n", result.unpublishedPaths())))) {
+            runClearLocal(true, forced -> {
+                Dialogs.showInfo(Messages.get("mainWindow.clearLocal.title"),
+                        Messages.get("mainWindow.clearLocal.summary", forced.clearedPaths().size()));
                 refresh();
             });
         }
