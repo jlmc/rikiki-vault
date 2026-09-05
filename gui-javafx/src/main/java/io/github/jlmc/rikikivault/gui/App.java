@@ -8,6 +8,7 @@ import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.image.Image;
 import javafx.stage.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,6 +21,7 @@ public final class App extends Application {
     public void start(Stage stage) {
         log.info("Starting Rikiki Vault GUI");
         stage.setTitle("Rikiki Vault");
+        stage.getIcons().add(new Image(App.class.getResourceAsStream("/branding/icon.png")));
         Scene scene = new Scene(loadWelcome(stage), 900, 600);
         scene.getStylesheets().add(App.class.getResource("/css/app.css").toExternalForm());
         stage.setScene(scene);

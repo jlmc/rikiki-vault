@@ -92,6 +92,18 @@
 
   <build>
     <finalName>rikiki-vault-gui</finalName>
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+      </resource>
+      <!-- Single source of truth for the app icon - the same branding/icon.* files jpackage
+           already uses (scripts/package.sh) become available on the runtime classpath too, so
+           App.java can set the window/dock icon without duplicating the file into resources/. -->
+      <resource>
+        <directory>../branding</directory>
+        <targetPath>branding</targetPath>
+      </resource>
+    </resources>
     <plugins>
       <plugin>
         <groupId>org.openjfx</groupId>
