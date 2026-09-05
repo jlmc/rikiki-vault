@@ -18,6 +18,7 @@ import io.github.jlmc.rikikivault.core.application.usecase.InitializeVaultServic
 import io.github.jlmc.rikikivault.core.application.usecase.LoadMachineIdentityService;
 import io.github.jlmc.rikikivault.core.application.usecase.PublishVaultService;
 import io.github.jlmc.rikikivault.core.application.usecase.PullVaultService;
+import io.github.jlmc.rikikivault.core.application.usecase.RestoreLocalFilesService;
 import io.github.jlmc.rikikivault.core.application.usecase.RevokeMachineService;
 import io.github.jlmc.rikikivault.core.application.usecase.ScanChangesService;
 import io.github.jlmc.rikikivault.core.configuration.GitAuthSettings;
@@ -30,12 +31,14 @@ import io.github.jlmc.rikikivault.core.domain.model.KeyFingerprint;
 import io.github.jlmc.rikikivault.core.domain.model.MachineIdentity;
 import io.github.jlmc.rikikivault.core.domain.model.PullResult;
 import io.github.jlmc.rikikivault.core.domain.model.RemoteSyncStatus;
+import io.github.jlmc.rikikivault.core.domain.model.RestoreLocalFilesResult;
 import io.github.jlmc.rikikivault.core.domain.model.VaultChange;
 import io.github.jlmc.rikikivault.core.domain.model.VaultConflict;
 import io.github.jlmc.rikikivault.core.ports.in.AuthorizeMachineCommand;
 import io.github.jlmc.rikikivault.core.ports.in.CloneVaultCommand;
 import io.github.jlmc.rikikivault.core.ports.in.InitializeVaultCommand;
 import io.github.jlmc.rikikivault.core.ports.in.PublishVaultCommand;
+import io.github.jlmc.rikikivault.core.ports.in.RestoreLocalFilesCommand;
 import io.github.jlmc.rikikivault.core.ports.in.RevokeMachineCommand;
 
 import java.io.IOException;
@@ -119,6 +122,7 @@ public final class Main {
             case "status" -> runStatus(ctx);
             case "publish" -> runPublish(ctx, rest);
             case "pull" -> runPull(ctx);
+            case "restore" -> runRestore(ctx, rest);
             case "authorize" -> runAuthorize(ctx, rest);
             case "revoke" -> runRevoke(ctx, rest);
             case "git-auth" -> runGitAuth(ctx, rest);
@@ -345,6 +349,35 @@ public final class Main {
         }
         if (result.updatedPaths().isEmpty() && result.deletedPaths().isEmpty() && !result.hasConflicts()) {
             System.out.println(CliMessages.get("pull.upToDate"));
+        }
+    }
+
+    private static void runRestore(VaultContext ctx, String[] rest) {
+        boolean force = false;
+        for (String arg : rest) {
+            if (arg.equals("--force")) {
+                force = true;
+            }
+        }
+
+        RestoreLocalFilesService service = new RestoreLocalFilesService(
+                new LoadMachineIdentityService(ctx.keyStorePort()),
+                new DecryptFileService(ctx.encryptionPort()),
+                ctx.localFiles(), ctx.documentsFiles(), ctx.manifestPort());
+
+        RestoreLocalFilesResult result = service.restore(new RestoreLocalFilesCommand(force));
+
+        for (String path : result.restoredPaths()) {
+            System.out.println(CliMessages.get("restore.restored", path));
+        }
+        for (String path : result.unauthorizedPaths()) {
+            System.out.println(CliMessages.get("restore.unauthorized", path));
+        }
+        if (result.restoredPaths().isEmpty() && result.unauthorizedPaths().isEmpty()) {
+            System.out.println(CliMessages.get("restore.nothingToRestore"));
+        }
+        if (!result.skippedPaths().isEmpty() && !force) {
+            System.out.println(CliMessages.get("restore.skippedSummary", result.skippedPaths().size()));
         }
     }
 

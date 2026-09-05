@@ -56,8 +56,33 @@ class MainCliSmokeTest {
 
             String secondStatus = run("-C", vaultDir.toString(), "status");
             assertTrue(secondStatus.contains("Nada para publicar"), "status deveria estar limpo depois do publish, foi: " + secondStatus);
+
+            // Reproduz o cenário reportado: apagar local/ inteiro não deve deixar os dados
+            // irrecuperáveis - "restore" reconstrói-o a partir de documents/, sem precisar de rede.
+            deleteRecursively(vaultDir.resolve("local"));
+            assertTrue(Files.notExists(vaultDir.resolve("local").resolve("cv.pdf")));
+
+            String restoreOutput = run("-C", vaultDir.toString(), "restore");
+            assertTrue(restoreOutput.contains("cv.pdf"), "restore deveria reportar cv.pdf restaurado, foi: " + restoreOutput);
+            assertTrue(Files.exists(vaultDir.resolve("local").resolve("cv.pdf")));
+            assertTrue("cv content".equals(Files.readString(vaultDir.resolve("local").resolve("cv.pdf"), StandardCharsets.UTF_8)));
         } finally {
             System.setProperty("user.home", originalUserHome);
+        }
+    }
+
+    private static void deleteRecursively(Path root) throws java.io.IOException {
+        if (Files.notExists(root)) {
+            return;
+        }
+        try (var walk = Files.walk(root)) {
+            walk.sorted(java.util.Comparator.reverseOrder()).forEach(path -> {
+                try {
+                    Files.delete(path);
+                } catch (java.io.IOException e) {
+                    throw new java.io.UncheckedIOException(e);
+                }
+            });
         }
     }
 

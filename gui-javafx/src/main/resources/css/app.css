@@ -59,7 +59,7 @@
 
 /* --- Buttons --- */
 
-.button {
+.button, .menu-button {
     -fx-background-color: -fx-card-bg;
     -fx-border-color: -fx-border-subtle;
     -fx-border-radius: 6px;

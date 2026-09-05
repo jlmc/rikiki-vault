@@ -7,14 +7,17 @@ import io.github.jlmc.rikikivault.core.application.usecase.DiffFileService;
 import io.github.jlmc.rikikivault.core.application.usecase.InitializeMachineIdentityService;
 import io.github.jlmc.rikikivault.core.application.usecase.LoadMachineIdentityService;
 import io.github.jlmc.rikikivault.core.application.usecase.PullVaultService;
+import io.github.jlmc.rikikivault.core.application.usecase.RestoreLocalFilesService;
 import io.github.jlmc.rikikivault.core.application.usecase.RevertFileService;
 import io.github.jlmc.rikikivault.core.application.usecase.ScanChangesService;
 import io.github.jlmc.rikikivault.core.domain.exception.PrivateKeyNotFoundException;
 import io.github.jlmc.rikikivault.core.domain.model.MachineIdentity;
 import io.github.jlmc.rikikivault.core.domain.model.PullResult;
 import io.github.jlmc.rikikivault.core.domain.model.RemoteSyncStatus;
+import io.github.jlmc.rikikivault.core.domain.model.RestoreLocalFilesResult;
 import io.github.jlmc.rikikivault.core.domain.model.VaultChange;
 import io.github.jlmc.rikikivault.core.ports.in.DiffFileCommand;
+import io.github.jlmc.rikikivault.core.ports.in.RestoreLocalFilesCommand;
 import io.github.jlmc.rikikivault.core.ports.in.RevertFileCommand;
 import io.github.jlmc.rikikivault.gui.VaultContext;
 import io.github.jlmc.rikikivault.gui.filetree.FileEntry;
@@ -319,6 +322,40 @@ public final class MainWindowController {
                     refreshRemoteSyncStatus();
                 },
                 Dialogs::showError);
+    }
+
+    @FXML
+    private void onRestore() {
+        log.info("User triggered Restore");
+        runRestore(false, this::afterRestore);
+    }
+
+    private void runRestore(boolean force, java.util.function.Consumer<RestoreLocalFilesResult> onDone) {
+        BackgroundTask.run(
+                () -> new RestoreLocalFilesService(
+                        new LoadMachineIdentityService(ctx.keyStorePort()),
+                        new DecryptFileService(ctx.encryptionPort()),
+                        ctx.localFiles(), ctx.documentsFiles(), ctx.manifestPort())
+                        .restore(new RestoreLocalFilesCommand(force)),
+                onDone,
+                Dialogs::showError);
+    }
+
+    private void afterRestore(RestoreLocalFilesResult result) {
+        Dialogs.showInfo(Messages.get("mainWindow.restore.title"),
+                Messages.get("mainWindow.restore.summary", result.restoredPaths().size(), result.unauthorizedPaths().size()));
+        if (!result.restoredPaths().isEmpty()) {
+            refresh();
+        }
+        if (!result.skippedPaths().isEmpty()
+                && Dialogs.confirm(Messages.get("mainWindow.restore.forceTitle"),
+                        Messages.get("mainWindow.restore.forceConfirm", result.skippedPaths().size()))) {
+            runRestore(true, forced -> {
+                Dialogs.showInfo(Messages.get("mainWindow.restore.title"),
+                        Messages.get("mainWindow.restore.summary", forced.restoredPaths().size(), forced.unauthorizedPaths().size()));
+                refresh();
+            });
+        }
     }
 
     /**

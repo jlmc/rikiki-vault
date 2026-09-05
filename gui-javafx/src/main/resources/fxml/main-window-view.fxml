@@ -2,6 +2,8 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.MenuButton?>
+<?import javafx.scene.control.MenuItem?>
 <?import javafx.scene.control.SplitPane?>
 <?import javafx.scene.control.TreeTableColumn?>
 <?import javafx.scene.control.TreeTableView?>
@@ -21,11 +23,16 @@
             <Region HBox.hgrow="ALWAYS"/>
             <Label fx:id="fingerprintLabel" styleClass="fingerprint-label"/>
             <Label fx:id="remoteSyncLabel" styleClass="status-label"/>
-            <Button fx:id="refreshButton" text="%mainWindow.button.refresh" onAction="#onRefresh"/>
-            <Button fx:id="pullButton" text="%mainWindow.button.pull" onAction="#onPull"/>
-            <Button fx:id="manageAccessButton" text="%mainWindow.button.manageAccess" onAction="#onManageAccess"/>
-            <Button fx:id="settingsButton" text="%mainWindow.button.settings" onAction="#onOpenSettings"/>
-            <Button fx:id="publishButton" text="%mainWindow.button.publish" styleClass="primary-button" onAction="#onPublish"/>
+            <Button fx:id="refreshButton" text="%mainWindow.button.refresh" onAction="#onRefresh" minWidth="-Infinity"/>
+            <Button fx:id="pullButton" text="%mainWindow.button.pull" onAction="#onPull" minWidth="-Infinity"/>
+            <MenuButton fx:id="moreMenuButton" text="%mainWindow.button.more" minWidth="-Infinity">
+                <items>
+                    <MenuItem fx:id="restoreMenuItem" text="%mainWindow.button.restore" onAction="#onRestore"/>
+                    <MenuItem fx:id="manageAccessMenuItem" text="%mainWindow.button.manageAccess" onAction="#onManageAccess"/>
+                    <MenuItem fx:id="settingsMenuItem" text="%mainWindow.button.settings" onAction="#onOpenSettings"/>
+                </items>
+            </MenuButton>
+            <Button fx:id="publishButton" text="%mainWindow.button.publish" styleClass="primary-button" onAction="#onPublish" minWidth="-Infinity"/>
         </HBox>
     </top>
     <center>
