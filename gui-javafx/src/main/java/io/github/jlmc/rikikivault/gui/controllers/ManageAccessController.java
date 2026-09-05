@@ -5,7 +5,6 @@ import io.github.jlmc.rikikivault.core.application.usecase.RevokeMachineService;
 import io.github.jlmc.rikikivault.core.domain.model.KeyFingerprint;
 import io.github.jlmc.rikikivault.core.ports.in.AuthorizeMachineCommand;
 import io.github.jlmc.rikikivault.core.ports.in.RevokeMachineCommand;
-import io.github.jlmc.rikikivault.gui.App;
 import io.github.jlmc.rikikivault.gui.VaultContext;
 import io.github.jlmc.rikikivault.gui.support.BackgroundTask;
 import io.github.jlmc.rikikivault.gui.support.Dialogs;
@@ -14,14 +13,11 @@ import io.github.jlmc.rikikivault.gui.support.Messages;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.TextField;
 import javafx.stage.FileChooser;
-import javafx.stage.Modality;
-import javafx.stage.Stage;
 
 import java.io.File;
 import java.io.IOException;
@@ -46,37 +42,34 @@ public final class ManageAccessController {
     @FXML private ProgressIndicator progress;
     @FXML private Label statusLabel;
 
-    private Stage stage;
     private VaultContext ctx;
     private Runnable onChanged;
+    private Runnable onClose;
     private Path chosenPublicKeyFile;
 
-    static void open(Stage owner, VaultContext ctx, Runnable onChanged) {
+    /**
+     * Builds the "Gerir Acesso" content as a plain, embeddable {@link Parent} (Milestone 31) -
+     * hosted directly by the main window's sidebar panel; no modal window of its own anymore.
+     */
+    static Parent embed(VaultContext ctx, Runnable onChanged, Runnable onClose) {
         FXMLLoader loader = Fxml.loader("/fxml/manage-access-view.fxml");
         Parent root = loader.getRoot();
         ManageAccessController controller = loader.getController();
-        Stage stage = new Stage();
-        stage.initOwner(owner);
-        stage.initModality(Modality.APPLICATION_MODAL);
-        stage.setTitle(Messages.get("manageAccess.windowTitle"));
-        Scene scene = new Scene(root, 560, 320);
-        scene.getStylesheets().add(App.class.getResource("/css/app.css").toExternalForm());
-        stage.setScene(scene);
-        controller.init(stage, ctx, onChanged);
-        stage.showAndWait();
+        controller.init(ctx, onChanged, onClose);
+        return root;
     }
 
-    private void init(Stage stage, VaultContext ctx, Runnable onChanged) {
-        this.stage = stage;
+    private void init(VaultContext ctx, Runnable onChanged, Runnable onClose) {
         this.ctx = ctx;
         this.onChanged = onChanged;
+        this.onClose = onClose;
     }
 
     @FXML
     private void onChoosePublicKeyFile() {
         FileChooser chooser = new FileChooser();
         chooser.setTitle(Messages.get("manageAccess.publicKeyField.prompt"));
-        File file = chooser.showOpenDialog(stage);
+        File file = chooser.showOpenDialog(publicKeyFileField.getScene().getWindow());
         if (file != null) {
             chosenPublicKeyFile = file.toPath();
             publicKeyFileField.setText(file.getName());
@@ -105,7 +98,9 @@ public final class ManageAccessController {
                 (Boolean pushed) -> {
                     setBusy(false, "");
                     onChanged.run();
-                    stage.close();
+                    if (onClose != null) {
+                        onClose.run();
+                    }
                     if (!pushed) {
                         Dialogs.showInfo(Messages.get("manageAccess.authorizedLocally.title"), Messages.get("common.savedLocallyNoRemote"));
                     }
@@ -143,7 +138,9 @@ public final class ManageAccessController {
                 (Boolean pushed) -> {
                     setBusy(false, "");
                     onChanged.run();
-                    stage.close();
+                    if (onClose != null) {
+                        onClose.run();
+                    }
                     if (!pushed) {
                         Dialogs.showInfo(Messages.get("manageAccess.revokedLocally.title"), Messages.get("common.savedLocallyNoRemote"));
                     }

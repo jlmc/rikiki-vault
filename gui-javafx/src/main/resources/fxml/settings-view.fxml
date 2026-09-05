@@ -6,6 +6,7 @@
 <?import javafx.scene.control.Tab?>
 <?import javafx.scene.control.TabPane?>
 <?import javafx.scene.control.ToggleGroup?>
+<?import javafx.scene.control.Tooltip?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
@@ -27,7 +28,7 @@
             </BorderPane.margin>
             <tabs>
                 <Tab text="%settings.tab.language">
-                    <VBox spacing="12">
+                    <VBox spacing="16">
                         <padding>
                             <Insets top="16" right="16" bottom="16" left="16"/>
                         </padding>
@@ -49,8 +50,16 @@
                 <Insets top="12" right="20" bottom="20" left="20"/>
             </BorderPane.margin>
             <Label fx:id="statusLabel" styleClass="status-label"/>
-            <Button text="%common.close" onAction="#onClose"/>
-            <Button fx:id="saveButton" text="%common.save" styleClass="primary-button" onAction="#onSave"/>
+            <Button text="%common.close" styleClass="compact-button" onAction="#onClose">
+                <tooltip>
+                    <Tooltip text="%settings.close.tooltip"/>
+                </tooltip>
+            </Button>
+            <Button fx:id="saveButton" text="%common.save" styleClass="compact-button, primary-button" onAction="#onSave">
+                <tooltip>
+                    <Tooltip text="%settings.save.tooltip"/>
+                </tooltip>
+            </Button>
         </HBox>
     </bottom>
 </BorderPane>

@@ -40,13 +40,18 @@ import javafx.animation.Timeline;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.fxml.FXML;
+import javafx.scene.Parent;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.SplitPane;
 import javafx.scene.control.TextArea;
+import javafx.scene.control.ToggleButton;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeTableColumn;
 import javafx.scene.control.TreeTableView;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 import org.slf4j.Logger;
@@ -71,12 +76,24 @@ public final class MainWindowController {
     @FXML private Button encryptButton;
     @FXML private Button revertButton;
     @FXML private Button diffButton;
+    @FXML private Label emptyStateLabel;
+    @FXML private VBox navRail;
+    @FXML private Button railToggleButton;
+    @FXML private ToggleButton filesNavButton;
+    @FXML private ToggleButton settingsNavButton;
+    @FXML private ToggleButton manageAccessNavButton;
+    @FXML private StackPane centerContainer;
+    @FXML private SplitPane filesView;
 
     private VaultContext ctx;
     private FolderTreeNode currentNode;
     private boolean editMode;
     private TextArea editorArea;
     private Runnable onLanguageChanged;
+    private MainView currentView = MainView.FILES;
+    private boolean railExpanded = true;
+
+    private enum MainView { FILES, SETTINGS, MANAGE_ACCESS }
 
     public void init(VaultContext ctx, Runnable onLanguageChanged) {
         this.ctx = ctx;
@@ -293,7 +310,9 @@ public final class MainWindowController {
                         new TextDiffAdapter())
                         .diff(new DiffFileCommand(path, currentContent)),
                 diffText -> {
-                    Stage owner = (Stage) fileTable.getScene().getWindow();
+                    // vaultPathLabel lives in the top toolbar, which (unlike fileTable) is never
+                    // detached from the scene when the rail switches away from the Files view.
+                    Stage owner = (Stage) vaultPathLabel.getScene().getWindow();
                     DiffResultController.open(owner, diffText);
                 },
                 Dialogs::showError);
@@ -316,7 +335,9 @@ public final class MainWindowController {
                         ctx.localFiles(), ctx.documentsFiles(), ctx.manifestPort(), ctx.gitRepositoryPort(), ctx.hashPort())
                         .pull(),
                 (PullResult result) -> {
-                    Stage owner = (Stage) fileTable.getScene().getWindow();
+                    // vaultPathLabel lives in the top toolbar, which (unlike fileTable) is never
+                    // detached from the scene when the rail switches away from the Files view.
+                    Stage owner = (Stage) vaultPathLabel.getScene().getWindow();
                     PullResultController.open(owner, result);
                     refresh();
                     refreshRemoteSyncStatus();
@@ -392,15 +413,71 @@ public final class MainWindowController {
     }
 
     @FXML
-    private void onManageAccess() {
-        Stage owner = (Stage) fileTable.getScene().getWindow();
-        ManageAccessController.open(owner, ctx, this::refresh);
+    private void onNavFiles() {
+        switchView(MainView.FILES);
     }
 
     @FXML
-    private void onOpenSettings() {
-        Stage owner = (Stage) fileTable.getScene().getWindow();
-        SettingsController.open(owner, onLanguageChanged);
+    private void onNavSettings() {
+        switchView(MainView.SETTINGS);
+    }
+
+    @FXML
+    private void onNavManageAccess() {
+        switchView(MainView.MANAGE_ACCESS);
+    }
+
+    /**
+     * Swaps the whole center area between the file browser/preview and the embedded Settings /
+     * Gerir Acesso screens - the rail on the left is the persistent navigation, not the content
+     * itself, so switching never loses the file tree's selection/edit state (filesView is kept as
+     * a live Node, just detached and reattached rather than rebuilt).
+     */
+    private void switchView(MainView view) {
+        if (currentView == view) {
+            return;
+        }
+        Parent content = switch (view) {
+            case FILES -> filesView;
+            case SETTINGS -> capWidth(SettingsController.embed(onLanguageChanged, () -> switchView(MainView.FILES)));
+            case MANAGE_ACCESS -> capWidth(ManageAccessController.embed(ctx, this::refresh, null));
+        };
+        centerContainer.getChildren().setAll(content);
+        currentView = view;
+        syncRailSelection(view);
+    }
+
+    /**
+     * Keeps the rail's highlighted item in sync even when switchView is called from code rather
+     * than from a rail button click (e.g. Settings' "Fechar" navigating back to Files) - a
+     * ToggleGroup only updates its selection on its own when a ToggleButton is clicked directly.
+     */
+    private void syncRailSelection(MainView view) {
+        ToggleButton button = switch (view) {
+            case FILES -> filesNavButton;
+            case SETTINGS -> settingsNavButton;
+            case MANAGE_ACCESS -> manageAccessNavButton;
+        };
+        if (!button.isSelected()) {
+            button.setSelected(true);
+        }
+    }
+
+    private static Parent capWidth(Parent content) {
+        if (content instanceof Region region) {
+            region.setMaxWidth(760);
+        }
+        return content;
+    }
+
+    @FXML
+    private void onToggleRail() {
+        railExpanded = !railExpanded;
+        navRail.getStyleClass().removeAll("nav-rail-expanded", "nav-rail-collapsed");
+        navRail.getStyleClass().add(railExpanded ? "nav-rail-expanded" : "nav-rail-collapsed");
+        filesNavButton.setText(Messages.get(railExpanded ? "mainWindow.nav.files.expanded" : "mainWindow.nav.files.collapsed"));
+        settingsNavButton.setText(Messages.get(railExpanded ? "mainWindow.nav.settings.expanded" : "mainWindow.nav.settings.collapsed"));
+        manageAccessNavButton.setText(Messages.get(railExpanded ? "mainWindow.nav.manageAccess.expanded" : "mainWindow.nav.manageAccess.collapsed"));
     }
 
     @FXML
@@ -416,7 +493,9 @@ public final class MainWindowController {
                         offerPushWhenNothingToCommit();
                         return;
                     }
-                    Stage owner = (Stage) fileTable.getScene().getWindow();
+                    // vaultPathLabel lives in the top toolbar, which (unlike fileTable) is never
+                    // detached from the scene when the rail switches away from the Files view.
+                    Stage owner = (Stage) vaultPathLabel.getScene().getWindow();
                     ChangeReviewController.open(owner, ctx, changes, this::refreshAfterPublish);
                 },
                 Dialogs::showError);
@@ -476,6 +555,11 @@ public final class MainWindowController {
                     if (previouslySelectedPath != null) {
                         reselect(rootItem, previouslySelectedPath);
                     }
+                    boolean empty = rootItem.getChildren().isEmpty();
+                    fileTable.setVisible(!empty);
+                    fileTable.setManaged(!empty);
+                    emptyStateLabel.setVisible(empty);
+                    emptyStateLabel.setManaged(empty);
                 },
                 error -> {
                     if (reportErrors) {

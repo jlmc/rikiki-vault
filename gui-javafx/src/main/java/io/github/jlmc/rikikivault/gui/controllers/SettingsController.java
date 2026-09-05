@@ -23,8 +23,9 @@ import javafx.stage.Stage;
  * Single "Configurações" screen (Milestone 19) replacing the standalone "Definições de Git"
  * dialog - one clearly-labelled, navigable tab per concern (Git today, Idioma; more later)
  * instead of a separate modal window per setting. Global to the machine, not tied to any open
- * vault, so it's reachable both before one is opened (Welcome screen) and from the main window's
- * toolbar. Both sections persist together through {@link AppPreferencesPort}
+ * vault, so it's reachable both before one is opened (Welcome screen, still as a modal dialog via
+ * {@link #openModal}) and from the main window's toolbar (Milestone 31, embedded in the sidebar
+ * panel via {@link #embed}). Both sections persist together through {@link AppPreferencesPort}
  * ({@link LocalAppPreferencesAdapter}), written once on Save.
  */
 public final class SettingsController {
@@ -34,30 +35,40 @@ public final class SettingsController {
     @FXML private RadioButton enRadio;
     @FXML private Label statusLabel;
 
-    private Stage stage;
     private final AppPreferencesPort preferencesPort = new LocalAppPreferencesAdapter(VaultPaths.defaultPreferencesDirectory());
     private GitAuthSettingsPanel gitAuthPanel;
     private AppLanguage lastSavedLanguage;
     private Runnable onLanguageChanged;
+    private Runnable onClose;
 
-    static void open(Stage owner, Runnable onLanguageChanged) {
+    /**
+     * Builds the Settings content as a plain, embeddable {@link Parent} - used both by
+     * {@link #openModal} (wrapped in its own {@link Stage}) and directly by the main window's
+     * sidebar panel, so the two hosting styles never duplicate any of this screen's logic.
+     */
+    static Parent embed(Runnable onLanguageChanged, Runnable onClose) {
         FXMLLoader loader = Fxml.loader("/fxml/settings-view.fxml");
         Parent root = loader.getRoot();
         SettingsController controller = loader.getController();
+        controller.init(onLanguageChanged, onClose);
+        return root;
+    }
+
+    static void openModal(Stage owner, Runnable onLanguageChanged) {
         Stage stage = new Stage();
+        Parent root = embed(onLanguageChanged, stage::close);
         stage.initOwner(owner);
         stage.initModality(Modality.APPLICATION_MODAL);
         stage.setTitle(Messages.get("settings.windowTitle"));
         Scene scene = new Scene(root, 640, 640);
         scene.getStylesheets().add(App.class.getResource("/css/app.css").toExternalForm());
         stage.setScene(scene);
-        controller.init(stage, onLanguageChanged);
         stage.showAndWait();
     }
 
-    private void init(Stage stage, Runnable onLanguageChanged) {
-        this.stage = stage;
+    private void init(Runnable onLanguageChanged, Runnable onClose) {
         this.onLanguageChanged = onLanguageChanged;
+        this.onClose = onClose;
 
         AppPreferences preferences = preferencesPort.load();
         this.lastSavedLanguage = preferences.language();
@@ -65,7 +76,7 @@ public final class SettingsController {
         FXMLLoader gitLoader = Fxml.loader("/fxml/git-auth-settings-panel.fxml");
         Parent gitRoot = gitLoader.getRoot();
         gitAuthPanel = gitLoader.getController();
-        gitAuthPanel.init(stage, preferences.gitAuth());
+        gitAuthPanel.init(preferences.gitAuth());
         Tab gitTab = new Tab(Messages.get("settings.tab.git"), gitRoot);
         tabPane.getTabs().add(0, gitTab);
         tabPane.getSelectionModel().select(gitTab);
@@ -91,6 +102,8 @@ public final class SettingsController {
 
     @FXML
     private void onClose() {
-        stage.close();
+        if (onClose != null) {
+            onClose.run();
+        }
     }
 }

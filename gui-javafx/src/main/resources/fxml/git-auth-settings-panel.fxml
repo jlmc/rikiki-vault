@@ -8,6 +8,7 @@
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.control.ToggleButton?>
 <?import javafx.scene.control.ToggleGroup?>
+<?import javafx.scene.control.Tooltip?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
@@ -35,9 +36,17 @@
                 <RadioButton fx:id="sshRadio" text="%gitAuthPanel.type.ssh" toggleGroup="$authTypeGroup"/>
                 <HBox spacing="8" alignment="CENTER_LEFT">
                     <TextField fx:id="sshKeyPathField" editable="false" prefWidth="280"/>
-                    <Button text="%gitAuthPanel.chooseKey" onAction="#onChooseSshKey"/>
+                    <Button text="%gitAuthPanel.chooseKey" onAction="#onChooseSshKey">
+                        <tooltip>
+                            <Tooltip text="%gitAuthPanel.chooseKey.tooltip"/>
+                        </tooltip>
+                    </Button>
                 </HBox>
-                <Button text="%gitAuthPanel.removeKey" onAction="#onClearSshKey"/>
+                <Button text="%gitAuthPanel.removeKey" onAction="#onClearSshKey">
+                    <tooltip>
+                        <Tooltip text="%gitAuthPanel.removeKey.tooltip"/>
+                    </tooltip>
+                </Button>
             </VBox>
 
             <VBox spacing="8">
@@ -47,9 +56,17 @@
                         <PasswordField fx:id="tokenField" prefWidth="220"/>
                         <TextField fx:id="tokenRevealField" prefWidth="220" managed="false" visible="false"/>
                     </StackPane>
-                    <ToggleButton fx:id="tokenEyeToggle" text="👁"/>
+                    <ToggleButton fx:id="tokenEyeToggle" text="👁">
+                        <tooltip>
+                            <Tooltip text="%gitAuthPanel.eyeToggle.tooltip"/>
+                        </tooltip>
+                    </ToggleButton>
                 </HBox>
-                <Button text="%gitAuthPanel.removeToken" onAction="#onClearToken"/>
+                <Button text="%gitAuthPanel.removeToken" onAction="#onClearToken">
+                    <tooltip>
+                        <Tooltip text="%gitAuthPanel.removeToken.tooltip"/>
+                    </tooltip>
+                </Button>
             </VBox>
 
             <VBox spacing="8">
@@ -60,9 +77,17 @@
                         <PasswordField fx:id="httpPasswordField" prefWidth="220"/>
                         <TextField fx:id="httpPasswordRevealField" prefWidth="220" managed="false" visible="false"/>
                     </StackPane>
-                    <ToggleButton fx:id="httpPasswordEyeToggle" text="👁"/>
+                    <ToggleButton fx:id="httpPasswordEyeToggle" text="👁">
+                        <tooltip>
+                            <Tooltip text="%gitAuthPanel.eyeToggle.tooltip"/>
+                        </tooltip>
+                    </ToggleButton>
                 </HBox>
-                <Button text="%gitAuthPanel.removeHttpBasic" onAction="#onClearHttpBasic"/>
+                <Button text="%gitAuthPanel.removeHttpBasic" onAction="#onClearHttpBasic">
+                    <tooltip>
+                        <Tooltip text="%gitAuthPanel.removeHttpBasic.tooltip"/>
+                    </tooltip>
+                </Button>
             </VBox>
         </VBox>
     </ScrollPane>

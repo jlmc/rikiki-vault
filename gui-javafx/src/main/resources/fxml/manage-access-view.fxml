@@ -3,8 +3,8 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ProgressIndicator?>
-<?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.Tooltip?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
@@ -15,21 +15,32 @@
         <Insets top="24" right="24" bottom="24" left="24"/>
     </padding>
     <Label text="%manageAccess.title" styleClass="title"/>
-    <HBox spacing="32" alignment="TOP_LEFT">
-        <VBox spacing="8">
+    <HBox spacing="20" alignment="TOP_LEFT">
+        <VBox spacing="10" styleClass="field-group" HBox.hgrow="ALWAYS">
             <Label text="%manageAccess.authorize.section" styleClass="section-title"/>
             <TextField fx:id="labelField" promptText="%manageAccess.labelField.prompt"/>
             <HBox spacing="8" alignment="CENTER_LEFT">
                 <TextField fx:id="publicKeyFileField" promptText="%manageAccess.publicKeyField.prompt" editable="false" prefWidth="220"/>
-                <Button text="%manageAccess.choose" onAction="#onChoosePublicKeyFile"/>
+                <Button text="%manageAccess.choose" onAction="#onChoosePublicKeyFile">
+                    <tooltip>
+                        <Tooltip text="%manageAccess.choose.tooltip"/>
+                    </tooltip>
+                </Button>
             </HBox>
-            <Button fx:id="authorizeButton" text="%manageAccess.authorize.button" styleClass="primary-button" onAction="#onAuthorize"/>
+            <Button fx:id="authorizeButton" text="%manageAccess.authorize.button" styleClass="primary-button" onAction="#onAuthorize">
+                <tooltip>
+                    <Tooltip text="%manageAccess.authorize.tooltip"/>
+                </tooltip>
+            </Button>
         </VBox>
-        <Separator orientation="VERTICAL"/>
-        <VBox spacing="8">
+        <VBox spacing="10" styleClass="field-group" HBox.hgrow="ALWAYS">
             <Label text="%manageAccess.revoke.section" styleClass="section-title"/>
             <TextField fx:id="fingerprintField" promptText="%manageAccess.fingerprintField.prompt"/>
-            <Button fx:id="revokeButton" text="%manageAccess.revoke.button" onAction="#onRevoke"/>
+            <Button fx:id="revokeButton" text="%manageAccess.revoke.button" onAction="#onRevoke">
+                <tooltip>
+                    <Tooltip text="%manageAccess.revoke.tooltip"/>
+                </tooltip>
+            </Button>
         </VBox>
     </HBox>
     <HBox spacing="8" alignment="CENTER_LEFT">

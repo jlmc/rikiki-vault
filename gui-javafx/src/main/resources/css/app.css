@@ -6,16 +6,21 @@
 
 .root {
     -fx-accent: #3A5CE0;
+    -fx-accent-soft: derive(-fx-accent, 88%);
     -fx-base-bg: #F5F6FA;
     -fx-card-bg: #FFFFFF;
     -fx-border-subtle: #E1E3EA;
+    -fx-border-strong: #C7CBD6;
     -fx-text-primary: #1F2430;
-    -fx-text-secondary: #6B7080;
+    -fx-text-secondary: #5A5F70;
 
     -fx-font-family: "Helvetica Neue", "Segoe UI", Arial, sans-serif;
     -fx-font-size: 13px;
     -fx-background-color: -fx-base-bg;
     -fx-text-fill: -fx-text-primary;
+    /* Keeps built-in control chrome (e.g. TabPane's tab-content-area) aligned with the app's
+       palette by default, instead of the JavaFX Modena theme's own near-white grey. */
+    -fx-control-inner-background: -fx-base-bg;
 }
 
 /* --- Typography --- */
@@ -88,6 +93,11 @@
     -fx-background-color: derive(-fx-accent, -10%);
 }
 
+.compact-button {
+    -fx-padding: 5px 12px;
+    -fx-font-size: 12px;
+}
+
 /* --- Welcome screen --- */
 
 .welcome-view {
@@ -96,12 +106,26 @@
 
 /* --- Init/Clone and dialogs --- */
 
-.init-or-clone-view,
 .change-review-view,
 .pull-result-view,
-.manage-access-view,
 .diff-result-view {
     -fx-background-color: -fx-card-bg;
+}
+
+/* These three are full-window screens swapped into the single app Scene (App.java's
+   setRoot(...) pattern), not standalone modal windows - the page itself stays grey, matching the
+   Ficheiros view; grouped content reads as white "cards" instead (.tab-content-area, .field-group). */
+.settings-view,
+.manage-access-view,
+.init-or-clone-view {
+    -fx-background-color: -fx-base-bg;
+}
+
+.tab-pane .tab-content-area {
+    -fx-background-color: -fx-card-bg;
+    -fx-background-radius: 0 0 6px 6px;
+    -fx-border-color: -fx-border-subtle;
+    -fx-border-width: 0 1px 1px 1px;
 }
 
 .text-field {
@@ -114,6 +138,14 @@
 
 .text-field:focused {
     -fx-border-color: -fx-accent;
+}
+
+.field-group {
+    -fx-background-color: -fx-card-bg;
+    -fx-background-radius: 8px;
+    -fx-border-color: -fx-border-strong;
+    -fx-border-radius: 8px;
+    -fx-padding: 16px;
 }
 
 /* --- Toolbar --- */
@@ -155,7 +187,7 @@
 
 .table-row-cell:selected,
 .tree-table-row-cell:selected {
-    -fx-background-color: derive(-fx-accent, 85%);
+    -fx-background-color: -fx-accent-soft;
 }
 
 /* --- Status badges --- */
@@ -189,7 +221,7 @@
     -fx-border-color: -fx-border-subtle;
     -fx-border-radius: 6px;
     -fx-background-radius: 6px;
-    -fx-padding: 4px;
+    -fx-padding: 10px;
 }
 
 .preview-text {
@@ -219,4 +251,55 @@
     -fx-border-color: transparent transparent -fx-border-subtle transparent;
     -fx-border-width: 0 0 1px 0;
     -fx-background-radius: 6px 6px 0 0;
+}
+
+/* --- Navigation rail (Ficheiros / Configurações / Gerir Acesso) --- */
+
+.nav-rail {
+    -fx-background-color: -fx-base-bg;
+    -fx-border-color: transparent -fx-border-subtle transparent transparent;
+    -fx-border-width: 0 1px 0 0;
+    -fx-padding: 12px 0 0 0;
+}
+
+.nav-rail-toggle {
+    -fx-background-color: transparent;
+    -fx-border-width: 0;
+    -fx-font-size: 14px;
+    -fx-padding: 6px 10px;
+    -fx-cursor: hand;
+}
+
+.nav-rail-toggle:hover {
+    -fx-background-color: derive(-fx-base-bg, -6%);
+}
+
+.nav-rail-button {
+    -fx-background-color: transparent;
+    -fx-border-width: 0;
+    -fx-background-radius: 0;
+    -fx-text-fill: -fx-text-secondary;
+    -fx-font-size: 10px;
+    -fx-text-alignment: center;
+    -fx-padding: 10px 4px 10px 4px;
+}
+
+.nav-rail-expanded .nav-rail-button {
+    -fx-pref-width: 96px;
+}
+
+.nav-rail-collapsed .nav-rail-button {
+    -fx-pref-width: 48px;
+    -fx-font-size: 16px;
+}
+
+.nav-rail-button:hover {
+    -fx-background-color: derive(-fx-base-bg, -6%);
+}
+
+.nav-rail-button:selected {
+    -fx-background-color: -fx-accent-soft;
+    -fx-text-fill: -fx-accent;
+    -fx-border-color: transparent transparent transparent -fx-accent;
+    -fx-border-width: 0 0 0 3px;
 }

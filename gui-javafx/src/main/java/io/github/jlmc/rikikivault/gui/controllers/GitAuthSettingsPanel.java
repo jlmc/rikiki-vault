@@ -11,7 +11,6 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.stage.FileChooser;
-import javafx.stage.Stage;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -21,7 +20,9 @@ import java.nio.file.Path;
  * methods (SSH/Token/HTTP-basic), only one active at a time (Milestone 17). Pure UI: it never
  * touches {@link io.github.jlmc.rikikivault.core.ports.out.GitAuthSettingsPort} itself - the
  * owning {@link SettingsController} hands it the settings to display via {@link #init} and reads
- * back the edited value via {@link #buildSettings()} when the user saves.
+ * back the edited value via {@link #buildSettings()} when the user saves. Never stores a reference
+ * to its host window - {@link #onChooseSshKey()} resolves it lazily from the scene graph, so this
+ * panel works identically whether it's embedded in a modal dialog or in the main window's sidebar.
  */
 public final class GitAuthSettingsPanel {
 
@@ -40,11 +41,9 @@ public final class GitAuthSettingsPanel {
     @FXML private TextField httpPasswordRevealField;
     @FXML private ToggleButton httpPasswordEyeToggle;
 
-    private Stage ownerStage;
     private Path pendingSshKeyPath;
 
-    void init(Stage ownerStage, GitAuthSettings settings) {
-        this.ownerStage = ownerStage;
+    void init(GitAuthSettings settings) {
         pendingSshKeyPath = settings.sshPrivateKeyPath();
 
         sshKeyPathField.setText(pendingSshKeyPath != null ? pendingSshKeyPath.toString() : "");
@@ -109,7 +108,7 @@ public final class GitAuthSettingsPanel {
     private void onChooseSshKey() {
         FileChooser chooser = new FileChooser();
         chooser.setTitle(Messages.get("gitAuthPanel.chooseKeyDialogTitle"));
-        File file = chooser.showOpenDialog(ownerStage);
+        File file = chooser.showOpenDialog(sshKeyPathField.getScene().getWindow());
         if (file != null) {
             pendingSshKeyPath = file.toPath();
             sshKeyPathField.setText(pendingSshKeyPath.toString());

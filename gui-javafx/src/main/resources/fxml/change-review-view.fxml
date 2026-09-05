@@ -6,6 +6,7 @@
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.Tooltip?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.VBox?>
@@ -30,7 +31,15 @@
         <ProgressIndicator fx:id="progress" maxWidth="24" maxHeight="24" visible="false"/>
         <Label fx:id="statusLabel" styleClass="status-label"/>
         <Region HBox.hgrow="ALWAYS"/>
-        <Button fx:id="cancelButton" text="%common.cancel" onAction="#onCancel"/>
-        <Button fx:id="publishButton" text="%changeReview.publishButton" styleClass="primary-button" onAction="#onPublish"/>
+        <Button fx:id="cancelButton" text="%common.cancel" styleClass="compact-button" onAction="#onCancel">
+            <tooltip>
+                <Tooltip text="%changeReview.cancelButton.tooltip"/>
+            </tooltip>
+        </Button>
+        <Button fx:id="publishButton" text="%changeReview.publishButton" styleClass="compact-button, primary-button" onAction="#onPublish">
+            <tooltip>
+                <Tooltip text="%changeReview.publishButton.tooltip"/>
+            </tooltip>
+        </Button>
     </HBox>
 </VBox>

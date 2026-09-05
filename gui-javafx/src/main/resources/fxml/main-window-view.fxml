@@ -2,15 +2,17 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.control.MenuButton?>
-<?import javafx.scene.control.MenuItem?>
 <?import javafx.scene.control.SplitPane?>
+<?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.control.ToggleGroup?>
+<?import javafx.scene.control.Tooltip?>
 <?import javafx.scene.control.TreeTableColumn?>
 <?import javafx.scene.control.TreeTableView?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
 
 <BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="io.github.jlmc.rikikivault.gui.controllers.MainWindowController">
@@ -23,44 +25,110 @@
             <Region HBox.hgrow="ALWAYS"/>
             <Label fx:id="fingerprintLabel" styleClass="fingerprint-label"/>
             <Label fx:id="remoteSyncLabel" styleClass="status-label"/>
-            <Button fx:id="refreshButton" text="%mainWindow.button.refresh" onAction="#onRefresh" minWidth="-Infinity"/>
-            <Button fx:id="pullButton" text="%mainWindow.button.pull" onAction="#onPull" minWidth="-Infinity"/>
-            <MenuButton fx:id="moreMenuButton" text="%mainWindow.button.more" minWidth="-Infinity">
-                <items>
-                    <MenuItem fx:id="restoreMenuItem" text="%mainWindow.button.restore" onAction="#onRestore"/>
-                    <MenuItem fx:id="manageAccessMenuItem" text="%mainWindow.button.manageAccess" onAction="#onManageAccess"/>
-                    <MenuItem fx:id="settingsMenuItem" text="%mainWindow.button.settings" onAction="#onOpenSettings"/>
-                </items>
-            </MenuButton>
-            <Button fx:id="publishButton" text="%mainWindow.button.publish" styleClass="primary-button" onAction="#onPublish" minWidth="-Infinity"/>
+            <Button fx:id="refreshButton" text="%mainWindow.button.refresh" styleClass="compact-button" onAction="#onRefresh" minWidth="-Infinity">
+                <tooltip>
+                    <Tooltip text="%mainWindow.button.refresh.tooltip"/>
+                </tooltip>
+            </Button>
+            <Button fx:id="pullButton" text="%mainWindow.button.pull" styleClass="compact-button" onAction="#onPull" minWidth="-Infinity">
+                <tooltip>
+                    <Tooltip text="%mainWindow.button.pull.tooltip"/>
+                </tooltip>
+            </Button>
+            <Button fx:id="restoreButton" text="%mainWindow.button.restoreShort" styleClass="compact-button" onAction="#onRestore" minWidth="-Infinity">
+                <tooltip>
+                    <Tooltip text="%mainWindow.button.restore.tooltip"/>
+                </tooltip>
+            </Button>
+            <Button fx:id="publishButton" text="%mainWindow.button.publish" styleClass="compact-button, primary-button" onAction="#onPublish" minWidth="-Infinity">
+                <tooltip>
+                    <Tooltip text="%mainWindow.button.publish.tooltip"/>
+                </tooltip>
+            </Button>
         </HBox>
     </top>
+    <left>
+        <VBox fx:id="navRail" styleClass="nav-rail, nav-rail-expanded" alignment="TOP_CENTER" spacing="4">
+            <Button fx:id="railToggleButton" text="☰" styleClass="nav-rail-toggle" onAction="#onToggleRail">
+                <tooltip>
+                    <Tooltip text="%mainWindow.nav.rail.toggle.tooltip"/>
+                </tooltip>
+            </Button>
+            <ToggleButton fx:id="filesNavButton" text="%mainWindow.nav.files.expanded" styleClass="nav-rail-button"
+                          onAction="#onNavFiles" selected="true">
+                <toggleGroup>
+                    <ToggleGroup fx:id="navGroup"/>
+                </toggleGroup>
+                <tooltip>
+                    <Tooltip text="%mainWindow.nav.files.tooltip"/>
+                </tooltip>
+            </ToggleButton>
+            <ToggleButton fx:id="settingsNavButton" text="%mainWindow.nav.settings.expanded" styleClass="nav-rail-button"
+                          onAction="#onNavSettings" toggleGroup="$navGroup">
+                <tooltip>
+                    <Tooltip text="%mainWindow.nav.settings.tooltip"/>
+                </tooltip>
+            </ToggleButton>
+            <ToggleButton fx:id="manageAccessNavButton" text="%mainWindow.nav.manageAccess.expanded" styleClass="nav-rail-button"
+                          onAction="#onNavManageAccess" toggleGroup="$navGroup">
+                <tooltip>
+                    <Tooltip text="%mainWindow.nav.manageAccess.tooltip"/>
+                </tooltip>
+            </ToggleButton>
+        </VBox>
+    </left>
     <center>
-        <SplitPane dividerPositions="0.45">
-            <TreeTableView fx:id="fileTable" styleClass="file-table" showRoot="false">
-                <columns>
-                    <TreeTableColumn fx:id="nameColumn" text="%mainWindow.column.file" prefWidth="330"/>
-                    <TreeTableColumn fx:id="statusColumn" text="%mainWindow.column.status" prefWidth="90"/>
-                </columns>
-            </TreeTableView>
-            <BorderPane>
-                <top>
-                    <HBox fx:id="editorToolbar" styleClass="editor-toolbar" spacing="8" alignment="CENTER_LEFT">
-                        <padding>
-                            <Insets top="8" right="8" bottom="8" left="8"/>
-                        </padding>
-                        <Button fx:id="editToggleButton" text="%mainWindow.editor.edit" onAction="#onToggleEdit" disable="true"/>
-                        <Region HBox.hgrow="ALWAYS"/>
-                        <Button fx:id="saveButton" text="%mainWindow.editor.save" onAction="#onSave" managed="false" visible="false"/>
-                        <Button fx:id="encryptButton" text="%mainWindow.editor.encrypt" onAction="#onEncrypt" managed="false" visible="false"/>
-                        <Button fx:id="revertButton" text="%mainWindow.editor.revert" onAction="#onRevert" managed="false" visible="false"/>
-                        <Button fx:id="diffButton" text="%mainWindow.editor.diff" onAction="#onDiff" managed="false" visible="false"/>
-                    </HBox>
-                </top>
-                <center>
-                    <StackPane fx:id="previewContainer" styleClass="preview-container"/>
-                </center>
-            </BorderPane>
-        </SplitPane>
+        <StackPane fx:id="centerContainer">
+            <SplitPane fx:id="filesView" dividerPositions="0.45">
+                <StackPane>
+                    <TreeTableView fx:id="fileTable" styleClass="file-table" showRoot="false">
+                        <columns>
+                            <TreeTableColumn fx:id="nameColumn" text="%mainWindow.column.file" prefWidth="330"/>
+                            <TreeTableColumn fx:id="statusColumn" text="%mainWindow.column.status" prefWidth="90"/>
+                        </columns>
+                    </TreeTableView>
+                    <Label fx:id="emptyStateLabel" text="%mainWindow.emptyVault" styleClass="preview-unsupported"
+                           wrapText="true" managed="false" visible="false"/>
+                </StackPane>
+                <BorderPane>
+                    <top>
+                        <HBox fx:id="editorToolbar" styleClass="editor-toolbar" spacing="8" alignment="CENTER_LEFT">
+                            <padding>
+                                <Insets top="8" right="8" bottom="8" left="8"/>
+                            </padding>
+                            <Button fx:id="editToggleButton" text="%mainWindow.editor.edit" onAction="#onToggleEdit" disable="true">
+                                <tooltip>
+                                    <Tooltip text="%mainWindow.editor.edit.tooltip"/>
+                                </tooltip>
+                            </Button>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Button fx:id="saveButton" text="%mainWindow.editor.save" styleClass="primary-button" onAction="#onSave" managed="false" visible="false">
+                                <tooltip>
+                                    <Tooltip text="%mainWindow.editor.save.tooltip"/>
+                                </tooltip>
+                            </Button>
+                            <Button fx:id="encryptButton" text="%mainWindow.editor.encrypt" onAction="#onEncrypt" managed="false" visible="false">
+                                <tooltip>
+                                    <Tooltip text="%mainWindow.editor.encrypt.tooltip"/>
+                                </tooltip>
+                            </Button>
+                            <Button fx:id="revertButton" text="%mainWindow.editor.revert" onAction="#onRevert" managed="false" visible="false">
+                                <tooltip>
+                                    <Tooltip text="%mainWindow.editor.revert.tooltip"/>
+                                </tooltip>
+                            </Button>
+                            <Button fx:id="diffButton" text="%mainWindow.editor.diff" onAction="#onDiff" managed="false" visible="false">
+                                <tooltip>
+                                    <Tooltip text="%mainWindow.editor.diff.tooltip"/>
+                                </tooltip>
+                            </Button>
+                        </HBox>
+                    </top>
+                    <center>
+                        <StackPane fx:id="previewContainer" styleClass="preview-container"/>
+                    </center>
+                </BorderPane>
+            </SplitPane>
+        </StackPane>
     </center>
 </BorderPane>

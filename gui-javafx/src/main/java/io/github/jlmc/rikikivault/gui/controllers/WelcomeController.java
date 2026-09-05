@@ -33,6 +33,6 @@ public final class WelcomeController {
 
     @FXML
     private void onOpenSettings() {
-        SettingsController.open(stage, onLanguageChanged);
+        SettingsController.openModal(stage, onLanguageChanged);
     }
 }
