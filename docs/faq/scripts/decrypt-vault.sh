@@ -4,6 +4,11 @@
 # format (magic + per-recipient wrapped AES key + AES-256-GCM sealed content) and the
 # X25519 + HKDF-SHA256 + AES-256-GCM key-wrap scheme it uses.
 #
+# If your private.key is passphrase-protected (set-passphrase), this script can't use it directly
+# - run unwrap-private-key.sh (same folder) or `rikiki-vault unwrap-key` first, and point this
+# script at the plain-PKCS8 result instead. See "If private.key is passphrase-protected" in
+# docs/faq/04-decrypting-without-the-app.md.
+#
 # CAVEAT: unlike the real app, this script does not cryptographically verify the AES-GCM
 # authentication tag (OpenSSL's `enc` command has no AEAD support at all, and there is no
 # practical way to check a GCM tag with stock OpenSSL CLI commands alone). It decrypts using the

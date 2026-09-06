@@ -61,6 +61,17 @@ and never in plain, unencrypted cloud storage — it's the literal key that decr
 
 These aren't mutually exclusive — doing both is the most robust setup.
 
+**A third layer, on top of either one: protect `private.key` with a passphrase** (`rikiki-vault
+set-passphrase`, or Settings → Security in the desktop app — see the [password protection FAQ
+entry](07-private-key-is-not-password-protected.md) for the full picture). This matters especially
+for the backup itself: storing a *protected* copy somewhere less than fully trusted (a cloud drive,
+a second device) is meaningfully safer than storing the raw key, since reading the file alone isn't
+enough without the passphrase too. It doesn't replace backing up the file — a protected key you
+never backed up is still gone forever with the disk — and if you ever forget the passphrase,
+recovering the identity from that backup needs the passphrase-aware steps in [FAQ
+03](03-recovering-with-only-the-private-key.md), not the plain-DER ones from before this feature
+existed.
+
 ## A short checklist
 
 - Configure a remote from the start (`init --git --remote <url>`, or add one later with

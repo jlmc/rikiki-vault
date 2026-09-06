@@ -77,10 +77,23 @@ identidade de raiz; um ficheiro restaurado à mão precisa do mesmo tratamento.
 java -jar cli/target/rikiki-vault.jar whoami
 ```
 
-Deve imprimir o teu fingerprint original de imediato, sem nenhuma mensagem de "a gerar uma
-identidade nova". Se tiveres uma nota do teu fingerprint (ou ainda tiveres outra máquina que o
-consiga mostrar), compara-os agora - apanhar uma discrepância aqui é muito mais fácil do que
-depois de já teres clonado.
+Se o `private.key` restaurado estava protegido por passphrase (`set-passphrase` - ver a [entrada
+da FAQ sobre proteção por password](07-private-key-is-not-password-protected.pt.md)), é-te pedida
+aqui mesmo, antes de o fingerprint ser impresso:
+
+```
+Passphrase: ****************
+Fingerprint: 4f2a9c...
+```
+
+Deve imprimir o teu fingerprint original, sem nenhuma mensagem de "a gerar uma identidade nova".
+Se tiveres uma nota do teu fingerprint (ou ainda tiveres outra máquina que o consiga mostrar),
+compara-os agora - apanhar uma discrepância aqui é muito mais fácil do que depois de já teres
+clonado. Se não te lembrares da passphrase, não há forma de contornar isto aqui - vê a secção "Sem
+recuperação, por desenho" na [entrada sobre proteção por
+password](07-private-key-is-not-password-protected.pt.md) antes de tentares adivinhar; uma
+passphrase errada, depois de algumas tentativas, só sai com um erro, não te bloqueia mais do que
+isso.
 
 ### 5. Clonar o teu vault pessoal
 

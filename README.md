@@ -89,6 +89,7 @@ first time it's missing and runs it the same way (see "Logging" below for its `-
 | `git-auth show\|set-ssh-key <path>\|clear-ssh-key\|set-token\|clear-token\|set-http-basic <username>\|clear-http-basic\|use ssh\|token\|http\|none` | Configures explicit Git authentication, overriding implicit discovery - see "Explicit Git authentication" below. `set-token`/`set-http-basic` read the secret from stdin, never an argument, to avoid it ending up in shell history. |
 | `set-passphrase` | Protects (or changes) this machine's identity with a passphrase - prompts for the current one first if it's already protected, then the new one (twice, to confirm). See "Protecting the private key with a passphrase" below. |
 | `remove-passphrase` | Removes passphrase protection, given the current passphrase. |
+| `unwrap-key <input-file> <output-file>` | Disaster recovery: decrypts a passphrase-protected `private.key` (any file path, not just the live identity) to plain PKCS8 - see "Protecting the private key with a passphrase" below. |
 
 ### A full walkthrough
 
@@ -189,6 +190,14 @@ auto-refresh) without asking again - closing the app clears it.
 
 There's no recovery path if the passphrase is forgotten - changing or removing one always requires
 the current passphrase first, by design.
+
+**Disaster recovery with a protected key:** `unwrap-key <input-file> <output-file>` decrypts a
+passphrase-protected `private.key` to plain PKCS8 - it works on any file path (not just the live
+`~/.rikiki-vault/identity/`), so it also handles a lone, protected *backup* of a key whose
+`public.key` is gone. See [FAQ 03](docs/faq/03-recovering-with-only-the-private-key.md) and
+[FAQ 04](docs/faq/04-decrypting-without-the-app.md) for full step-by-step recovery walkthroughs,
+including a pure OpenSSL/bash alternative (`docs/faq/scripts/unwrap-private-key.sh`) for when
+building this app's own CLI isn't an option.
 
 ### Configuration files
 

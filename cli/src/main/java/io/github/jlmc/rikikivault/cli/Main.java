@@ -7,8 +7,10 @@ import io.github.jlmc.rikikivault.core.adapters.encryption.X25519KeyPairGenerato
 import io.github.jlmc.rikikivault.core.adapters.filesystem.LocalFileSystemAdapter;
 import io.github.jlmc.rikikivault.core.adapters.git.JGitRepositoryAdapter;
 import io.github.jlmc.rikikivault.core.adapters.hashing.Sha256HashAdapter;
+import io.github.jlmc.rikikivault.core.adapters.encryption.format.PrivateKeyEnvelopeCodec;
 import io.github.jlmc.rikikivault.core.adapters.keystore.LocalKeyStoreAdapter;
 import io.github.jlmc.rikikivault.core.adapters.keystore.PassphraseCachingKeyStorePort;
+import io.github.jlmc.rikikivault.core.adapters.keystore.PrivateKeyEnvelopeCrypto;
 import io.github.jlmc.rikikivault.core.adapters.manifest.JsonManifestFileAdapter;
 import io.github.jlmc.rikikivault.core.adapters.recipients.JsonRecipientRegistryFileAdapter;
 import io.github.jlmc.rikikivault.core.application.usecase.AuthorizeMachineService;
@@ -143,6 +145,7 @@ public final class Main {
             case "git-auth" -> runGitAuth(ctx, rest);
             case "set-passphrase" -> runSetPassphrase(ctx);
             case "remove-passphrase" -> runRemovePassphrase(ctx);
+            case "unwrap-key" -> runUnwrapKey(rest);
             default -> {
                 System.err.println(CliMessages.get("run.unknownCommand", command));
                 printUsage();
@@ -668,6 +671,92 @@ public final class Main {
     }
 
     /**
+     * Disaster-recovery tool (see FAQ 03/04): decrypts a passphrase-protected {@code private.key}
+     * file to plain PKCS8 DER bytes, given only its path - unlike every other identity operation
+     * in this class, it does NOT go through {@code KeyStorePort}/{@code VaultContext}, since it
+     * deliberately doesn't require a {@code public.key} to sit alongside it, or the file to live
+     * under {@code ~/.rikiki-vault/identity/}. Always safe to run: an already-unprotected input is
+     * just copied through unchanged, so "run unwrap-key first" is a uniform recipe either way.
+     */
+    private static void runUnwrapKey(String[] rest) {
+        if (rest.length < 2) {
+            System.err.println(CliMessages.get("unwrapKey.usage"));
+            System.exit(1);
+            return;
+        }
+        Path input = Path.of(rest[0]);
+        Path output = Path.of(rest[1]);
+
+        byte[] bytes;
+        try {
+            bytes = Files.readAllBytes(input);
+        } catch (IOException e) {
+            throw new UncheckedIOException(CliMessages.get("unwrapKey.readFailed", input), e);
+        }
+
+        PrivateKeyEnvelopeCodec codec = new PrivateKeyEnvelopeCodec();
+        byte[] pkcs8;
+        if (codec.isEnvelope(bytes)) {
+            char[] passphrase = readCurrentPassphraseWithRetries(new SingleFileKeyStorePort(codec, bytes), 3);
+            try {
+                pkcs8 = PrivateKeyEnvelopeCrypto.decrypt(codec.decode(bytes), passphrase);
+            } finally {
+                wipe(passphrase);
+            }
+        } else {
+            pkcs8 = bytes;
+            IO.println(CliMessages.get("unwrapKey.alreadyPlain"));
+        }
+
+        try {
+            Files.write(output, pkcs8);
+        } catch (IOException e) {
+            throw new UncheckedIOException(CliMessages.get("unwrapKey.writeFailed", output), e);
+        } finally {
+            wipe(pkcs8);
+        }
+        IO.println(CliMessages.get("unwrapKey.written", output));
+    }
+
+    /**
+     * Adapts a single in-memory {@code private.key} file's bytes to {@link KeyStorePort} just
+     * enough to reuse {@link #readCurrentPassphraseWithRetries} - the rest of the interface is
+     * never called for this narrow use.
+     */
+    private record SingleFileKeyStorePort(PrivateKeyEnvelopeCodec codec, byte[] bytes) implements KeyStorePort {
+        @Override
+        public void save(MachineIdentity identity) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public MachineIdentity load() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public boolean exists() {
+            return true;
+        }
+
+        @Override
+        public boolean isPassphraseProtected() {
+            return true;
+        }
+
+        @Override
+        public MachineIdentity load(char[] passphrase) {
+            PrivateKeyEnvelopeCrypto.decrypt(codec.decode(bytes), passphrase); // throws InvalidPassphraseException if wrong; result unused here
+            return null;
+        }
+
+        @Override
+        public void changePassphrase(char[] currentOrNull, char[] newOrNull) {
+            throw new UnsupportedOperationException();
+        }
+    }
+
+    /**
      * Offered once, right after a brand-new machine identity is generated (init/clone only - never
      * from whoami/export-key, which must stay script-safe). Silently skipped without touching
      * stdin when there's no real console, so automation is never blocked on an unexpected prompt.
@@ -755,6 +844,12 @@ public final class Main {
             return line != null ? line.toCharArray() : new char[0];
         } catch (IOException e) {
             throw new UncheckedIOException(CliMessages.get("stdin.readFailed"), e);
+        }
+    }
+
+    private static void wipe(byte[] data) {
+        if (data != null) {
+            Arrays.fill(data, (byte) 0);
         }
     }
 

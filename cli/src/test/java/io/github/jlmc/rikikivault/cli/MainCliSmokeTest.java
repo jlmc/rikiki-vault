@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -120,6 +121,46 @@ class MainCliSmokeTest {
             String whoamiAfterRemoval = run("-C", vaultDir.toString(), "whoami");
             assertTrue(whoamiAfterRemoval.contains("Fingerprint"),
                     "whoami sem proteção não devia precisar de passphrase, foi: " + whoamiAfterRemoval);
+        } finally {
+            System.setProperty("user.home", originalUserHome);
+        }
+    }
+
+    /**
+     * Mirrors the FAQ 03/04 disaster-recovery recipe: a protected {@code private.key} backed up
+     * somewhere else, unwrapped back to plain PKCS8 with only the passphrase - no vault/public.key
+     * involved at all.
+     */
+    @Test
+    void unwrapKeyDecryptsAProtectedBackupToPlainPkcs8(@TempDir Path tempDir, @TempDir Path homeDir) throws Exception {
+        Path vaultDir = tempDir.resolve("vault");
+        Files.createDirectories(vaultDir);
+
+        String originalUserHome = System.getProperty("user.home");
+        System.setProperty("user.home", homeDir.toString());
+        try {
+            run("-C", vaultDir.toString(), "init", "--git", "machine-a");
+            Path identityDir = homeDir.resolve(".rikiki-vault").resolve("identity");
+            byte[] originalPlainBytes = Files.readAllBytes(identityDir.resolve("private.key"));
+
+            runWithInput("s3cret passphrase\ns3cret passphrase\n", "-C", vaultDir.toString(), "set-passphrase");
+            Path backedUpProtectedKey = tempDir.resolve("backup-private.key");
+            Files.copy(identityDir.resolve("private.key"), backedUpProtectedKey);
+
+            Path unwrapped = tempDir.resolve("unwrapped-private.key");
+            String unwrapOutput = runWithInput("s3cret passphrase\n",
+                    "unwrap-key", backedUpProtectedKey.toString(), unwrapped.toString());
+            assertTrue(unwrapOutput.contains(unwrapped.toString()), "esperava confirmação com o caminho de saída, foi: " + unwrapOutput);
+
+            assertArrayEquals(originalPlainBytes, Files.readAllBytes(unwrapped),
+                    "unwrap-key devia reproduzir exatamente os bytes PKCS8 originais");
+
+            // Correr outra vez sobre um ficheiro já em claro deve só copiar, sem pedir passphrase.
+            Path copyOfPlain = tempDir.resolve("copy-of-plain.key");
+            String plainPassthroughOutput = run("unwrap-key", unwrapped.toString(), copyOfPlain.toString());
+            assertTrue(plainPassthroughOutput.contains("já não está protegido"),
+                    "esperava a mensagem 'já em claro', foi: " + plainPassthroughOutput);
+            assertArrayEquals(originalPlainBytes, Files.readAllBytes(copyOfPlain));
         } finally {
             System.setProperty("user.home", originalUserHome);
         }

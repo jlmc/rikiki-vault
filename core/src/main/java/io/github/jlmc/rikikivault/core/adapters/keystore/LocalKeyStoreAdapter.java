@@ -1,6 +1,5 @@
 package io.github.jlmc.rikikivault.core.adapters.keystore;
 
-import io.github.jlmc.rikikivault.core.adapters.encryption.Pbkdf2;
 import io.github.jlmc.rikikivault.core.adapters.encryption.format.PrivateKeyEnvelopeCodec;
 import io.github.jlmc.rikikivault.core.domain.exception.InvalidPassphraseException;
 import io.github.jlmc.rikikivault.core.domain.exception.MachineIdentityAlreadyExistsException;
@@ -8,12 +7,8 @@ import io.github.jlmc.rikikivault.core.domain.exception.PassphraseRequiredExcept
 import io.github.jlmc.rikikivault.core.domain.exception.PrivateKeyNotFoundException;
 import io.github.jlmc.rikikivault.core.domain.model.KeyFingerprint;
 import io.github.jlmc.rikikivault.core.domain.model.MachineIdentity;
-import io.github.jlmc.rikikivault.core.domain.model.PrivateKeyEnvelope;
 import io.github.jlmc.rikikivault.core.ports.out.KeyStorePort;
 
-import javax.crypto.Cipher;
-import javax.crypto.spec.GCMParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -26,7 +21,6 @@ import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.security.SecureRandom;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
@@ -64,16 +58,8 @@ public final class LocalKeyStoreAdapter implements KeyStorePort {
     private static final String PUBLIC_KEY_FILE = "public.key";
     private static final String KEY_ALGORITHM = "X25519";
 
-    private static final String AES_GCM_TRANSFORMATION = "AES/GCM/NoPadding";
-    private static final int GCM_TAG_LENGTH_BITS = 128;
-    private static final int GCM_NONCE_LENGTH = 12;
-    private static final int SALT_LENGTH_BYTES = 16;
-    private static final int KEK_LENGTH_BITS = 256;
-    private static final int PBKDF2_ITERATIONS = 600_000;
-
     private final Path identityDirectory;
     private final PrivateKeyEnvelopeCodec envelopeCodec = new PrivateKeyEnvelopeCodec();
-    private final SecureRandom secureRandom = new SecureRandom();
 
     public LocalKeyStoreAdapter(Path identityDirectory) {
         this.identityDirectory = Objects.requireNonNull(identityDirectory, "identityDirectory must not be null");
@@ -116,7 +102,7 @@ public final class LocalKeyStoreAdapter implements KeyStorePort {
         if (!envelopeCodec.isEnvelope(privateKeyFileBytes)) {
             return buildIdentity(privateKeyFileBytes);
         }
-        byte[] pkcs8Bytes = decryptEnvelope(envelopeCodec.decode(privateKeyFileBytes), passphrase);
+        byte[] pkcs8Bytes = PrivateKeyEnvelopeCrypto.decrypt(envelopeCodec.decode(privateKeyFileBytes), passphrase);
         try {
             return buildIdentity(pkcs8Bytes);
         } finally {
@@ -152,12 +138,14 @@ public final class LocalKeyStoreAdapter implements KeyStorePort {
                     throw new PassphraseRequiredException(
                             "Machine identity at " + identityDirectory + " is passphrase-protected");
                 }
-                pkcs8Bytes = decryptEnvelope(envelopeCodec.decode(currentPrivateKeyFileBytes), currentOrNull);
+                pkcs8Bytes = PrivateKeyEnvelopeCrypto.decrypt(envelopeCodec.decode(currentPrivateKeyFileBytes), currentOrNull);
             } else {
                 pkcs8Bytes = currentPrivateKeyFileBytes;
             }
 
-            byte[] newContent = newOrNull != null ? encryptEnvelope(pkcs8Bytes, newOrNull) : pkcs8Bytes;
+            byte[] newContent = newOrNull != null
+                    ? envelopeCodec.encode(PrivateKeyEnvelopeCrypto.encrypt(pkcs8Bytes, newOrNull))
+                    : pkcs8Bytes;
             writeFileSecurelyReplacing(privateKeyPath(), newContent);
         } catch (IOException e) {
             throw new UncheckedIOException("Failed to persist machine identity under " + identityDirectory, e);
@@ -190,48 +178,6 @@ public final class LocalKeyStoreAdapter implements KeyStorePort {
             throw new UncheckedIOException("Failed to read machine identity from " + identityDirectory, e);
         } catch (GeneralSecurityException e) {
             throw new PrivateKeyNotFoundException("Stored machine identity at " + identityDirectory + " is unreadable or corrupted", e);
-        }
-    }
-
-    private byte[] decryptEnvelope(PrivateKeyEnvelope envelope, char[] passphrase) {
-        byte[] kek = null;
-        try {
-            kek = Pbkdf2.deriveKey(passphrase, envelope.salt(), envelope.iterations(), KEK_LENGTH_BITS);
-            Cipher cipher = Cipher.getInstance(AES_GCM_TRANSFORMATION);
-            cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(kek, "AES"), new GCMParameterSpec(GCM_TAG_LENGTH_BITS, envelope.nonce()));
-            return cipher.doFinal(envelope.ciphertext());
-        } catch (GeneralSecurityException e) {
-            // AEADBadTagException (auth tag mismatch) is by far the common case - wrong passphrase -
-            // but any GeneralSecurityException here is treated the same way, deliberately without
-            // distinguishing "wrong passphrase" from "corrupted file": the two are indistinguishable
-            // from the cipher's perspective, and claiming one over the other would be a guess.
-            throw new InvalidPassphraseException(
-                    "Failed to unlock machine identity: wrong passphrase or the key file is corrupted", e);
-        } finally {
-            wipe(kek);
-        }
-    }
-
-    private byte[] encryptEnvelope(byte[] pkcs8Bytes, char[] passphrase) {
-        byte[] salt = new byte[SALT_LENGTH_BYTES];
-        secureRandom.nextBytes(salt);
-        byte[] nonce = new byte[GCM_NONCE_LENGTH];
-        secureRandom.nextBytes(nonce);
-
-        byte[] kek = null;
-        try {
-            kek = Pbkdf2.deriveKey(passphrase, salt, PBKDF2_ITERATIONS, KEK_LENGTH_BITS);
-            Cipher cipher = Cipher.getInstance(AES_GCM_TRANSFORMATION);
-            cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(kek, "AES"), new GCMParameterSpec(GCM_TAG_LENGTH_BITS, nonce));
-            byte[] ciphertext = cipher.doFinal(pkcs8Bytes);
-
-            PrivateKeyEnvelope envelope = new PrivateKeyEnvelope(
-                    PrivateKeyEnvelopeCodec.KDF_PBKDF2_HMAC_SHA256, PBKDF2_ITERATIONS, salt, nonce, ciphertext);
-            return envelopeCodec.encode(envelope);
-        } catch (GeneralSecurityException e) {
-            throw new IllegalStateException("Failed to encrypt machine identity", e);
-        } finally {
-            wipe(kek);
         }
     }
 

@@ -62,6 +62,18 @@ do vault, nem em cloud storage simples sem cifra - é literalmente a chave que d
 
 Estas duas opções não se excluem mutuamente - fazer as duas é a configuração mais robusta.
 
+**Uma terceira camada, por cima de qualquer uma das duas: proteger o `private.key` com uma
+passphrase** (`rikiki-vault set-passphrase`, ou Configurações → Segurança na app desktop - ver a
+[entrada da FAQ sobre proteção por password](07-private-key-is-not-password-protected.pt.md) para
+o quadro completo). Isto importa especialmente para o próprio backup: guardar uma cópia *protegida*
+nalgum sítio menos que totalmente confiável (um disco na cloud, um segundo dispositivo) é
+significativamente mais seguro do que guardar a chave em claro, já que só conseguir ler o ficheiro
+deixa de chegar sem a passphrase também. Não substitui fazer backup do ficheiro - uma chave
+protegida da qual nunca fizeste backup continua perdida para sempre com o disco - e se alguma vez
+esqueceres a passphrase, recuperar a identidade a partir desse backup precisa dos passos cientes de
+passphrase da [FAQ 03](03-recovering-with-only-the-private-key.pt.md), não dos passos para PKCS8 em
+claro de antes desta funcionalidade existir.
+
 ## Uma checklist curta
 
 - Configura um remoto desde o início (`init --git --remote <url>`, ou adiciona um mais tarde com
