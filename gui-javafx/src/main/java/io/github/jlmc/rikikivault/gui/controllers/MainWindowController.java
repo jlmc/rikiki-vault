@@ -29,7 +29,7 @@ import io.github.jlmc.rikikivault.gui.filetree.FileTreeBuilder;
 import io.github.jlmc.rikikivault.gui.filetree.FolderTreeBuilder;
 import io.github.jlmc.rikikivault.gui.filetree.FolderTreeNode;
 import io.github.jlmc.rikikivault.gui.filetree.StatusBadgeTreeCell;
-import io.github.jlmc.rikikivault.gui.support.BackgroundTask;
+import io.github.jlmc.rikikivault.gui.support.BackgroundTasks;
 import io.github.jlmc.rikikivault.gui.support.Dialogs;
 import io.github.jlmc.rikikivault.gui.support.Messages;
 import io.github.jlmc.rikikivault.gui.support.RemotePush;
@@ -173,7 +173,7 @@ public final class MainWindowController {
                     ViewerResultRenderer.renderUnsupported(Messages.get("mainWindow.preview.deletedFile")));
             return;
         }
-        BackgroundTask.run(
+        BackgroundTasks.run(
                 () -> {
                     byte[] content = ctx.localFiles().readFile(entry.path());
                     FileViewer viewer = FileViewerRegistry.select(entry.path());
@@ -210,7 +210,7 @@ public final class MainWindowController {
             return;
         }
         String path = currentNode.fileEntry().path();
-        BackgroundTask.run(
+        BackgroundTasks.run(
                 () -> ctx.localFiles().readFile(path),
                 bytes -> {
                     editorArea = new TextArea(TextFileViewer.tryDecodeUtf8(bytes));
@@ -249,7 +249,7 @@ public final class MainWindowController {
         }
         String path = currentNode.fileEntry().path();
         String text = editorArea.getText();
-        BackgroundTask.runVoid(
+        BackgroundTasks.runVoid(
                 () -> ctx.localFiles().writeFile(path, text.getBytes(StandardCharsets.UTF_8)),
                 () -> refresh(true),
                 Dialogs::showError);
@@ -263,7 +263,7 @@ public final class MainWindowController {
         }
         String path = currentNode.fileEntry().path();
         String text = editorArea.getText();
-        BackgroundTask.runVoid(
+        BackgroundTasks.runVoid(
                 () -> ctx.localFiles().writeFile(path, text.getBytes(StandardCharsets.UTF_8)),
                 this::onPublish,
                 Dialogs::showError);
@@ -278,7 +278,7 @@ public final class MainWindowController {
         if (!Dialogs.confirm(Messages.get("mainWindow.revert.title"), Messages.get("mainWindow.revert.confirm", path))) {
             return;
         }
-        BackgroundTask.runVoid(
+        BackgroundTasks.runVoid(
                 () -> new RevertFileService(
                         ctx.manifestPort(), ctx.localFiles(), ctx.documentsFiles(),
                         new DecryptFileService(ctx.encryptionPort()), new LoadMachineIdentityService(ctx.keyStorePort()))
@@ -288,7 +288,7 @@ public final class MainWindowController {
     }
 
     private void reloadEditorContent(String path) {
-        BackgroundTask.run(
+        BackgroundTasks.run(
                 () -> ctx.localFiles().readFile(path),
                 bytes -> {
                     if (editorArea != null) {
@@ -306,7 +306,7 @@ public final class MainWindowController {
         }
         String path = currentNode.fileEntry().path();
         byte[] currentContent = editorArea.getText().getBytes(StandardCharsets.UTF_8);
-        BackgroundTask.run(
+        BackgroundTasks.run(
                 () -> new DiffFileService(
                         ctx.manifestPort(), ctx.documentsFiles(),
                         new DecryptFileService(ctx.encryptionPort()), new LoadMachineIdentityService(ctx.keyStorePort()),
@@ -330,7 +330,7 @@ public final class MainWindowController {
     @FXML
     private void onPull() {
         log.info("User triggered Pull");
-        BackgroundTask.run(
+        BackgroundTasks.run(
                 () -> new PullVaultService(
                         new LoadMachineIdentityService(ctx.keyStorePort()),
                         new DecryptFileService(ctx.encryptionPort()),
@@ -355,7 +355,7 @@ public final class MainWindowController {
     }
 
     private void runRestore(boolean force, java.util.function.Consumer<RestoreLocalFilesResult> onDone) {
-        BackgroundTask.run(
+        BackgroundTasks.run(
                 () -> new RestoreLocalFilesService(
                         new LoadMachineIdentityService(ctx.keyStorePort()),
                         new DecryptFileService(ctx.encryptionPort()),
@@ -392,7 +392,7 @@ public final class MainWindowController {
     }
 
     private void runClearLocal(boolean includeUnpublished, java.util.function.Consumer<ClearLocalFilesResult> onDone) {
-        BackgroundTask.run(
+        BackgroundTasks.run(
                 () -> new ClearLocalFilesService(
                         new ScanChangesService(ctx.localFiles(), ctx.hashPort(), ctx.manifestPort()), ctx.localFiles())
                         .clear(new ClearLocalFilesCommand(includeUnpublished)),
@@ -424,7 +424,7 @@ public final class MainWindowController {
      * just shows "desconhecido", never an error dialog.
      */
     private void refreshRemoteSyncStatus() {
-        BackgroundTask.run(
+        BackgroundTasks.run(
                 () -> ctx.gitRepositoryPort().remoteSyncStatus(),
                 this::showRemoteSyncStatus,
                 error -> showRemoteSyncStatus(null));
@@ -525,7 +525,7 @@ public final class MainWindowController {
         // The local scan itself never touches the network, so this first step can never fail
         // because of a broken remote/credentials. Whether to publish to the remote is asked
         // separately, inside ChangeReviewController, only when there's something new to encrypt.
-        BackgroundTask.run(
+        BackgroundTasks.run(
                 () -> new ScanChangesService(ctx.localFiles(), ctx.hashPort(), ctx.manifestPort()).scan(),
                 (List<VaultChange> changes) -> {
                     if (changes.isEmpty()) {
@@ -547,7 +547,7 @@ public final class MainWindowController {
      * message instead of an error dialog.
      */
     private void offerPushWhenNothingToCommit() {
-        BackgroundTask.run(
+        BackgroundTasks.run(
                 () -> ctx.gitRepositoryPort().hasRemote() ? ctx.gitRepositoryPort().remoteSyncStatus() : RemoteSyncStatus.noRemote(),
                 status -> {
                     if (!status.hasRemote()) {
@@ -580,7 +580,7 @@ public final class MainWindowController {
 
     private void refresh(boolean reportErrors) {
         String previouslySelectedPath = currentSelectedPath();
-        BackgroundTask.run(
+        BackgroundTasks.run(
                 () -> {
                     List<String> localPaths = ctx.localFiles().listFiles();
                     List<VaultChange> changes = new ScanChangesService(

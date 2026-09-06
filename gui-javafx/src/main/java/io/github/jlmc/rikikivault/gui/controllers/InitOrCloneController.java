@@ -11,7 +11,7 @@ import io.github.jlmc.rikikivault.core.application.usecase.LoadMachineIdentitySe
 import io.github.jlmc.rikikivault.core.ports.in.CloneVaultCommand;
 import io.github.jlmc.rikikivault.core.ports.in.InitializeVaultCommand;
 import io.github.jlmc.rikikivault.gui.VaultContext;
-import io.github.jlmc.rikikivault.gui.support.BackgroundTask;
+import io.github.jlmc.rikikivault.gui.support.BackgroundTasks;
 import io.github.jlmc.rikikivault.gui.support.Dialogs;
 import io.github.jlmc.rikikivault.gui.support.Messages;
 import javafx.fxml.FXML;
@@ -55,7 +55,7 @@ public final class InitOrCloneController {
         setBusy(initButton, Messages.get("initOrClone.busy.initializing"));
         boolean initGit = gitCheckBox.isSelected();
         String remoteUri = initRemoteUrlField.getText();
-        BackgroundTask.runVoid(
+        BackgroundTasks.runVoid(
                 () -> new InitializeVaultService(
                         new LoadMachineIdentityService(ctx.keyStorePort()),
                         new InitializeMachineIdentityService(new X25519KeyPairGeneratorAdapter(), ctx.keyStorePort()),
@@ -81,7 +81,7 @@ public final class InitOrCloneController {
         }
         setBusy(cloneButton, Messages.get("initOrClone.busy.cloning"));
         JceHybridEncryptionAdapter encryptionPort = ctx.encryptionPort();
-        BackgroundTask.runVoid(
+        BackgroundTasks.runVoid(
                 () -> new CloneVaultService(
                         new LoadMachineIdentityService(ctx.keyStorePort()),
                         new InitializeMachineIdentityService(new X25519KeyPairGeneratorAdapter(), ctx.keyStorePort()),

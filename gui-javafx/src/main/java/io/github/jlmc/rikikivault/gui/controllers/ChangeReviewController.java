@@ -8,7 +8,7 @@ import io.github.jlmc.rikikivault.gui.VaultContext;
 import io.github.jlmc.rikikivault.gui.filetree.FileStatus;
 import io.github.jlmc.rikikivault.gui.filetree.SelectableChange;
 import io.github.jlmc.rikikivault.gui.filetree.StatusBadgeCell;
-import io.github.jlmc.rikikivault.gui.support.BackgroundTask;
+import io.github.jlmc.rikikivault.gui.support.BackgroundTasks;
 import io.github.jlmc.rikikivault.gui.support.Dialogs;
 import io.github.jlmc.rikikivault.gui.support.Fxml;
 import io.github.jlmc.rikikivault.gui.support.Messages;
@@ -120,7 +120,7 @@ public final class ChangeReviewController {
         // Phase 1 - local only. Must never fail because of the remote; a failure here means
         // nothing was actually saved, so it's a genuine blocking error.
         setBusy(true, Messages.get("changeReview.busy.publishingLocally"));
-        BackgroundTask.runVoid(
+        BackgroundTasks.runVoid(
                 () -> service.publishLocally(new PublishVaultCommand(selected, commitMessage)),
                 this::onLocalPublishSucceeded,
                 error -> {
@@ -133,7 +133,7 @@ public final class ChangeReviewController {
     // so nothing here is ever reported as a blocking "Erro" - at worst a warning that the push
     // itself didn't happen.
     private void onLocalPublishSucceeded() {
-        BackgroundTask.run(
+        BackgroundTasks.run(
                 () -> ctx.gitRepositoryPort().hasRemote(),
                 hasRemote -> {
                     if (!hasRemote) {

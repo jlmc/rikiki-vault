@@ -3,6 +3,7 @@ package io.github.jlmc.rikikivault.gui;
 import io.github.jlmc.rikikivault.gui.controllers.InitOrCloneController;
 import io.github.jlmc.rikikivault.gui.controllers.MainWindowController;
 import io.github.jlmc.rikikivault.gui.controllers.WelcomeController;
+import io.github.jlmc.rikikivault.gui.support.BackgroundTasks;
 import io.github.jlmc.rikikivault.gui.support.Fxml;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
@@ -26,6 +27,12 @@ public final class App extends Application {
         scene.getStylesheets().add(App.class.getResource("/css/app.css").toExternalForm());
         stage.setScene(scene);
         stage.show();
+    }
+
+    @Override
+    public void stop() {
+        log.info("Stopping Rikiki Vault GUI");
+        BackgroundTasks.shutdown();
     }
 
     private Parent loadWelcome(Stage stage) {
