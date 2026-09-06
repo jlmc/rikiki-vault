@@ -12,6 +12,7 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
 
 <VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="io.github.jlmc.rikikivault.gui.controllers.GitAuthSettingsPanel"
@@ -56,7 +57,10 @@
                         <PasswordField fx:id="tokenField" prefWidth="220"/>
                         <TextField fx:id="tokenRevealField" prefWidth="220" managed="false" visible="false"/>
                     </StackPane>
-                    <ToggleButton fx:id="tokenEyeToggle" text="👁">
+                    <ToggleButton fx:id="tokenEyeToggle">
+                        <graphic>
+                            <FontIcon fx:id="tokenEyeIcon" iconLiteral="fth-eye" iconSize="16"/>
+                        </graphic>
                         <tooltip>
                             <Tooltip text="%gitAuthPanel.eyeToggle.tooltip"/>
                         </tooltip>
@@ -77,7 +81,10 @@
                         <PasswordField fx:id="httpPasswordField" prefWidth="220"/>
                         <TextField fx:id="httpPasswordRevealField" prefWidth="220" managed="false" visible="false"/>
                     </StackPane>
-                    <ToggleButton fx:id="httpPasswordEyeToggle" text="👁">
+                    <ToggleButton fx:id="httpPasswordEyeToggle">
+                        <graphic>
+                            <FontIcon fx:id="httpPasswordEyeIcon" iconLiteral="fth-eye" iconSize="16"/>
+                        </graphic>
                         <tooltip>
                             <Tooltip text="%gitAuthPanel.eyeToggle.tooltip"/>
                         </tooltip>

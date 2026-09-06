@@ -11,6 +11,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.stage.FileChooser;
+import org.kordamp.ikonli.javafx.FontIcon;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -36,10 +37,12 @@ public final class GitAuthSettingsPanel {
     @FXML private PasswordField tokenField;
     @FXML private TextField tokenRevealField;
     @FXML private ToggleButton tokenEyeToggle;
+    @FXML private FontIcon tokenEyeIcon;
     @FXML private TextField httpUsernameField;
     @FXML private PasswordField httpPasswordField;
     @FXML private TextField httpPasswordRevealField;
     @FXML private ToggleButton httpPasswordEyeToggle;
+    @FXML private FontIcon httpPasswordEyeIcon;
 
     private Path pendingSshKeyPath;
 
@@ -51,15 +54,15 @@ public final class GitAuthSettingsPanel {
         httpUsernameField.setText(settings.httpUsername() != null ? settings.httpUsername() : "");
         httpPasswordField.setText(settings.httpPassword() != null ? settings.httpPassword() : "");
 
-        wireReveal(tokenField, tokenRevealField, tokenEyeToggle);
-        wireReveal(httpPasswordField, httpPasswordRevealField, httpPasswordEyeToggle);
+        wireReveal(tokenField, tokenRevealField, tokenEyeToggle, tokenEyeIcon);
+        wireReveal(httpPasswordField, httpPasswordRevealField, httpPasswordEyeToggle, httpPasswordEyeIcon);
 
         selectRadioFor(settings.activeType());
         authTypeGroup.selectedToggleProperty().addListener((_, _, _) -> updateActiveTypeLabel());
         updateActiveTypeLabel();
     }
 
-    private static void wireReveal(PasswordField masked, TextField revealed, ToggleButton eyeToggle) {
+    private static void wireReveal(PasswordField masked, TextField revealed, ToggleButton eyeToggle, FontIcon eyeIcon) {
         revealed.textProperty().bindBidirectional(masked.textProperty());
         revealed.setManaged(false);
         revealed.setVisible(false);
@@ -68,6 +71,7 @@ public final class GitAuthSettingsPanel {
             revealed.setManaged(isSelected);
             masked.setVisible(!isSelected);
             masked.setManaged(!isSelected);
+            eyeIcon.setIconLiteral(isSelected ? "fth-eye-off" : "fth-eye");
         });
     }
 

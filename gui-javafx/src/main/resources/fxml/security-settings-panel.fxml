@@ -11,6 +11,7 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
 
 <VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="io.github.jlmc.rikikivault.gui.controllers.SecuritySettingsPanel"
@@ -33,7 +34,10 @@
                         <PasswordField fx:id="currentField" prefWidth="220"/>
                         <TextField fx:id="currentRevealField" prefWidth="220" managed="false" visible="false"/>
                     </StackPane>
-                    <ToggleButton fx:id="currentEyeToggle" text="👁">
+                    <ToggleButton fx:id="currentEyeToggle">
+                        <graphic>
+                            <FontIcon fx:id="currentEyeIcon" iconLiteral="fth-eye" iconSize="16"/>
+                        </graphic>
                         <tooltip>
                             <Tooltip text="%gitAuthPanel.eyeToggle.tooltip"/>
                         </tooltip>
@@ -48,7 +52,10 @@
                         <PasswordField fx:id="newField" prefWidth="220"/>
                         <TextField fx:id="newRevealField" prefWidth="220" managed="false" visible="false"/>
                     </StackPane>
-                    <ToggleButton fx:id="newEyeToggle" text="👁">
+                    <ToggleButton fx:id="newEyeToggle">
+                        <graphic>
+                            <FontIcon fx:id="newEyeIcon" iconLiteral="fth-eye" iconSize="16"/>
+                        </graphic>
                         <tooltip>
                             <Tooltip text="%gitAuthPanel.eyeToggle.tooltip"/>
                         </tooltip>
@@ -60,7 +67,10 @@
                         <PasswordField fx:id="confirmField" prefWidth="220"/>
                         <TextField fx:id="confirmRevealField" prefWidth="220" managed="false" visible="false"/>
                     </StackPane>
-                    <ToggleButton fx:id="confirmEyeToggle" text="👁">
+                    <ToggleButton fx:id="confirmEyeToggle">
+                        <graphic>
+                            <FontIcon fx:id="confirmEyeIcon" iconLiteral="fth-eye" iconSize="16"/>
+                        </graphic>
                         <tooltip>
                             <Tooltip text="%gitAuthPanel.eyeToggle.tooltip"/>
                         </tooltip>

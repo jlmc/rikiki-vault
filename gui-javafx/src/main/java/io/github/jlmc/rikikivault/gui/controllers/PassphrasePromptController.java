@@ -11,6 +11,7 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
+import org.kordamp.ikonli.javafx.FontIcon;
 
 import java.util.Arrays;
 import java.util.function.Consumer;
@@ -27,6 +28,7 @@ public final class PassphrasePromptController {
     @FXML private PasswordField passphraseField;
     @FXML private TextField passphraseRevealField;
     @FXML private ToggleButton eyeToggle;
+    @FXML private FontIcon eyeIcon;
     @FXML private Button unlockButton;
     @FXML private Button cancelButton;
     @FXML private ProgressIndicator progress;
@@ -41,7 +43,7 @@ public final class PassphrasePromptController {
         this.onUnlocked = onUnlocked;
         this.onCancel = onCancel;
         titleLabel.setText(Messages.get("passphrasePrompt.title", ctx.vaultRoot()));
-        wireReveal(passphraseField, passphraseRevealField, eyeToggle);
+        wireReveal(passphraseField, passphraseRevealField, eyeToggle, eyeIcon);
     }
 
     @FXML
@@ -79,7 +81,7 @@ public final class PassphrasePromptController {
         cancelButton.setDisable(busy);
     }
 
-    private static void wireReveal(PasswordField masked, TextField revealed, ToggleButton eyeToggle) {
+    private static void wireReveal(PasswordField masked, TextField revealed, ToggleButton eyeToggle, FontIcon eyeIcon) {
         revealed.textProperty().bindBidirectional(masked.textProperty());
         revealed.setManaged(false);
         revealed.setVisible(false);
@@ -88,6 +90,7 @@ public final class PassphrasePromptController {
             revealed.setManaged(isSelected);
             masked.setVisible(!isSelected);
             masked.setManaged(!isSelected);
+            eyeIcon.setIconLiteral(isSelected ? "fth-eye-off" : "fth-eye");
         });
     }
 }

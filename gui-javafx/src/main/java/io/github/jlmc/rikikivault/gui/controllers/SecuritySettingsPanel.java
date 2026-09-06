@@ -13,6 +13,7 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
+import org.kordamp.ikonli.javafx.FontIcon;
 
 import java.util.Arrays;
 import java.util.function.Consumer;
@@ -36,12 +37,15 @@ public final class SecuritySettingsPanel {
     @FXML private PasswordField currentField;
     @FXML private TextField currentRevealField;
     @FXML private ToggleButton currentEyeToggle;
+    @FXML private FontIcon currentEyeIcon;
     @FXML private PasswordField newField;
     @FXML private TextField newRevealField;
     @FXML private ToggleButton newEyeToggle;
+    @FXML private FontIcon newEyeIcon;
     @FXML private PasswordField confirmField;
     @FXML private TextField confirmRevealField;
     @FXML private ToggleButton confirmEyeToggle;
+    @FXML private FontIcon confirmEyeIcon;
     @FXML private Button applyButton;
     @FXML private Button removeButton;
     @FXML private ProgressIndicator progress;
@@ -55,9 +59,9 @@ public final class SecuritySettingsPanel {
         if (onPassphraseChanged != null) {
             this.onPassphraseChanged = onPassphraseChanged;
         }
-        wireReveal(currentField, currentRevealField, currentEyeToggle);
-        wireReveal(newField, newRevealField, newEyeToggle);
-        wireReveal(confirmField, confirmRevealField, confirmEyeToggle);
+        wireReveal(currentField, currentRevealField, currentEyeToggle, currentEyeIcon);
+        wireReveal(newField, newRevealField, newEyeToggle, newEyeIcon);
+        wireReveal(confirmField, confirmRevealField, confirmEyeToggle, confirmEyeIcon);
         refreshProtectionState();
     }
 
@@ -125,7 +129,7 @@ public final class SecuritySettingsPanel {
         }
     }
 
-    private static void wireReveal(PasswordField masked, TextField revealed, ToggleButton eyeToggle) {
+    private static void wireReveal(PasswordField masked, TextField revealed, ToggleButton eyeToggle, FontIcon eyeIcon) {
         revealed.textProperty().bindBidirectional(masked.textProperty());
         revealed.setManaged(false);
         revealed.setVisible(false);
@@ -134,6 +138,7 @@ public final class SecuritySettingsPanel {
             revealed.setManaged(isSelected);
             masked.setVisible(!isSelected);
             masked.setManaged(!isSelected);
+            eyeIcon.setIconLiteral(isSelected ? "fth-eye-off" : "fth-eye");
         });
     }
 }

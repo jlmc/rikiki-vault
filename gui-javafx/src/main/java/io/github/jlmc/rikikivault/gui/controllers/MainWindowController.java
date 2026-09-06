@@ -553,9 +553,9 @@ public final class MainWindowController {
         railExpanded = !railExpanded;
         navRail.getStyleClass().removeAll("nav-rail-expanded", "nav-rail-collapsed");
         navRail.getStyleClass().add(railExpanded ? "nav-rail-expanded" : "nav-rail-collapsed");
-        filesNavButton.setText(Messages.get(railExpanded ? "mainWindow.nav.files.expanded" : "mainWindow.nav.files.collapsed"));
-        settingsNavButton.setText(Messages.get(railExpanded ? "mainWindow.nav.settings.expanded" : "mainWindow.nav.settings.collapsed"));
-        manageAccessNavButton.setText(Messages.get(railExpanded ? "mainWindow.nav.manageAccess.expanded" : "mainWindow.nav.manageAccess.collapsed"));
+        filesNavButton.setText(railExpanded ? Messages.get("mainWindow.nav.files.label") : "");
+        settingsNavButton.setText(railExpanded ? Messages.get("mainWindow.nav.settings.label") : "");
+        manageAccessNavButton.setText(railExpanded ? Messages.get("mainWindow.nav.manageAccess.label") : "");
     }
 
     @FXML

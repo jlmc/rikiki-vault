@@ -123,7 +123,8 @@
 }
 
 .menu-item-icon {
-    -fx-font-size: 13px;
+    -fx-icon-size: 15px;
+    -fx-icon-color: -fx-text-secondary;
     -fx-padding: 0 2px 0 0;
 }
 
@@ -229,18 +230,22 @@
 
 .status-synced {
     -fx-text-fill: #1E7A34;
+    -fx-icon-color: #1E7A34;
 }
 
 .status-added {
     -fx-text-fill: #1565C0;
+    -fx-icon-color: #1565C0;
 }
 
 .status-modified {
     -fx-text-fill: #B54708;
+    -fx-icon-color: #B54708;
 }
 
 .status-deleted {
     -fx-text-fill: #C42B2B;
+    -fx-icon-color: #C42B2B;
 }
 
 /* --- Preview pane --- */
@@ -308,8 +313,11 @@
     -fx-border-width: 0;
     -fx-background-radius: 0;
     -fx-text-fill: -fx-text-secondary;
+    -fx-icon-color: -fx-text-secondary;
     -fx-font-size: 10px;
     -fx-text-alignment: center;
+    -fx-content-display: TOP;
+    -fx-graphic-text-gap: 4px;
     -fx-padding: 10px 4px 10px 4px;
 }
 
@@ -319,7 +327,6 @@
 
 .nav-rail-collapsed .nav-rail-button {
     -fx-pref-width: 48px;
-    -fx-font-size: 16px;
 }
 
 .nav-rail-button:hover {
@@ -329,6 +336,7 @@
 .nav-rail-button:selected {
     -fx-background-color: -fx-accent-soft;
     -fx-text-fill: -fx-accent;
+    -fx-icon-color: -fx-accent;
     -fx-border-color: transparent transparent transparent -fx-accent;
     -fx-border-width: 0 0 0 3px;
 }
