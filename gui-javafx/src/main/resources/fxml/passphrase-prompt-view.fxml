@@ -2,15 +2,10 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.control.PasswordField?>
 <?import javafx.scene.control.ProgressIndicator?>
-<?import javafx.scene.control.TextField?>
-<?import javafx.scene.control.ToggleButton?>
-<?import javafx.scene.control.Tooltip?>
 <?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
-<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import io.github.jlmc.rikikivault.gui.controls.RevealablePasswordField?>
 
 <VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="io.github.jlmc.rikikivault.gui.controllers.PassphrasePromptController"
@@ -20,20 +15,7 @@
     </padding>
     <Label fx:id="titleLabel" styleClass="title" wrapText="true" maxWidth="360" textAlignment="CENTER"/>
     <Label text="%passphrasePrompt.subtitle" styleClass="subtitle" wrapText="true" maxWidth="360" textAlignment="CENTER"/>
-    <HBox spacing="8" alignment="CENTER">
-        <StackPane prefWidth="240">
-            <PasswordField fx:id="passphraseField" prefWidth="240" promptText="%passphrasePrompt.field.prompt"/>
-            <TextField fx:id="passphraseRevealField" prefWidth="240" managed="false" visible="false"/>
-        </StackPane>
-        <ToggleButton fx:id="eyeToggle">
-            <graphic>
-                <FontIcon fx:id="eyeIcon" iconLiteral="fth-eye" iconSize="16"/>
-            </graphic>
-            <tooltip>
-                <Tooltip text="%gitAuthPanel.eyeToggle.tooltip"/>
-            </tooltip>
-        </ToggleButton>
-    </HBox>
+    <RevealablePasswordField fx:id="passphraseField" prefWidth="240" promptText="%passphrasePrompt.field.prompt"/>
     <Label fx:id="errorLabel" styleClass="error-label" visible="false" managed="false" wrapText="true" maxWidth="360"/>
     <HBox spacing="8" alignment="CENTER">
         <ProgressIndicator fx:id="progress" maxWidth="20" maxHeight="20" visible="false"/>

@@ -2,17 +2,14 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.control.PasswordField?>
 <?import javafx.scene.control.RadioButton?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.TextField?>
-<?import javafx.scene.control.ToggleButton?>
 <?import javafx.scene.control.ToggleGroup?>
 <?import javafx.scene.control.Tooltip?>
 <?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
-<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import io.github.jlmc.rikikivault.gui.controls.RevealablePasswordField?>
 
 <VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="io.github.jlmc.rikikivault.gui.controllers.GitAuthSettingsPanel"
@@ -52,20 +49,7 @@
 
             <VBox spacing="8">
                 <RadioButton fx:id="tokenRadio" text="%gitAuthPanel.type.token" toggleGroup="$authTypeGroup"/>
-                <HBox spacing="8" alignment="CENTER_LEFT">
-                    <StackPane prefWidth="220">
-                        <PasswordField fx:id="tokenField" prefWidth="220"/>
-                        <TextField fx:id="tokenRevealField" prefWidth="220" managed="false" visible="false"/>
-                    </StackPane>
-                    <ToggleButton fx:id="tokenEyeToggle">
-                        <graphic>
-                            <FontIcon fx:id="tokenEyeIcon" iconLiteral="fth-eye" iconSize="16"/>
-                        </graphic>
-                        <tooltip>
-                            <Tooltip text="%gitAuthPanel.eyeToggle.tooltip"/>
-                        </tooltip>
-                    </ToggleButton>
-                </HBox>
+                <RevealablePasswordField fx:id="tokenField" prefWidth="220"/>
                 <Button text="%gitAuthPanel.removeToken" onAction="#onClearToken">
                     <tooltip>
                         <Tooltip text="%gitAuthPanel.removeToken.tooltip"/>
@@ -76,20 +60,7 @@
             <VBox spacing="8">
                 <RadioButton fx:id="httpRadio" text="%gitAuthPanel.type.http" toggleGroup="$authTypeGroup"/>
                 <TextField fx:id="httpUsernameField" promptText="%gitAuthPanel.usernamePrompt" prefWidth="220"/>
-                <HBox spacing="8" alignment="CENTER_LEFT">
-                    <StackPane prefWidth="220">
-                        <PasswordField fx:id="httpPasswordField" prefWidth="220"/>
-                        <TextField fx:id="httpPasswordRevealField" prefWidth="220" managed="false" visible="false"/>
-                    </StackPane>
-                    <ToggleButton fx:id="httpPasswordEyeToggle">
-                        <graphic>
-                            <FontIcon fx:id="httpPasswordEyeIcon" iconLiteral="fth-eye" iconSize="16"/>
-                        </graphic>
-                        <tooltip>
-                            <Tooltip text="%gitAuthPanel.eyeToggle.tooltip"/>
-                        </tooltip>
-                    </ToggleButton>
-                </HBox>
+                <RevealablePasswordField fx:id="httpPasswordField" prefWidth="220"/>
                 <Button text="%gitAuthPanel.removeHttpBasic" onAction="#onClearHttpBasic">
                     <tooltip>
                         <Tooltip text="%gitAuthPanel.removeHttpBasic.tooltip"/>

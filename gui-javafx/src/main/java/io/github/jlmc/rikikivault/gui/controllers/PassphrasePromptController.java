@@ -2,16 +2,13 @@ package io.github.jlmc.rikikivault.gui.controllers;
 
 import io.github.jlmc.rikikivault.core.adapters.keystore.PassphraseCachingKeyStorePort;
 import io.github.jlmc.rikikivault.gui.VaultContext;
+import io.github.jlmc.rikikivault.gui.controls.RevealablePasswordField;
 import io.github.jlmc.rikikivault.gui.support.BackgroundTasks;
 import io.github.jlmc.rikikivault.gui.support.Messages;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.control.PasswordField;
 import javafx.scene.control.ProgressIndicator;
-import javafx.scene.control.TextField;
-import javafx.scene.control.ToggleButton;
-import org.kordamp.ikonli.javafx.FontIcon;
 
 import java.util.Arrays;
 import java.util.function.Consumer;
@@ -25,10 +22,7 @@ import java.util.function.Consumer;
 public final class PassphrasePromptController {
 
     @FXML private Label titleLabel;
-    @FXML private PasswordField passphraseField;
-    @FXML private TextField passphraseRevealField;
-    @FXML private ToggleButton eyeToggle;
-    @FXML private FontIcon eyeIcon;
+    @FXML private RevealablePasswordField passphraseField;
     @FXML private Button unlockButton;
     @FXML private Button cancelButton;
     @FXML private ProgressIndicator progress;
@@ -43,7 +37,6 @@ public final class PassphrasePromptController {
         this.onUnlocked = onUnlocked;
         this.onCancel = onCancel;
         titleLabel.setText(Messages.get("passphrasePrompt.title", ctx.vaultRoot()));
-        wireReveal(passphraseField, passphraseRevealField, eyeToggle, eyeIcon);
     }
 
     @FXML
@@ -79,18 +72,5 @@ public final class PassphrasePromptController {
         progress.setVisible(busy);
         unlockButton.setDisable(busy);
         cancelButton.setDisable(busy);
-    }
-
-    private static void wireReveal(PasswordField masked, TextField revealed, ToggleButton eyeToggle, FontIcon eyeIcon) {
-        revealed.textProperty().bindBidirectional(masked.textProperty());
-        revealed.setManaged(false);
-        revealed.setVisible(false);
-        eyeToggle.selectedProperty().addListener((_, _, isSelected) -> {
-            revealed.setVisible(isSelected);
-            revealed.setManaged(isSelected);
-            masked.setVisible(!isSelected);
-            masked.setManaged(!isSelected);
-            eyeIcon.setIconLiteral(isSelected ? "fth-eye-off" : "fth-eye");
-        });
     }
 }

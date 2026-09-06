@@ -4,16 +4,13 @@ import io.github.jlmc.rikikivault.core.adapters.configuration.YamlConfigFileAdap
 import io.github.jlmc.rikikivault.core.adapters.keystore.LocalKeyStoreAdapter;
 import io.github.jlmc.rikikivault.core.configuration.VaultPaths;
 import io.github.jlmc.rikikivault.core.domain.exception.RikikiVaultException;
+import io.github.jlmc.rikikivault.gui.controls.RevealablePasswordField;
 import io.github.jlmc.rikikivault.gui.support.BackgroundTasks;
 import io.github.jlmc.rikikivault.gui.support.Messages;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.control.PasswordField;
 import javafx.scene.control.ProgressIndicator;
-import javafx.scene.control.TextField;
-import javafx.scene.control.ToggleButton;
-import org.kordamp.ikonli.javafx.FontIcon;
 
 import java.util.Arrays;
 import java.util.function.Consumer;
@@ -34,18 +31,9 @@ import java.util.function.Consumer;
 public final class SecuritySettingsPanel {
 
     @FXML private Label statusLabel;
-    @FXML private PasswordField currentField;
-    @FXML private TextField currentRevealField;
-    @FXML private ToggleButton currentEyeToggle;
-    @FXML private FontIcon currentEyeIcon;
-    @FXML private PasswordField newField;
-    @FXML private TextField newRevealField;
-    @FXML private ToggleButton newEyeToggle;
-    @FXML private FontIcon newEyeIcon;
-    @FXML private PasswordField confirmField;
-    @FXML private TextField confirmRevealField;
-    @FXML private ToggleButton confirmEyeToggle;
-    @FXML private FontIcon confirmEyeIcon;
+    @FXML private RevealablePasswordField currentField;
+    @FXML private RevealablePasswordField newField;
+    @FXML private RevealablePasswordField confirmField;
     @FXML private Button applyButton;
     @FXML private Button removeButton;
     @FXML private ProgressIndicator progress;
@@ -59,9 +47,6 @@ public final class SecuritySettingsPanel {
         if (onPassphraseChanged != null) {
             this.onPassphraseChanged = onPassphraseChanged;
         }
-        wireReveal(currentField, currentRevealField, currentEyeToggle, currentEyeIcon);
-        wireReveal(newField, newRevealField, newEyeToggle, newEyeIcon);
-        wireReveal(confirmField, confirmRevealField, confirmEyeToggle, confirmEyeIcon);
         refreshProtectionState();
     }
 
@@ -129,16 +114,4 @@ public final class SecuritySettingsPanel {
         }
     }
 
-    private static void wireReveal(PasswordField masked, TextField revealed, ToggleButton eyeToggle, FontIcon eyeIcon) {
-        revealed.textProperty().bindBidirectional(masked.textProperty());
-        revealed.setManaged(false);
-        revealed.setVisible(false);
-        eyeToggle.selectedProperty().addListener((_, _, isSelected) -> {
-            revealed.setVisible(isSelected);
-            revealed.setManaged(isSelected);
-            masked.setVisible(!isSelected);
-            masked.setManaged(!isSelected);
-            eyeIcon.setIconLiteral(isSelected ? "fth-eye-off" : "fth-eye");
-        });
-    }
 }
