@@ -55,7 +55,7 @@ public final class GitAuthSettingsPanel {
         wireReveal(httpPasswordField, httpPasswordRevealField, httpPasswordEyeToggle);
 
         selectRadioFor(settings.activeType());
-        authTypeGroup.selectedToggleProperty().addListener((observable, oldValue, newValue) -> updateActiveTypeLabel());
+        authTypeGroup.selectedToggleProperty().addListener((_, _, _) -> updateActiveTypeLabel());
         updateActiveTypeLabel();
     }
 
@@ -63,7 +63,7 @@ public final class GitAuthSettingsPanel {
         revealed.textProperty().bindBidirectional(masked.textProperty());
         revealed.setManaged(false);
         revealed.setVisible(false);
-        eyeToggle.selectedProperty().addListener((observable, wasSelected, isSelected) -> {
+        eyeToggle.selectedProperty().addListener((_, _, isSelected) -> {
             revealed.setVisible(isSelected);
             revealed.setManaged(isSelected);
             masked.setVisible(!isSelected);

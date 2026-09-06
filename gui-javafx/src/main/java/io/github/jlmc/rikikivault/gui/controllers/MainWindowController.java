@@ -111,7 +111,7 @@ public final class MainWindowController {
                 node -> node.fileEntry() == null ? null : node.fileEntry().status()));
 
         fileTable.getSelectionModel().selectedItemProperty()
-                .addListener((observable, oldValue, newValue) -> showPreview(newValue == null ? null : newValue.getValue()));
+                .addListener((_, _, newValue) -> showPreview(newValue == null ? null : newValue.getValue()));
         showPreview(null);
 
         refresh();
@@ -133,7 +133,7 @@ public final class MainWindowController {
     private void startAutoRefresh() {
         // Reflects changes made to local/ from outside the app (Finder, another editor, ...).
         // Never touches the remote - pulling still requires the explicit "Pull" action.
-        Timeline timeline = new Timeline(new KeyFrame(Duration.seconds(3), event -> refresh(false)));
+        Timeline timeline = new Timeline(new KeyFrame(Duration.seconds(3), _ -> refresh(false)));
         timeline.setCycleCount(Timeline.INDEFINITE);
         timeline.play();
     }
@@ -427,7 +427,7 @@ public final class MainWindowController {
         BackgroundTasks.run(
                 () -> ctx.gitRepositoryPort().remoteSyncStatus(),
                 this::showRemoteSyncStatus,
-                error -> showRemoteSyncStatus(null));
+                _ -> showRemoteSyncStatus(null));
     }
 
     private void showRemoteSyncStatus(RemoteSyncStatus status) {
@@ -566,7 +566,7 @@ public final class MainWindowController {
                         Dialogs.showInfo(Messages.get("mainWindow.publish.title"), Messages.get("mainWindow.publish.nothing"));
                     }
                 },
-                error -> Dialogs.showInfo(Messages.get("mainWindow.publish.title"), Messages.get("mainWindow.publish.unknownRemote")));
+                _ -> Dialogs.showInfo(Messages.get("mainWindow.publish.title"), Messages.get("mainWindow.publish.unknownRemote")));
     }
 
     private void refreshAfterPublish() {

@@ -29,7 +29,7 @@ public final class FolderTreeBuilder {
             if (depth == segments.length - 1) {
                 filesHere.add(entry);
             } else {
-                subfolders.computeIfAbsent(segments[depth], key -> new ArrayList<>()).add(entry);
+                subfolders.computeIfAbsent(segments[depth], _ -> new ArrayList<>()).add(entry);
             }
         }
 

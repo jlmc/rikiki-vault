@@ -286,7 +286,7 @@ public final class JGitRepositoryAdapter implements GitRepositoryPort {
     private TransportConfigCallback resolveSshTransportConfigCallback() {
         GitAuthSettings settings = gitAuthSettingsPort.load();
         if (settings.activeType() != GitAuthType.SSH || settings.sshPrivateKeyPath() == null) {
-            return transport -> {
+            return _ -> {
             };
         }
         SshdSessionFactory sessionFactory = new FixedIdentitySshdSessionFactory(settings.sshPrivateKeyPath());

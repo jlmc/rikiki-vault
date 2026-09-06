@@ -60,7 +60,7 @@ public final class ViewerResultRenderer {
         StackPane body = new StackPane(imageView, textArea);
 
         Button toggle = new Button(Messages.get("fileViewer.pdf.showText"));
-        toggle.setOnAction(event -> {
+        toggle.setOnAction(_ -> {
             boolean showingText = textArea.isVisible();
             imageView.setVisible(showingText);
             imageView.setManaged(showingText);
