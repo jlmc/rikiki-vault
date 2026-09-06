@@ -6,7 +6,7 @@ import io.github.jlmc.rikikivault.core.domain.model.KeyFingerprint;
 import io.github.jlmc.rikikivault.core.ports.in.AuthorizeMachineCommand;
 import io.github.jlmc.rikikivault.core.ports.in.RevokeMachineCommand;
 import io.github.jlmc.rikikivault.gui.VaultContext;
-import io.github.jlmc.rikikivault.gui.support.BackgroundTask;
+import io.github.jlmc.rikikivault.gui.support.BackgroundTasks;
 import io.github.jlmc.rikikivault.gui.support.Dialogs;
 import io.github.jlmc.rikikivault.gui.support.Fxml;
 import io.github.jlmc.rikikivault.gui.support.Messages;
@@ -90,7 +90,7 @@ public final class ManageAccessController {
         PublicKey publicKey = readPublicKeyFile(chosenPublicKeyFile);
 
         setBusy(true, Messages.get("manageAccess.busy.authorizing"));
-        BackgroundTask.run(
+        BackgroundTasks.run(
                 () -> new AuthorizeMachineService(
                         ctx.recipientRegistryPort(), ctx.localFiles(), ctx.documentsFiles(),
                         ctx.manifestPort(), ctx.encryptionPort(), ctx.gitRepositoryPort())
@@ -130,7 +130,7 @@ public final class ManageAccessController {
         }
 
         setBusy(true, Messages.get("manageAccess.busy.revoking"));
-        BackgroundTask.run(
+        BackgroundTasks.run(
                 () -> new RevokeMachineService(
                         ctx.recipientRegistryPort(), ctx.localFiles(), ctx.documentsFiles(),
                         ctx.manifestPort(), ctx.encryptionPort(), ctx.gitRepositoryPort())

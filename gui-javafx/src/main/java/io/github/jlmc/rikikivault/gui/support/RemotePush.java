@@ -15,9 +15,9 @@ public final class RemotePush {
     }
 
     public static void pushInBackground(GitRepositoryPort gitRepositoryPort, Runnable onDone) {
-        BackgroundTask.run(
+        BackgroundTasks.run(
                 gitRepositoryPort::push,
-                pushed -> onDone.run(),
+                _ -> onDone.run(),
                 error -> {
                     onDone.run();
                     Dialogs.showWarning(Messages.get("remotePush.failed.title"),

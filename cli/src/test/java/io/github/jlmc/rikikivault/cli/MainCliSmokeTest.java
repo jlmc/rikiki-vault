@@ -4,12 +4,16 @@ import org.eclipse.jgit.api.Git;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -85,6 +89,83 @@ class MainCliSmokeTest {
         }
     }
 
+    /**
+     * With no real console attached to the test JVM, {@code System.console()} is always null, so
+     * every passphrase prompt goes through Main's stdin fallback - feeding it here the same way a
+     * piped/non-interactive invocation would.
+     */
+    @Test
+    void setPassphraseProtectsTheIdentityAndIsRequiredToUnlockIt(
+            @TempDir Path tempDir, @TempDir Path homeDir) throws Exception {
+        Path vaultDir = tempDir.resolve("vault");
+        Files.createDirectories(vaultDir);
+
+        String originalUserHome = System.getProperty("user.home");
+        System.setProperty("user.home", homeDir.toString());
+        try {
+            // No console attached in a test JVM, so the "offer a passphrase now?" prompt after
+            // init is skipped automatically (never blocks on stdin) - set it explicitly afterwards.
+            run("-C", vaultDir.toString(), "init", "--git", "machine-a");
+
+            String setOutput = runWithInput("s3cret passphrase\ns3cret passphrase\n",
+                    "-C", vaultDir.toString(), "set-passphrase");
+            assertTrue(setOutput.contains("Passphrase definida"), "esperava confirmação de passphrase definida, foi: " + setOutput);
+
+            String whoamiOutput = runWithInput("s3cret passphrase\n", "-C", vaultDir.toString(), "whoami");
+            assertTrue(whoamiOutput.contains("Fingerprint"), "whoami devia ter corrido com a passphrase correta, foi: " + whoamiOutput);
+            assertFalse(whoamiOutput.contains("identidade gerada agora"), "identidade já existia, não devia parecer nova");
+
+            String removeOutput = runWithInput("s3cret passphrase\n", "-C", vaultDir.toString(), "remove-passphrase");
+            assertTrue(removeOutput.contains("Passphrase removida"), "esperava confirmação de remoção, foi: " + removeOutput);
+
+            String whoamiAfterRemoval = run("-C", vaultDir.toString(), "whoami");
+            assertTrue(whoamiAfterRemoval.contains("Fingerprint"),
+                    "whoami sem proteção não devia precisar de passphrase, foi: " + whoamiAfterRemoval);
+        } finally {
+            System.setProperty("user.home", originalUserHome);
+        }
+    }
+
+    /**
+     * Mirrors the FAQ 03/04 disaster-recovery recipe: a protected {@code private.key} backed up
+     * somewhere else, unwrapped back to plain PKCS8 with only the passphrase - no vault/public.key
+     * involved at all.
+     */
+    @Test
+    void unwrapKeyDecryptsAProtectedBackupToPlainPkcs8(@TempDir Path tempDir, @TempDir Path homeDir) throws Exception {
+        Path vaultDir = tempDir.resolve("vault");
+        Files.createDirectories(vaultDir);
+
+        String originalUserHome = System.getProperty("user.home");
+        System.setProperty("user.home", homeDir.toString());
+        try {
+            run("-C", vaultDir.toString(), "init", "--git", "machine-a");
+            Path identityDir = homeDir.resolve(".rikiki-vault").resolve("identity");
+            byte[] originalPlainBytes = Files.readAllBytes(identityDir.resolve("private.key"));
+
+            runWithInput("s3cret passphrase\ns3cret passphrase\n", "-C", vaultDir.toString(), "set-passphrase");
+            Path backedUpProtectedKey = tempDir.resolve("backup-private.key");
+            Files.copy(identityDir.resolve("private.key"), backedUpProtectedKey);
+
+            Path unwrapped = tempDir.resolve("unwrapped-private.key");
+            String unwrapOutput = runWithInput("s3cret passphrase\n",
+                    "unwrap-key", backedUpProtectedKey.toString(), unwrapped.toString());
+            assertTrue(unwrapOutput.contains(unwrapped.toString()), "esperava confirmação com o caminho de saída, foi: " + unwrapOutput);
+
+            assertArrayEquals(originalPlainBytes, Files.readAllBytes(unwrapped),
+                    "unwrap-key devia reproduzir exatamente os bytes PKCS8 originais");
+
+            // Correr outra vez sobre um ficheiro já em claro deve só copiar, sem pedir passphrase.
+            Path copyOfPlain = tempDir.resolve("copy-of-plain.key");
+            String plainPassthroughOutput = run("unwrap-key", unwrapped.toString(), copyOfPlain.toString());
+            assertTrue(plainPassthroughOutput.contains("já não está protegido"),
+                    "esperava a mensagem 'já em claro', foi: " + plainPassthroughOutput);
+            assertArrayEquals(originalPlainBytes, Files.readAllBytes(copyOfPlain));
+        } finally {
+            System.setProperty("user.home", originalUserHome);
+        }
+    }
+
     private static void deleteRecursively(Path root) throws java.io.IOException {
         if (Files.notExists(root)) {
             return;
@@ -101,13 +182,22 @@ class MainCliSmokeTest {
     }
 
     private static String run(String... args) {
+        return runWithInput(null, args);
+    }
+
+    private static String runWithInput(String stdin, String... args) {
         PrintStream originalOut = System.out;
+        InputStream originalIn = System.in;
         ByteArrayOutputStream captured = new ByteArrayOutputStream();
         System.setOut(new PrintStream(captured, true, StandardCharsets.UTF_8));
+        if (stdin != null) {
+            System.setIn(new ByteArrayInputStream(stdin.getBytes(StandardCharsets.UTF_8)));
+        }
         try {
             Main.main(args);
         } finally {
             System.setOut(originalOut);
+            System.setIn(originalIn);
         }
         return captured.toString(StandardCharsets.UTF_8);
     }

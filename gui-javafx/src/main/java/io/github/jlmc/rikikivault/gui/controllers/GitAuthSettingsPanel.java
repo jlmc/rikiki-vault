@@ -2,13 +2,12 @@ package io.github.jlmc.rikikivault.gui.controllers;
 
 import io.github.jlmc.rikikivault.core.configuration.GitAuthSettings;
 import io.github.jlmc.rikikivault.core.configuration.GitAuthType;
+import io.github.jlmc.rikikivault.gui.controls.RevealablePasswordField;
 import io.github.jlmc.rikikivault.gui.support.Messages;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
-import javafx.scene.control.PasswordField;
 import javafx.scene.control.RadioButton;
 import javafx.scene.control.TextField;
-import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.stage.FileChooser;
 
@@ -33,13 +32,9 @@ public final class GitAuthSettingsPanel {
     @FXML private RadioButton httpRadio;
     @FXML private Label activeTypeLabel;
     @FXML private TextField sshKeyPathField;
-    @FXML private PasswordField tokenField;
-    @FXML private TextField tokenRevealField;
-    @FXML private ToggleButton tokenEyeToggle;
+    @FXML private RevealablePasswordField tokenField;
     @FXML private TextField httpUsernameField;
-    @FXML private PasswordField httpPasswordField;
-    @FXML private TextField httpPasswordRevealField;
-    @FXML private ToggleButton httpPasswordEyeToggle;
+    @FXML private RevealablePasswordField httpPasswordField;
 
     private Path pendingSshKeyPath;
 
@@ -51,24 +46,9 @@ public final class GitAuthSettingsPanel {
         httpUsernameField.setText(settings.httpUsername() != null ? settings.httpUsername() : "");
         httpPasswordField.setText(settings.httpPassword() != null ? settings.httpPassword() : "");
 
-        wireReveal(tokenField, tokenRevealField, tokenEyeToggle);
-        wireReveal(httpPasswordField, httpPasswordRevealField, httpPasswordEyeToggle);
-
         selectRadioFor(settings.activeType());
-        authTypeGroup.selectedToggleProperty().addListener((observable, oldValue, newValue) -> updateActiveTypeLabel());
+        authTypeGroup.selectedToggleProperty().addListener((_, _, _) -> updateActiveTypeLabel());
         updateActiveTypeLabel();
-    }
-
-    private static void wireReveal(PasswordField masked, TextField revealed, ToggleButton eyeToggle) {
-        revealed.textProperty().bindBidirectional(masked.textProperty());
-        revealed.setManaged(false);
-        revealed.setVisible(false);
-        eyeToggle.selectedProperty().addListener((observable, wasSelected, isSelected) -> {
-            revealed.setVisible(isSelected);
-            revealed.setManaged(isSelected);
-            masked.setVisible(!isSelected);
-            masked.setManaged(!isSelected);
-        });
     }
 
     private void selectRadioFor(GitAuthType type) {

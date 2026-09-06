@@ -2,6 +2,7 @@ package io.github.jlmc.rikikivault.gui.controllers;
 
 import io.github.jlmc.rikikivault.core.adapters.diff.TextDiffAdapter;
 import io.github.jlmc.rikikivault.core.adapters.encryption.X25519KeyPairGeneratorAdapter;
+import io.github.jlmc.rikikivault.core.adapters.keystore.PassphraseCachingKeyStorePort;
 import io.github.jlmc.rikikivault.core.application.usecase.ClearLocalFilesService;
 import io.github.jlmc.rikikivault.core.application.usecase.DecryptFileService;
 import io.github.jlmc.rikikivault.core.application.usecase.DiffFileService;
@@ -22,6 +23,7 @@ import io.github.jlmc.rikikivault.core.ports.in.ClearLocalFilesCommand;
 import io.github.jlmc.rikikivault.core.ports.in.DiffFileCommand;
 import io.github.jlmc.rikikivault.core.ports.in.RestoreLocalFilesCommand;
 import io.github.jlmc.rikikivault.core.ports.in.RevertFileCommand;
+import io.github.jlmc.rikikivault.core.ports.out.KeyStorePort;
 import io.github.jlmc.rikikivault.gui.VaultContext;
 import io.github.jlmc.rikikivault.gui.filetree.FileEntry;
 import io.github.jlmc.rikikivault.gui.filetree.FileStatus;
@@ -29,9 +31,10 @@ import io.github.jlmc.rikikivault.gui.filetree.FileTreeBuilder;
 import io.github.jlmc.rikikivault.gui.filetree.FolderTreeBuilder;
 import io.github.jlmc.rikikivault.gui.filetree.FolderTreeNode;
 import io.github.jlmc.rikikivault.gui.filetree.StatusBadgeTreeCell;
-import io.github.jlmc.rikikivault.gui.support.BackgroundTask;
+import io.github.jlmc.rikikivault.gui.support.BackgroundTasks;
 import io.github.jlmc.rikikivault.gui.support.Dialogs;
 import io.github.jlmc.rikikivault.gui.support.Messages;
+import io.github.jlmc.rikikivault.gui.support.PassphraseDialogs;
 import io.github.jlmc.rikikivault.gui.support.RemotePush;
 import io.github.jlmc.rikikivault.gui.viewer.FileViewer;
 import io.github.jlmc.rikikivault.gui.viewer.FileViewerRegistry;
@@ -111,7 +114,7 @@ public final class MainWindowController {
                 node -> node.fileEntry() == null ? null : node.fileEntry().status()));
 
         fileTable.getSelectionModel().selectedItemProperty()
-                .addListener((observable, oldValue, newValue) -> showPreview(newValue == null ? null : newValue.getValue()));
+                .addListener((_, _, newValue) -> showPreview(newValue == null ? null : newValue.getValue()));
         showPreview(null);
 
         refresh();
@@ -126,14 +129,49 @@ public final class MainWindowController {
             MachineIdentity identity = new InitializeMachineIdentityService(
                     new X25519KeyPairGeneratorAdapter(), ctx.keyStorePort()).initialize();
             Dialogs.showInfo(Messages.get("mainWindow.newIdentity.title"), Messages.get("mainWindow.newIdentity.body"));
+            offerPassphraseAtCreation();
             return identity;
         }
+    }
+
+    /**
+     * Offered once, right after a brand-new machine identity is generated on this window's
+     * bootstrap - never re-asked for an identity that already existed before this ran.
+     */
+    private void offerPassphraseAtCreation() {
+        if (!Dialogs.confirm(Messages.get("passphraseOffer.title"), Messages.get("passphraseOffer.body"))) {
+            return;
+        }
+        PassphraseDialogs.promptNewPassphrase().ifPresent(newPassphrase ->
+                BackgroundTasks.runVoid(
+                        () -> ctx.keyStorePort().changePassphrase(null, newPassphrase),
+                        () -> {
+                            java.util.Arrays.fill(newPassphrase, '\0');
+                            Dialogs.showInfo(Messages.get("passphraseOffer.title"), Messages.get("passphrase.setSuccess"));
+                        },
+                        error -> {
+                            java.util.Arrays.fill(newPassphrase, '\0');
+                            Dialogs.showError(error);
+                        }));
+    }
+
+    /**
+     * Keeps this session's cached {@code PassphraseCachingKeyStorePort} consistent after a
+     * passphrase change made via the embedded Settings screen - without this, background actions
+     * (pull/restore/revert/diff) would keep using the now-stale cached passphrase and fail.
+     */
+    private void onPassphraseChangedInSettings(char[] newPassphraseOrNull) {
+        KeyStorePort realAdapter = ctx.keyStorePort() instanceof PassphraseCachingKeyStorePort decorator
+                ? decorator.delegate() : ctx.keyStorePort();
+        ctx = ctx.withKeyStorePort(newPassphraseOrNull != null
+                ? new PassphraseCachingKeyStorePort(realAdapter, newPassphraseOrNull)
+                : realAdapter);
     }
 
     private void startAutoRefresh() {
         // Reflects changes made to local/ from outside the app (Finder, another editor, ...).
         // Never touches the remote - pulling still requires the explicit "Pull" action.
-        Timeline timeline = new Timeline(new KeyFrame(Duration.seconds(3), event -> refresh(false)));
+        Timeline timeline = new Timeline(new KeyFrame(Duration.seconds(3), _ -> refresh(false)));
         timeline.setCycleCount(Timeline.INDEFINITE);
         timeline.play();
     }
@@ -173,7 +211,7 @@ public final class MainWindowController {
                     ViewerResultRenderer.renderUnsupported(Messages.get("mainWindow.preview.deletedFile")));
             return;
         }
-        BackgroundTask.run(
+        BackgroundTasks.run(
                 () -> {
                     byte[] content = ctx.localFiles().readFile(entry.path());
                     FileViewer viewer = FileViewerRegistry.select(entry.path());
@@ -210,7 +248,7 @@ public final class MainWindowController {
             return;
         }
         String path = currentNode.fileEntry().path();
-        BackgroundTask.run(
+        BackgroundTasks.run(
                 () -> ctx.localFiles().readFile(path),
                 bytes -> {
                     editorArea = new TextArea(TextFileViewer.tryDecodeUtf8(bytes));
@@ -249,7 +287,7 @@ public final class MainWindowController {
         }
         String path = currentNode.fileEntry().path();
         String text = editorArea.getText();
-        BackgroundTask.runVoid(
+        BackgroundTasks.runVoid(
                 () -> ctx.localFiles().writeFile(path, text.getBytes(StandardCharsets.UTF_8)),
                 () -> refresh(true),
                 Dialogs::showError);
@@ -263,7 +301,7 @@ public final class MainWindowController {
         }
         String path = currentNode.fileEntry().path();
         String text = editorArea.getText();
-        BackgroundTask.runVoid(
+        BackgroundTasks.runVoid(
                 () -> ctx.localFiles().writeFile(path, text.getBytes(StandardCharsets.UTF_8)),
                 this::onPublish,
                 Dialogs::showError);
@@ -278,7 +316,7 @@ public final class MainWindowController {
         if (!Dialogs.confirm(Messages.get("mainWindow.revert.title"), Messages.get("mainWindow.revert.confirm", path))) {
             return;
         }
-        BackgroundTask.runVoid(
+        BackgroundTasks.runVoid(
                 () -> new RevertFileService(
                         ctx.manifestPort(), ctx.localFiles(), ctx.documentsFiles(),
                         new DecryptFileService(ctx.encryptionPort()), new LoadMachineIdentityService(ctx.keyStorePort()))
@@ -288,7 +326,7 @@ public final class MainWindowController {
     }
 
     private void reloadEditorContent(String path) {
-        BackgroundTask.run(
+        BackgroundTasks.run(
                 () -> ctx.localFiles().readFile(path),
                 bytes -> {
                     if (editorArea != null) {
@@ -306,7 +344,7 @@ public final class MainWindowController {
         }
         String path = currentNode.fileEntry().path();
         byte[] currentContent = editorArea.getText().getBytes(StandardCharsets.UTF_8);
-        BackgroundTask.run(
+        BackgroundTasks.run(
                 () -> new DiffFileService(
                         ctx.manifestPort(), ctx.documentsFiles(),
                         new DecryptFileService(ctx.encryptionPort()), new LoadMachineIdentityService(ctx.keyStorePort()),
@@ -330,7 +368,7 @@ public final class MainWindowController {
     @FXML
     private void onPull() {
         log.info("User triggered Pull");
-        BackgroundTask.run(
+        BackgroundTasks.run(
                 () -> new PullVaultService(
                         new LoadMachineIdentityService(ctx.keyStorePort()),
                         new DecryptFileService(ctx.encryptionPort()),
@@ -355,7 +393,7 @@ public final class MainWindowController {
     }
 
     private void runRestore(boolean force, java.util.function.Consumer<RestoreLocalFilesResult> onDone) {
-        BackgroundTask.run(
+        BackgroundTasks.run(
                 () -> new RestoreLocalFilesService(
                         new LoadMachineIdentityService(ctx.keyStorePort()),
                         new DecryptFileService(ctx.encryptionPort()),
@@ -392,7 +430,7 @@ public final class MainWindowController {
     }
 
     private void runClearLocal(boolean includeUnpublished, java.util.function.Consumer<ClearLocalFilesResult> onDone) {
-        BackgroundTask.run(
+        BackgroundTasks.run(
                 () -> new ClearLocalFilesService(
                         new ScanChangesService(ctx.localFiles(), ctx.hashPort(), ctx.manifestPort()), ctx.localFiles())
                         .clear(new ClearLocalFilesCommand(includeUnpublished)),
@@ -424,10 +462,10 @@ public final class MainWindowController {
      * just shows "desconhecido", never an error dialog.
      */
     private void refreshRemoteSyncStatus() {
-        BackgroundTask.run(
+        BackgroundTasks.run(
                 () -> ctx.gitRepositoryPort().remoteSyncStatus(),
                 this::showRemoteSyncStatus,
-                error -> showRemoteSyncStatus(null));
+                _ -> showRemoteSyncStatus(null));
     }
 
     private void showRemoteSyncStatus(RemoteSyncStatus status) {
@@ -478,7 +516,8 @@ public final class MainWindowController {
         }
         Parent content = switch (view) {
             case FILES -> filesView;
-            case SETTINGS -> capWidth(SettingsController.embed(onLanguageChanged, () -> switchView(MainView.FILES)));
+            case SETTINGS -> capWidth(SettingsController.embed(onLanguageChanged, () -> switchView(MainView.FILES),
+                    this::onPassphraseChangedInSettings));
             case MANAGE_ACCESS -> capWidth(ManageAccessController.embed(ctx, this::refresh, null));
         };
         centerContainer.getChildren().setAll(content);
@@ -514,9 +553,9 @@ public final class MainWindowController {
         railExpanded = !railExpanded;
         navRail.getStyleClass().removeAll("nav-rail-expanded", "nav-rail-collapsed");
         navRail.getStyleClass().add(railExpanded ? "nav-rail-expanded" : "nav-rail-collapsed");
-        filesNavButton.setText(Messages.get(railExpanded ? "mainWindow.nav.files.expanded" : "mainWindow.nav.files.collapsed"));
-        settingsNavButton.setText(Messages.get(railExpanded ? "mainWindow.nav.settings.expanded" : "mainWindow.nav.settings.collapsed"));
-        manageAccessNavButton.setText(Messages.get(railExpanded ? "mainWindow.nav.manageAccess.expanded" : "mainWindow.nav.manageAccess.collapsed"));
+        filesNavButton.setText(railExpanded ? Messages.get("mainWindow.nav.files.label") : "");
+        settingsNavButton.setText(railExpanded ? Messages.get("mainWindow.nav.settings.label") : "");
+        manageAccessNavButton.setText(railExpanded ? Messages.get("mainWindow.nav.manageAccess.label") : "");
     }
 
     @FXML
@@ -525,7 +564,7 @@ public final class MainWindowController {
         // The local scan itself never touches the network, so this first step can never fail
         // because of a broken remote/credentials. Whether to publish to the remote is asked
         // separately, inside ChangeReviewController, only when there's something new to encrypt.
-        BackgroundTask.run(
+        BackgroundTasks.run(
                 () -> new ScanChangesService(ctx.localFiles(), ctx.hashPort(), ctx.manifestPort()).scan(),
                 (List<VaultChange> changes) -> {
                     if (changes.isEmpty()) {
@@ -547,7 +586,7 @@ public final class MainWindowController {
      * message instead of an error dialog.
      */
     private void offerPushWhenNothingToCommit() {
-        BackgroundTask.run(
+        BackgroundTasks.run(
                 () -> ctx.gitRepositoryPort().hasRemote() ? ctx.gitRepositoryPort().remoteSyncStatus() : RemoteSyncStatus.noRemote(),
                 status -> {
                     if (!status.hasRemote()) {
@@ -566,7 +605,7 @@ public final class MainWindowController {
                         Dialogs.showInfo(Messages.get("mainWindow.publish.title"), Messages.get("mainWindow.publish.nothing"));
                     }
                 },
-                error -> Dialogs.showInfo(Messages.get("mainWindow.publish.title"), Messages.get("mainWindow.publish.unknownRemote")));
+                _ -> Dialogs.showInfo(Messages.get("mainWindow.publish.title"), Messages.get("mainWindow.publish.unknownRemote")));
     }
 
     private void refreshAfterPublish() {
@@ -580,7 +619,7 @@ public final class MainWindowController {
 
     private void refresh(boolean reportErrors) {
         String previouslySelectedPath = currentSelectedPath();
-        BackgroundTask.run(
+        BackgroundTasks.run(
                 () -> {
                     List<String> localPaths = ctx.localFiles().listFiles();
                     List<VaultChange> changes = new ScanChangesService(

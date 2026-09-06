@@ -15,6 +15,7 @@
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
 
 <BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="io.github.jlmc.rikikivault.gui.controllers.MainWindowController">
@@ -41,12 +42,12 @@
                 <items>
                     <MenuItem fx:id="restoreMenuItem" text="%mainWindow.button.restore" onAction="#onRestore">
                         <graphic>
-                            <Label text="↺" styleClass="menu-item-icon"/>
+                            <FontIcon iconLiteral="fth-rotate-ccw" styleClass="menu-item-icon"/>
                         </graphic>
                     </MenuItem>
                     <MenuItem fx:id="clearLocalMenuItem" text="%mainWindow.button.clearLocal" onAction="#onClearLocal">
                         <graphic>
-                            <Label text="🔒" styleClass="menu-item-icon"/>
+                            <FontIcon iconLiteral="fth-lock" styleClass="menu-item-icon"/>
                         </graphic>
                     </MenuItem>
                 </items>
@@ -60,13 +61,19 @@
     </top>
     <left>
         <VBox fx:id="navRail" styleClass="nav-rail, nav-rail-expanded" alignment="TOP_CENTER" spacing="4">
-            <Button fx:id="railToggleButton" text="☰" styleClass="nav-rail-toggle" onAction="#onToggleRail">
+            <Button fx:id="railToggleButton" styleClass="nav-rail-toggle" onAction="#onToggleRail">
+                <graphic>
+                    <FontIcon iconLiteral="fth-menu" iconSize="18"/>
+                </graphic>
                 <tooltip>
                     <Tooltip text="%mainWindow.nav.rail.toggle.tooltip"/>
                 </tooltip>
             </Button>
-            <ToggleButton fx:id="filesNavButton" text="%mainWindow.nav.files.expanded" styleClass="nav-rail-button"
+            <ToggleButton fx:id="filesNavButton" text="%mainWindow.nav.files.label" styleClass="nav-rail-button"
                           onAction="#onNavFiles" selected="true">
+                <graphic>
+                    <FontIcon iconLiteral="fth-folder" iconSize="20"/>
+                </graphic>
                 <toggleGroup>
                     <ToggleGroup fx:id="navGroup"/>
                 </toggleGroup>
@@ -74,14 +81,20 @@
                     <Tooltip text="%mainWindow.nav.files.tooltip"/>
                 </tooltip>
             </ToggleButton>
-            <ToggleButton fx:id="settingsNavButton" text="%mainWindow.nav.settings.expanded" styleClass="nav-rail-button"
+            <ToggleButton fx:id="settingsNavButton" text="%mainWindow.nav.settings.label" styleClass="nav-rail-button"
                           onAction="#onNavSettings" toggleGroup="$navGroup">
+                <graphic>
+                    <FontIcon iconLiteral="fth-settings" iconSize="20"/>
+                </graphic>
                 <tooltip>
                     <Tooltip text="%mainWindow.nav.settings.tooltip"/>
                 </tooltip>
             </ToggleButton>
-            <ToggleButton fx:id="manageAccessNavButton" text="%mainWindow.nav.manageAccess.expanded" styleClass="nav-rail-button"
+            <ToggleButton fx:id="manageAccessNavButton" text="%mainWindow.nav.manageAccess.label" styleClass="nav-rail-button"
                           onAction="#onNavManageAccess" toggleGroup="$navGroup">
+                <graphic>
+                    <FontIcon iconLiteral="fth-users" iconSize="20"/>
+                </graphic>
                 <tooltip>
                     <Tooltip text="%mainWindow.nav.manageAccess.tooltip"/>
                 </tooltip>

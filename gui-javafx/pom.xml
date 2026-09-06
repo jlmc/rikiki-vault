@@ -17,6 +17,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.release>25</maven.compiler.release>
     <javafx.version>21.0.4</javafx.version>
+    <ikonli.version>12.4.0</ikonli.version>
     <!-- mvn javafx:run bypasses the "java -jar" launcher check and can point at the
          Application subclass directly; the packaged jar/jpackage app cannot (see Launcher). -->
     <app.class>io.github.jlmc.rikikivault.gui.App</app.class>
@@ -55,6 +56,16 @@
       <groupId>org.openjfx</groupId>
       <artifactId>javafx-web</artifactId>
       <version>${javafx.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.kordamp.ikonli</groupId>
+      <artifactId>ikonli-javafx</artifactId>
+      <version>${ikonli.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.kordamp.ikonli</groupId>
+      <artifactId>ikonli-feather-pack</artifactId>
+      <version>${ikonli.version}</version>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>

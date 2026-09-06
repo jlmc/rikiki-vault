@@ -18,6 +18,7 @@ autorizada pode fazer `clone`/`pull` do repositório e decifrar de volta para a 
   - [Um exemplo completo](#um-exemplo-completo)
   - [Publicar num remoto a sério](#publicar-num-remoto-a-sério)
   - [Autenticação Git explícita](#autenticação-git-explícita)
+  - [Proteger a chave privada com passphrase](#proteger-a-chave-privada-com-passphrase)
   - [Ficheiros de configuração](#ficheiros-de-configuração)
   - [Notas de robustez](#notas-de-robustez)
   - [Logging](#logging)
@@ -89,6 +90,9 @@ jar da primeira vez que falta e corre-o da mesma forma (ver "Logging" mais abaix
 | `authorize <label> <ficheiro-chave-pública>` | Concede acesso a outra máquina: adiciona-a ao registo de destinatários e reencripta todos os ficheiros já publicados para o novo conjunto. |
 | `revoke <fingerprint-hex>` | Remove o acesso de uma máquina, reencriptando tudo para que a sua chave deixe de conseguir decifrar o que quer que seja de novo. |
 | `git-auth show\|set-ssh-key <caminho>\|clear-ssh-key\|set-token\|clear-token\|set-http-basic <utilizador>\|clear-http-basic\|use ssh\|token\|http\|none` | Configura autenticação Git explícita, substituindo a descoberta automática — ver "Autenticação Git explícita" abaixo. `set-token`/`set-http-basic` leem o segredo do stdin, nunca de um argumento, para não ficar no histórico da shell. |
+| `set-passphrase` | Protege (ou muda) a identidade desta máquina com uma passphrase — pede a atual primeiro se já estiver protegida, depois a nova (duas vezes, para confirmar). Ver "Proteger a chave privada com passphrase" abaixo. |
+| `remove-passphrase` | Remove a proteção por passphrase, dada a passphrase atual. |
+| `unwrap-key <ficheiro-entrada> <ficheiro-saída>` | Recuperação de desastre: desencripta um `private.key` protegido por passphrase (qualquer caminho de ficheiro, não só a identidade ativa) para PKCS8 em claro — ver "Proteger a chave privada com passphrase" abaixo. |
 
 ### Um exemplo completo
 
@@ -165,6 +169,41 @@ Nunca passes um token ou password como argumento do `set-token`/`set-http-basic`
 sempre lido do stdin, para não ficar no histórico da shell. Ver "Ficheiros de configuração" abaixo
 para saber onde isto fica guardado.
 
+### Proteger a chave privada com passphrase
+
+Por omissão, `private.key` não está protegida (ver a [entrada da FAQ sobre a password da chave privada](docs/faq/07-private-key-is-not-password-protected.pt.md)
+para a troca completa). Para ativar a proteção:
+
+```
+rikiki-vault set-passphrase       # pede uma nova passphrase (duas vezes, para confirmar)
+rikiki-vault remove-passphrase    # pede a passphrase atual e remove a proteção
+```
+
+Uma vez protegida, qualquer comando que precise da identidade (`whoami`, `export-key`, `init`,
+`clone`, `pull`, `restore`) pede a passphrase uma vez por invocação — mascarada, através da
+própria consola quando existe uma real, com um recurso a stdin visivelmente ecoado (anunciado)
+quando não há (entrada por pipe, configurações de execução de IDE, CI). Logo a seguir a gerar uma
+identidade nova (só em `init`/`clone`), também és convidado a protegê-la ali mesmo, quando corres
+de forma interativa.
+
+App desktop: Configurações → **Segurança** oferece o mesmo definir/mudar/remover, aplicado de
+imediato. Abrir um vault cuja identidade esteja protegida mostra um ecrã de desbloqueio a ocupar a
+janela toda antes de mais nada carregar; depois de desbloqueada, a identidade fica utilizável
+durante o resto dessa sessão (pull/push em segundo plano, auto-refresh) sem voltar a pedir —
+fechar a app limpa-a.
+
+Não há forma de recuperar se a passphrase for esquecida — mudar ou remover uma exige sempre a
+passphrase atual primeiro, por desenho.
+
+**Recuperação de desastre com uma chave protegida:** `unwrap-key <ficheiro-entrada>
+<ficheiro-saída>` desencripta um `private.key` protegido por passphrase para PKCS8 em claro —
+funciona sobre qualquer caminho de ficheiro (não só o `~/.rikiki-vault/identity/` ativo), por isso
+também lida com um backup sozinho e protegido de uma chave cujo `public.key` se perdeu. Ver a
+[FAQ 03](docs/faq/03-recovering-with-only-the-private-key.pt.md) e a
+[FAQ 04](docs/faq/04-decrypting-without-the-app.pt.md) para percursos completos de recuperação
+passo-a-passo, incluindo uma alternativa em OpenSSL/bash puro
+(`docs/faq/scripts/unwrap-private-key.sh`) para quando compilar a CLI desta app não é opção.
+
 ### Ficheiros de configuração
 
 Tudo o que existe fora de um vault propriamente dito vive em `~/.rikiki-vault/` — global à máquina,
@@ -172,7 +211,7 @@ partilhado por todos os vaults que abras e pela CLI e pela GUI:
 
 | Ficheiro | Para que serve | Como se configura |
 |---|---|---|
-| `~/.rikiki-vault/identity/private.key` / `public.key` | O par de chaves X25519 desta máquina (permissões só do dono) — ver "Identidade da máquina" acima. | Gerado automaticamente na primeira vez que é preciso; não é editável à mão. `whoami`/`export-key` leem-no. |
+| `~/.rikiki-vault/identity/private.key` / `public.key` | O par de chaves X25519 desta máquina (permissões só do dono) — ver "Identidade da máquina" acima. `private.key` pode opcionalmente estar protegida por passphrase — ver "Proteger a chave privada com passphrase" acima. | Gerado automaticamente na primeira vez que é preciso; não é editável à mão diretamente. `whoami`/`export-key` leem-no; `set-passphrase`/`remove-passphrase` (ou Configurações → Segurança) mudam a sua proteção. |
 | `~/.rikiki-vault/config/config.yaml` | Configuração de arranque da mecânica do vault: onde fica a diretoria de identidade, e os parâmetros de encriptação (algoritmo, tamanhos de chave). Escrito uma vez com valores por omissão sensatos no primeiro arranque. | Não está exposto na UI/CLI — a maioria dos utilizadores nunca precisa de lhe mexer; edita o YAML diretamente só se souberes bem o que estás a mudar. |
 | `~/.rikiki-vault/preferences/preferences.json` | Tudo o que o ecrã de Configurações / comando `git-auth` gerem: qual o método de autenticação Git ativo e os seus valores (caminho da chave SSH, token do GitHub, utilizador/password HTTP), mais o idioma da aplicação (`PT`/`EN` - tanto a GUI como a CLI leem-no, por isso trocar num sítio muda o que ambas mostram). Permissões só do dono (`rw-------`), já que pode conter segredos. | App desktop: "Configurações...", incluindo o idioma. CLI: `git-auth ...` para o lado do Git (ver acima); ainda não há um comando na CLI para *definir* o idioma, mas o próprio texto da CLI (uso, confirmações, erros) já segue o idioma que foi gravado pela última vez a partir das Configurações da app desktop. |
 

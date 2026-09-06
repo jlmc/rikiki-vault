@@ -42,6 +42,11 @@ there than copy-paste):
 # format (magic + per-recipient wrapped AES key + AES-256-GCM sealed content) and the
 # X25519 + HKDF-SHA256 + AES-256-GCM key-wrap scheme it uses.
 #
+# If your private.key is passphrase-protected (set-passphrase), this script can't use it directly
+# - run unwrap-private-key.sh (same folder) or `rikiki-vault unwrap-key` first, and point this
+# script at the plain-PKCS8 result instead. See "If private.key is passphrase-protected" in
+# docs/faq/04-decrypting-without-the-app.md.
+#
 # CAVEAT: unlike the real app, this script does not cryptographically verify the AES-GCM
 # authentication tag (OpenSSL's `enc` command has no AEAD support at all, and there is no
 # practical way to check a GCM tag with stock OpenSSL CLI commands alone). It decrypts using the
@@ -246,6 +251,32 @@ chmod +x decrypt-vault.sh
 git clone <your-vault-remote-uri> my-vault-checkout   # a plain git clone, not the rikiki-vault app
 ./decrypt-vault.sh /path/to/private.key /path/to/public.key my-vault-checkout/documents ./decrypted
 ```
+
+### If `private.key` is passphrase-protected
+
+Skip this if it isn't — `decrypt-vault.sh` above already works directly on a plain PKCS8 DER file.
+If you protected it (`set-passphrase` — see the [password protection FAQ
+entry](07-private-key-is-not-password-protected.md)), decrypt it to plain PKCS8 first, then point
+`decrypt-vault.sh` at *that* file instead of the protected one. Two ways, same trade-off described
+in [FAQ 03](03-recovering-with-only-the-private-key.md#step-0):
+
+```bash
+# Recipe A - the app's own unwrap-key command (verifies the passphrase, fails loudly if wrong):
+java -jar cli/target/rikiki-vault.jar unwrap-key /path/to/private.key private.key.plain
+
+# Recipe B - pure OpenSSL/bash, no Java at all (can't verify the passphrase - see the script's own
+# header comment for what "no error, but wrong output" looks like):
+docs/faq/scripts/unwrap-private-key.sh /path/to/private.key private.key.plain
+
+# Either way, use the unwrapped file with decrypt-vault.sh:
+./decrypt-vault.sh private.key.plain /path/to/public.key my-vault-checkout/documents ./decrypted
+```
+
+Recipe B keeps this FAQ entry's original promise ("no app needed at all") for the vault-decryption
+step itself; only the one-time unwrap needs the app if you go with Recipe A instead. If Recipe A
+isn't an option (no JDK, don't want to build the app) and Recipe B's silent-garbage-on-wrong-
+passphrase risk isn't acceptable, restoring both key files onto a real install and using the app
+directly (see [FAQ 02](02-recovering-with-both-keys-backed-up.md)) is the safer fallback.
 
 All four arguments are **filesystem paths** — the first two point to your raw `private.key` and
 `public.key` files (e.g. `~/.rikiki-vault/identity/private.key`, or your backups of them), not the
