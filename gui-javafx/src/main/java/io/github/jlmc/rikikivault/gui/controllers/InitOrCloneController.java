@@ -14,6 +14,7 @@ import io.github.jlmc.rikikivault.gui.VaultContext;
 import io.github.jlmc.rikikivault.gui.support.BackgroundTasks;
 import io.github.jlmc.rikikivault.gui.support.Dialogs;
 import io.github.jlmc.rikikivault.gui.support.Messages;
+import io.github.jlmc.rikikivault.gui.support.PassphraseDialogs;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
@@ -55,6 +56,7 @@ public final class InitOrCloneController {
         setBusy(initButton, Messages.get("initOrClone.busy.initializing"));
         boolean initGit = gitCheckBox.isSelected();
         String remoteUri = initRemoteUrlField.getText();
+        boolean hadNoIdentityBefore = !ctx.keyStorePort().exists();
         BackgroundTasks.runVoid(
                 () -> new InitializeVaultService(
                         new LoadMachineIdentityService(ctx.keyStorePort()),
@@ -64,6 +66,9 @@ public final class InitOrCloneController {
                         .initialize(new InitializeVaultCommand(initGit, machineLabel, remoteUri)),
                 () -> {
                     clearBusy();
+                    if (hadNoIdentityBefore) {
+                        offerPassphraseAtCreation();
+                    }
                     onReady.accept(ctx);
                 },
                 error -> {
@@ -81,6 +86,7 @@ public final class InitOrCloneController {
         }
         setBusy(cloneButton, Messages.get("initOrClone.busy.cloning"));
         JceHybridEncryptionAdapter encryptionPort = ctx.encryptionPort();
+        boolean hadNoIdentityBefore = !ctx.keyStorePort().exists();
         BackgroundTasks.runVoid(
                 () -> new CloneVaultService(
                         new LoadMachineIdentityService(ctx.keyStorePort()),
@@ -90,12 +96,36 @@ public final class InitOrCloneController {
                         .clone(new CloneVaultCommand(remoteUri)),
                 () -> {
                     clearBusy();
+                    if (hadNoIdentityBefore) {
+                        offerPassphraseAtCreation();
+                    }
                     onReady.accept(ctx);
                 },
                 error -> {
                     clearBusy();
                     Dialogs.showError(error);
                 });
+    }
+
+    /**
+     * Offered once, right after a brand-new machine identity is generated - never re-asked for an
+     * identity that already existed before this init/clone ran.
+     */
+    private void offerPassphraseAtCreation() {
+        if (!Dialogs.confirm(Messages.get("passphraseOffer.title"), Messages.get("passphraseOffer.body"))) {
+            return;
+        }
+        PassphraseDialogs.promptNewPassphrase().ifPresent(newPassphrase ->
+                BackgroundTasks.runVoid(
+                        () -> ctx.keyStorePort().changePassphrase(null, newPassphrase),
+                        () -> {
+                            java.util.Arrays.fill(newPassphrase, '\0');
+                            Dialogs.showInfo(Messages.get("passphraseOffer.title"), Messages.get("passphrase.setSuccess"));
+                        },
+                        error -> {
+                            java.util.Arrays.fill(newPassphrase, '\0');
+                            Dialogs.showError(error);
+                        }));
     }
 
     private void setBusy(Button button, String message) {

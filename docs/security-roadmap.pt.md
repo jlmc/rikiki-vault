@@ -11,7 +11,15 @@ tem detalhe técnico suficiente para arrancar a implementação sem redesenhar d
 
 ## Prioridade: Alta
 
-### 1. Cifrar a chave privada em repouso com passphrase
+### 1. Cifrar a chave privada em repouso com passphrase — ✅ Implementado
+
+Entregue: `KeyStorePort.isPassphraseProtected()`/`load(char[])`/`changePassphrase(...)`, o envelope
+"RVPK" (`PrivateKeyEnvelopeCodec`, PBKDF2-HMAC-SHA256 + AES-GCM), os comandos CLI `set-passphrase`/
+`remove-passphrase`, e o ecrã de desbloqueio + Configurações → Segurança na app desktop. Com cache
+de sessão via `PassphraseCachingKeyStorePort` (um pedido por invocação da CLI / por sessão da GUI
+aberta), em vez do desenho original "nunca fazer cache" esboçado abaixo — ver
+`docs/faq/07-private-key-is-not-password-protected.pt.md` para a justificação. O resto desta secção
+fica como registo do desenho original.
 
 **Porquê:** o `LocalKeyStoreAdapter`
 (`core/src/main/java/io/github/jlmc/rikikivault/core/adapters/keystore/LocalKeyStoreAdapter.java`)

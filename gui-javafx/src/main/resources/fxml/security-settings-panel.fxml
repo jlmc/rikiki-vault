@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.ProgressIndicator?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.control.Tooltip?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="io.github.jlmc.rikikivault.gui.controllers.SecuritySettingsPanel"
+      styleClass="security-panel" spacing="16">
+    <padding>
+        <Insets top="16" right="16" bottom="16" left="16"/>
+    </padding>
+    <Label text="%securityPanel.subtitle" styleClass="subtitle" wrapText="true"/>
+    <Label fx:id="statusLabel" styleClass="section-title"/>
+    <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" styleClass="security-scroll">
+        <VBox spacing="20">
+            <padding>
+                <Insets top="4" right="4" bottom="4" left="4"/>
+            </padding>
+
+            <VBox spacing="8">
+                <Label text="%securityPanel.currentLabel"/>
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <StackPane prefWidth="220">
+                        <PasswordField fx:id="currentField" prefWidth="220"/>
+                        <TextField fx:id="currentRevealField" prefWidth="220" managed="false" visible="false"/>
+                    </StackPane>
+                    <ToggleButton fx:id="currentEyeToggle" text="👁">
+                        <tooltip>
+                            <Tooltip text="%gitAuthPanel.eyeToggle.tooltip"/>
+                        </tooltip>
+                    </ToggleButton>
+                </HBox>
+            </VBox>
+
+            <VBox spacing="8">
+                <Label text="%securityPanel.newLabel"/>
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <StackPane prefWidth="220">
+                        <PasswordField fx:id="newField" prefWidth="220"/>
+                        <TextField fx:id="newRevealField" prefWidth="220" managed="false" visible="false"/>
+                    </StackPane>
+                    <ToggleButton fx:id="newEyeToggle" text="👁">
+                        <tooltip>
+                            <Tooltip text="%gitAuthPanel.eyeToggle.tooltip"/>
+                        </tooltip>
+                    </ToggleButton>
+                </HBox>
+                <Label text="%securityPanel.confirmLabel"/>
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <StackPane prefWidth="220">
+                        <PasswordField fx:id="confirmField" prefWidth="220"/>
+                        <TextField fx:id="confirmRevealField" prefWidth="220" managed="false" visible="false"/>
+                    </StackPane>
+                    <ToggleButton fx:id="confirmEyeToggle" text="👁">
+                        <tooltip>
+                            <Tooltip text="%gitAuthPanel.eyeToggle.tooltip"/>
+                        </tooltip>
+                    </ToggleButton>
+                </HBox>
+            </VBox>
+
+            <HBox spacing="8" alignment="CENTER_LEFT">
+                <ProgressIndicator fx:id="progress" maxWidth="20" maxHeight="20" visible="false"/>
+                <Button fx:id="applyButton" text="%securityPanel.applyButton" styleClass="primary-button" onAction="#onApply">
+                    <tooltip>
+                        <Tooltip text="%securityPanel.applyButton.tooltip"/>
+                    </tooltip>
+                </Button>
+                <Button fx:id="removeButton" text="%securityPanel.removeButton" onAction="#onRemove">
+                    <tooltip>
+                        <Tooltip text="%securityPanel.removeButton.tooltip"/>
+                    </tooltip>
+                </Button>
+            </HBox>
+        </VBox>
+    </ScrollPane>
+</VBox>

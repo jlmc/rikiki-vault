@@ -38,4 +38,19 @@ final class FakeKeyStorePort implements KeyStorePort {
     public boolean exists() {
         return stored != null;
     }
+
+    @Override
+    public boolean isPassphraseProtected() {
+        return false;
+    }
+
+    @Override
+    public MachineIdentity load(char[] passphrase) {
+        return load();
+    }
+
+    @Override
+    public void changePassphrase(char[] currentOrNull, char[] newOrNull) {
+        throw new UnsupportedOperationException("not needed by these tests");
+    }
 }

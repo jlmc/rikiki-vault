@@ -2,6 +2,7 @@ package io.github.jlmc.rikikivault.gui;
 
 import io.github.jlmc.rikikivault.gui.controllers.InitOrCloneController;
 import io.github.jlmc.rikikivault.gui.controllers.MainWindowController;
+import io.github.jlmc.rikikivault.gui.controllers.PassphrasePromptController;
 import io.github.jlmc.rikikivault.gui.controllers.WelcomeController;
 import io.github.jlmc.rikikivault.gui.support.BackgroundTasks;
 import io.github.jlmc.rikikivault.gui.support.Fxml;
@@ -48,8 +49,25 @@ public final class App extends Application {
 
     private void openVault(Stage stage, VaultContext ctx) {
         log.info("Opening vault at {}", ctx.vaultRoot());
+        if (ctx.keyStorePort().isPassphraseProtected()) {
+            stage.getScene().setRoot(loadPassphrasePrompt(stage, ctx));
+        } else {
+            proceedToVault(stage, ctx);
+        }
+    }
+
+    private void proceedToVault(Stage stage, VaultContext ctx) {
         Parent next = ctx.isInitialized() ? loadMainWindow(stage, ctx) : loadInitOrClone(stage, ctx);
         stage.getScene().setRoot(next);
+    }
+
+    private Parent loadPassphrasePrompt(Stage stage, VaultContext ctx) {
+        FXMLLoader loader = load("/fxml/passphrase-prompt-view.fxml");
+        PassphrasePromptController controller = loader.getController();
+        controller.init(ctx,
+                unlocked -> proceedToVault(stage, unlocked),
+                () -> stage.getScene().setRoot(loadWelcome(stage)));
+        return loader.getRoot();
     }
 
     private Parent loadInitOrClone(Stage stage, VaultContext ctx) {

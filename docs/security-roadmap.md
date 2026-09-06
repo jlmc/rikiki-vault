@@ -12,7 +12,14 @@ scratch.
 
 ## Priority: High
 
-### 1. Encrypt the private key at rest with a passphrase
+### 1. Encrypt the private key at rest with a passphrase — ✅ Implemented
+
+Shipped: `KeyStorePort.isPassphraseProtected()`/`load(char[])`/`changePassphrase(...)`, the "RVPK"
+envelope (`PrivateKeyEnvelopeCodec`, PBKDF2-HMAC-SHA256 + AES-GCM), CLI `set-passphrase`/
+`remove-passphrase`, and the desktop app's unlock screen + Configurações → Segurança. Session-cached
+via `PassphraseCachingKeyStorePort` (one prompt per CLI invocation / per open GUI session) rather
+than the "never cache" design first sketched below — see `docs/faq/07-private-key-is-not-password-protected.md`
+for the reasoning. The rest of this section is kept as the original design record.
 
 **Why:** `LocalKeyStoreAdapter`
 (`core/src/main/java/io/github/jlmc/rikikivault/core/adapters/keystore/LocalKeyStoreAdapter.java`)

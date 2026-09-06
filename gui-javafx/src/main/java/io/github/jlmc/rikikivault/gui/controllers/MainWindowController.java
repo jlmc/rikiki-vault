@@ -2,6 +2,7 @@ package io.github.jlmc.rikikivault.gui.controllers;
 
 import io.github.jlmc.rikikivault.core.adapters.diff.TextDiffAdapter;
 import io.github.jlmc.rikikivault.core.adapters.encryption.X25519KeyPairGeneratorAdapter;
+import io.github.jlmc.rikikivault.core.adapters.keystore.PassphraseCachingKeyStorePort;
 import io.github.jlmc.rikikivault.core.application.usecase.ClearLocalFilesService;
 import io.github.jlmc.rikikivault.core.application.usecase.DecryptFileService;
 import io.github.jlmc.rikikivault.core.application.usecase.DiffFileService;
@@ -22,6 +23,7 @@ import io.github.jlmc.rikikivault.core.ports.in.ClearLocalFilesCommand;
 import io.github.jlmc.rikikivault.core.ports.in.DiffFileCommand;
 import io.github.jlmc.rikikivault.core.ports.in.RestoreLocalFilesCommand;
 import io.github.jlmc.rikikivault.core.ports.in.RevertFileCommand;
+import io.github.jlmc.rikikivault.core.ports.out.KeyStorePort;
 import io.github.jlmc.rikikivault.gui.VaultContext;
 import io.github.jlmc.rikikivault.gui.filetree.FileEntry;
 import io.github.jlmc.rikikivault.gui.filetree.FileStatus;
@@ -32,6 +34,7 @@ import io.github.jlmc.rikikivault.gui.filetree.StatusBadgeTreeCell;
 import io.github.jlmc.rikikivault.gui.support.BackgroundTasks;
 import io.github.jlmc.rikikivault.gui.support.Dialogs;
 import io.github.jlmc.rikikivault.gui.support.Messages;
+import io.github.jlmc.rikikivault.gui.support.PassphraseDialogs;
 import io.github.jlmc.rikikivault.gui.support.RemotePush;
 import io.github.jlmc.rikikivault.gui.viewer.FileViewer;
 import io.github.jlmc.rikikivault.gui.viewer.FileViewerRegistry;
@@ -126,8 +129,43 @@ public final class MainWindowController {
             MachineIdentity identity = new InitializeMachineIdentityService(
                     new X25519KeyPairGeneratorAdapter(), ctx.keyStorePort()).initialize();
             Dialogs.showInfo(Messages.get("mainWindow.newIdentity.title"), Messages.get("mainWindow.newIdentity.body"));
+            offerPassphraseAtCreation();
             return identity;
         }
+    }
+
+    /**
+     * Offered once, right after a brand-new machine identity is generated on this window's
+     * bootstrap - never re-asked for an identity that already existed before this ran.
+     */
+    private void offerPassphraseAtCreation() {
+        if (!Dialogs.confirm(Messages.get("passphraseOffer.title"), Messages.get("passphraseOffer.body"))) {
+            return;
+        }
+        PassphraseDialogs.promptNewPassphrase().ifPresent(newPassphrase ->
+                BackgroundTasks.runVoid(
+                        () -> ctx.keyStorePort().changePassphrase(null, newPassphrase),
+                        () -> {
+                            java.util.Arrays.fill(newPassphrase, '\0');
+                            Dialogs.showInfo(Messages.get("passphraseOffer.title"), Messages.get("passphrase.setSuccess"));
+                        },
+                        error -> {
+                            java.util.Arrays.fill(newPassphrase, '\0');
+                            Dialogs.showError(error);
+                        }));
+    }
+
+    /**
+     * Keeps this session's cached {@code PassphraseCachingKeyStorePort} consistent after a
+     * passphrase change made via the embedded Settings screen - without this, background actions
+     * (pull/restore/revert/diff) would keep using the now-stale cached passphrase and fail.
+     */
+    private void onPassphraseChangedInSettings(char[] newPassphraseOrNull) {
+        KeyStorePort realAdapter = ctx.keyStorePort() instanceof PassphraseCachingKeyStorePort decorator
+                ? decorator.delegate() : ctx.keyStorePort();
+        ctx = ctx.withKeyStorePort(newPassphraseOrNull != null
+                ? new PassphraseCachingKeyStorePort(realAdapter, newPassphraseOrNull)
+                : realAdapter);
     }
 
     private void startAutoRefresh() {
@@ -478,7 +516,8 @@ public final class MainWindowController {
         }
         Parent content = switch (view) {
             case FILES -> filesView;
-            case SETTINGS -> capWidth(SettingsController.embed(onLanguageChanged, () -> switchView(MainView.FILES)));
+            case SETTINGS -> capWidth(SettingsController.embed(onLanguageChanged, () -> switchView(MainView.FILES),
+                    this::onPassphraseChangedInSettings));
             case MANAGE_ACCESS -> capWidth(ManageAccessController.embed(ctx, this::refresh, null));
         };
         centerContainer.getChildren().setAll(content);

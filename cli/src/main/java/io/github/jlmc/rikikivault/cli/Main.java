@@ -8,6 +8,7 @@ import io.github.jlmc.rikikivault.core.adapters.filesystem.LocalFileSystemAdapte
 import io.github.jlmc.rikikivault.core.adapters.git.JGitRepositoryAdapter;
 import io.github.jlmc.rikikivault.core.adapters.hashing.Sha256HashAdapter;
 import io.github.jlmc.rikikivault.core.adapters.keystore.LocalKeyStoreAdapter;
+import io.github.jlmc.rikikivault.core.adapters.keystore.PassphraseCachingKeyStorePort;
 import io.github.jlmc.rikikivault.core.adapters.manifest.JsonManifestFileAdapter;
 import io.github.jlmc.rikikivault.core.adapters.recipients.JsonRecipientRegistryFileAdapter;
 import io.github.jlmc.rikikivault.core.application.usecase.AuthorizeMachineService;
@@ -26,6 +27,7 @@ import io.github.jlmc.rikikivault.core.configuration.GitAuthSettings;
 import io.github.jlmc.rikikivault.core.configuration.GitAuthType;
 import io.github.jlmc.rikikivault.core.configuration.VaultConfig;
 import io.github.jlmc.rikikivault.core.configuration.VaultPaths;
+import io.github.jlmc.rikikivault.core.domain.exception.InvalidPassphraseException;
 import io.github.jlmc.rikikivault.core.domain.exception.PrivateKeyNotFoundException;
 import io.github.jlmc.rikikivault.core.domain.exception.RikikiVaultException;
 import io.github.jlmc.rikikivault.core.domain.model.ClearLocalFilesResult;
@@ -43,8 +45,12 @@ import io.github.jlmc.rikikivault.core.ports.in.InitializeVaultCommand;
 import io.github.jlmc.rikikivault.core.ports.in.PublishVaultCommand;
 import io.github.jlmc.rikikivault.core.ports.in.RestoreLocalFilesCommand;
 import io.github.jlmc.rikikivault.core.ports.in.RevokeMachineCommand;
+import io.github.jlmc.rikikivault.core.ports.out.KeyStorePort;
 
+import java.io.BufferedReader;
+import java.io.Console;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -55,6 +61,7 @@ import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
+import java.util.Set;
 
 public final class Main {
 
@@ -91,6 +98,7 @@ public final class Main {
     }
 
     private static void run(String[] args) {
+        stdinFallbackReader = null;
         if (args.length == 0) {
             printUsage();
             System.exit(1);
@@ -116,6 +124,9 @@ public final class Main {
         }
 
         VaultContext ctx = VaultContext.at(vaultRoot);
+        if (COMMANDS_NEEDING_IDENTITY.contains(command)) {
+            ctx = withUnlockedKeyStore(ctx);
+        }
 
         switch (command) {
             case "init" -> runInit(ctx, rest);
@@ -130,12 +141,36 @@ public final class Main {
             case "authorize" -> runAuthorize(ctx, rest);
             case "revoke" -> runRevoke(ctx, rest);
             case "git-auth" -> runGitAuth(ctx, rest);
+            case "set-passphrase" -> runSetPassphrase(ctx);
+            case "remove-passphrase" -> runRemovePassphrase(ctx);
             default -> {
                 System.err.println(CliMessages.get("run.unknownCommand", command));
                 printUsage();
                 System.exit(1);
             }
         }
+    }
+
+    /**
+     * Only these commands ever touch the private key - gating the passphrase prompt to just them
+     * means a protected identity never adds friction to git-auth/status/publish/authorize/revoke,
+     * which don't need it.
+     */
+    private static final Set<String> COMMANDS_NEEDING_IDENTITY = Set.of(
+            "init", "whoami", "export-key", "clone", "pull", "restore");
+
+    /**
+     * If the stored identity is passphrase-protected, prompts once (with retries) and returns a
+     * {@code ctx} whose {@link KeyStorePort} transparently supplies that passphrase for the rest
+     * of this process - every existing use-case service still just calls the no-argument
+     * {@code load()}. A no-op, with zero console interaction, when the identity isn't protected.
+     */
+    private static VaultContext withUnlockedKeyStore(VaultContext ctx) {
+        if (!ctx.keyStorePort().isPassphraseProtected()) {
+            return ctx;
+        }
+        char[] passphrase = readCurrentPassphraseWithRetries(ctx.keyStorePort(), 3);
+        return ctx.withKeyStorePort(new PassphraseCachingKeyStorePort(ctx.keyStorePort(), passphrase));
     }
 
     private static void runInit(VaultContext ctx, String[] rest) {
@@ -162,6 +197,8 @@ public final class Main {
             return;
         }
 
+        boolean hadNoIdentityBefore = !ctx.keyStorePort().exists();
+
         InitializeVaultService service = new InitializeVaultService(
                 new LoadMachineIdentityService(ctx.keyStorePort()),
                 new InitializeMachineIdentityService(new X25519KeyPairGeneratorAdapter(), ctx.keyStorePort()),
@@ -183,6 +220,9 @@ public final class Main {
                 IO.println("  git -C " + ctx.vaultRoot() + " remote add origin <url>");
             }
         }
+        if (hadNoIdentityBefore) {
+            offerPassphraseAtCreation(ctx);
+        }
     }
 
     private static void runWhoami(VaultContext ctx) {
@@ -190,6 +230,7 @@ public final class Main {
         IO.println(CliMessages.get("whoami.fingerprint", resolution.identity().id()));
         if (resolution.justCreated()) {
             IO.println(CliMessages.get("whoami.justGenerated"));
+            IO.println(CliMessages.get("identity.justCreated.passphraseHint"));
         }
     }
 
@@ -206,6 +247,9 @@ public final class Main {
         IO.println(CliMessages.get("exportKey.written", outputFile.toAbsolutePath()));
         IO.println(CliMessages.get("exportKey.fingerprint", resolution.identity().id()));
         IO.println(CliMessages.get("exportKey.hint"));
+        if (resolution.justCreated()) {
+            IO.println(CliMessages.get("identity.justCreated.passphraseHint"));
+        }
     }
 
     private static void runStatus(VaultContext ctx) {
@@ -232,6 +276,7 @@ public final class Main {
             return;
         }
         String remoteUri = rest[0];
+        boolean hadNoIdentityBefore = !ctx.keyStorePort().exists();
 
         CloneVaultService service = new CloneVaultService(
                 new LoadMachineIdentityService(ctx.keyStorePort()),
@@ -243,6 +288,9 @@ public final class Main {
 
         IO.println(CliMessages.get("clone.clonedIn", ctx.vaultRoot()));
         IO.println(CliMessages.get("clone.identity", identity.id()));
+        if (hadNoIdentityBefore) {
+            offerPassphraseAtCreation(ctx);
+        }
     }
 
     private static void runPublish(VaultContext ctx, String[] rest) {
@@ -586,6 +634,136 @@ public final class Main {
         };
     }
 
+    private static void runSetPassphrase(VaultContext ctx) {
+        if (!ctx.keyStorePort().exists()) {
+            System.err.println(CliMessages.get("setPassphrase.noIdentity"));
+            System.exit(1);
+            return;
+        }
+        char[] current = ctx.keyStorePort().isPassphraseProtected()
+                ? readCurrentPassphraseWithRetries(ctx.keyStorePort(), 3)
+                : null;
+        char[] newPassphrase = readNewPassphraseWithConfirmation();
+        try {
+            ctx.keyStorePort().changePassphrase(current, newPassphrase);
+        } finally {
+            wipe(current);
+            wipe(newPassphrase);
+        }
+        IO.println(CliMessages.get("passphrase.setSuccess"));
+    }
+
+    private static void runRemovePassphrase(VaultContext ctx) {
+        if (!ctx.keyStorePort().isPassphraseProtected()) {
+            IO.println(CliMessages.get("removePassphrase.notProtected"));
+            return;
+        }
+        char[] current = readCurrentPassphraseWithRetries(ctx.keyStorePort(), 3);
+        try {
+            ctx.keyStorePort().changePassphrase(current, null);
+        } finally {
+            wipe(current);
+        }
+        IO.println(CliMessages.get("passphrase.removeSuccess"));
+    }
+
+    /**
+     * Offered once, right after a brand-new machine identity is generated (init/clone only - never
+     * from whoami/export-key, which must stay script-safe). Silently skipped without touching
+     * stdin when there's no real console, so automation is never blocked on an unexpected prompt.
+     */
+    private static void offerPassphraseAtCreation(VaultContext ctx) {
+        Console console = System.console();
+        if (console == null) {
+            return;
+        }
+        IO.println(CliMessages.get("passphrase.offerAtCreation"));
+        String answer = console.readLine();
+        String normalized = answer != null ? answer.strip().toLowerCase() : "";
+        if (!(normalized.equals("s") || normalized.equals("sim") || normalized.equals("y") || normalized.equals("yes"))) {
+            return;
+        }
+        char[] newPassphrase = readNewPassphraseWithConfirmation();
+        try {
+            ctx.keyStorePort().changePassphrase(null, newPassphrase);
+        } finally {
+            wipe(newPassphrase);
+        }
+        IO.println(CliMessages.get("passphrase.setSuccess"));
+    }
+
+    /**
+     * Prompts for the current passphrase and validates it via a trial {@link KeyStorePort#load(char[])}
+     * before returning it, retrying on {@link InvalidPassphraseException} up to {@code maxAttempts}.
+     */
+    private static char[] readCurrentPassphraseWithRetries(KeyStorePort keyStorePort, int maxAttempts) {
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            char[] candidate = readPassphrase(CliMessages.get("passphrase.prompt"));
+            try {
+                keyStorePort.load(candidate);
+                return candidate;
+            } catch (InvalidPassphraseException e) {
+                wipe(candidate);
+                if (attempt == maxAttempts) {
+                    throw e;
+                }
+                IO.println(CliMessages.get("passphrase.wrongRetrying"));
+            }
+        }
+        throw new IllegalStateException("unreachable");
+    }
+
+    private static char[] readNewPassphraseWithConfirmation() {
+        char[] first = readPassphrase(CliMessages.get("passphrase.promptNew"));
+        char[] second = readPassphrase(CliMessages.get("passphrase.promptConfirm"));
+        if (!Arrays.equals(first, second)) {
+            wipe(first);
+            wipe(second);
+            throw new IllegalArgumentException(CliMessages.get("passphrase.mismatch"));
+        }
+        wipe(second);
+        if (first.length < 12) {
+            IO.println(CliMessages.get("passphrase.tooShort"));
+        }
+        return first;
+    }
+
+    // Lazily created, reset once per invocation in run(String[]) - a flow like
+    // readNewPassphraseWithConfirmation() calls readPassphrase() twice in a row, and a fresh
+    // BufferedReader per call would silently drop whatever it had already buffered from System.in
+    // beyond the first line when discarded.
+    private static BufferedReader stdinFallbackReader;
+
+    /**
+     * Uses the real console (no echo) when one is attached; falls back to a plain, visibly-echoed
+     * stdin read otherwise (piped input, IDE run configs, CI) - the fallback is announced so
+     * nobody is surprised their passphrase was printed to the terminal.
+     */
+    private static char[] readPassphrase(String prompt) {
+        Console console = System.console();
+        if (console != null) {
+            return console.readPassword(prompt);
+        }
+        IO.println(CliMessages.get("passphrase.noConsoleFallback"));
+        System.out.print(prompt);
+        System.out.flush();
+        try {
+            if (stdinFallbackReader == null) {
+                stdinFallbackReader = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
+            }
+            String line = stdinFallbackReader.readLine();
+            return line != null ? line.toCharArray() : new char[0];
+        } catch (IOException e) {
+            throw new UncheckedIOException(CliMessages.get("stdin.readFailed"), e);
+        }
+    }
+
+    private static void wipe(char[] data) {
+        if (data != null) {
+            Arrays.fill(data, '\0');
+        }
+    }
+
     private static String readSecretFromStdin(String errorMessageIfBlank) {
         try {
             java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(System.in, StandardCharsets.UTF_8));
@@ -648,7 +826,7 @@ public final class Main {
             JsonManifestFileAdapter manifestPort,
             JsonRecipientRegistryFileAdapter recipientRegistryPort,
             JGitRepositoryAdapter gitRepositoryPort,
-            LocalKeyStoreAdapter keyStorePort,
+            KeyStorePort keyStorePort,
             JceHybridEncryptionAdapter encryptionPort,
             Sha256HashAdapter hashPort,
             LocalGitAuthSettingsAdapter gitAuthSettingsPort) {
@@ -667,6 +845,11 @@ public final class Main {
                     new JceHybridEncryptionAdapter(config.encryptionSettings()),
                     new Sha256HashAdapter(),
                     gitAuthSettingsPort);
+        }
+
+        VaultContext withKeyStorePort(KeyStorePort newKeyStorePort) {
+            return new VaultContext(vaultRoot, localFiles, documentsFiles, manifestPort, recipientRegistryPort,
+                    gitRepositoryPort, newKeyStorePort, encryptionPort, hashPort, gitAuthSettingsPort);
         }
     }
 }

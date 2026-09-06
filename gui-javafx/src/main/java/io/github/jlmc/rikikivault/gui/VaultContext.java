@@ -11,6 +11,7 @@ import io.github.jlmc.rikikivault.core.adapters.manifest.JsonManifestFileAdapter
 import io.github.jlmc.rikikivault.core.adapters.recipients.JsonRecipientRegistryFileAdapter;
 import io.github.jlmc.rikikivault.core.configuration.VaultConfig;
 import io.github.jlmc.rikikivault.core.configuration.VaultPaths;
+import io.github.jlmc.rikikivault.core.ports.out.KeyStorePort;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -27,7 +28,7 @@ public record VaultContext(
         JsonManifestFileAdapter manifestPort,
         JsonRecipientRegistryFileAdapter recipientRegistryPort,
         JGitRepositoryAdapter gitRepositoryPort,
-        LocalKeyStoreAdapter keyStorePort,
+        KeyStorePort keyStorePort,
         JceHybridEncryptionAdapter encryptionPort,
         Sha256HashAdapter hashPort) {
 
@@ -47,5 +48,10 @@ public record VaultContext(
 
     public boolean isInitialized() {
         return Files.exists(vaultRoot.resolve("vault").resolve("manifest.json"));
+    }
+
+    public VaultContext withKeyStorePort(KeyStorePort newKeyStorePort) {
+        return new VaultContext(vaultRoot, localFiles, documentsFiles, manifestPort, recipientRegistryPort,
+                gitRepositoryPort, newKeyStorePort, encryptionPort, hashPort);
     }
 }

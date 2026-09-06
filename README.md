@@ -17,6 +17,7 @@ decrypt back to its own `local/` copy. Nothing ever reaches Git in plaintext.
   - [A full walkthrough](#a-full-walkthrough)
   - [Pushing to a real remote](#pushing-to-a-real-remote)
   - [Explicit Git authentication](#explicit-git-authentication)
+  - [Protecting the private key with a passphrase](#protecting-the-private-key-with-a-passphrase)
   - [Configuration files](#configuration-files)
   - [Hardening notes](#hardening-notes)
   - [Logging](#logging)
@@ -86,6 +87,8 @@ first time it's missing and runs it the same way (see "Logging" below for its `-
 | `authorize <label> <public-key-file>` | Grants another machine access: adds it to the recipient registry and re-encrypts every already-published file for the updated set. |
 | `revoke <fingerprint-hex>` | Removes a machine's access, re-encrypting everything so its key is no longer able to decrypt anything new. |
 | `git-auth show\|set-ssh-key <path>\|clear-ssh-key\|set-token\|clear-token\|set-http-basic <username>\|clear-http-basic\|use ssh\|token\|http\|none` | Configures explicit Git authentication, overriding implicit discovery - see "Explicit Git authentication" below. `set-token`/`set-http-basic` read the secret from stdin, never an argument, to avoid it ending up in shell history. |
+| `set-passphrase` | Protects (or changes) this machine's identity with a passphrase - prompts for the current one first if it's already protected, then the new one (twice, to confirm). See "Protecting the private key with a passphrase" below. |
+| `remove-passphrase` | Removes passphrase protection, given the current passphrase. |
 
 ### A full walkthrough
 
@@ -162,6 +165,31 @@ Never pass a token or password as a `set-token`/`set-http-basic` argument — th
 read from stdin, to avoid it landing in shell history. See "Configuration files" below for where
 this is stored.
 
+### Protecting the private key with a passphrase
+
+By default `private.key` is unprotected (see the ["private key password" FAQ entry](docs/faq/07-private-key-is-not-password-protected.md)
+for the full trade-off). To turn on protection:
+
+```
+rikiki-vault set-passphrase       # prompts for a new passphrase (twice, to confirm)
+rikiki-vault remove-passphrase    # prompts for the current passphrase, then removes protection
+```
+
+Once protected, any command that needs the identity (`whoami`, `export-key`, `init`, `clone`,
+`pull`, `restore`) prompts for the passphrase once per invocation — masked, via the terminal's own
+password entry when a real console is attached, with a visibly-echoed stdin fallback (announced)
+when there isn't one (piped input, IDE run configs, CI). Right after generating a brand-new
+identity (`init`/`clone` only), you're also offered the chance to protect it on the spot, when
+running interactively.
+
+Desktop app: Configurações → **Segurança** offers the same set/change/remove, applied immediately.
+Opening a vault whose identity is protected shows a full-screen unlock prompt before anything else
+loads; once unlocked, the identity stays usable for the rest of that session (background pull/push,
+auto-refresh) without asking again - closing the app clears it.
+
+There's no recovery path if the passphrase is forgotten - changing or removing one always requires
+the current passphrase first, by design.
+
 ### Configuration files
 
 Everything outside a vault itself lives under `~/.rikiki-vault/` — machine-global, shared by every
@@ -169,7 +197,7 @@ vault you open and by both the CLI and the GUI:
 
 | File | What it's for | How to configure it |
 |---|---|---|
-| `~/.rikiki-vault/identity/private.key` / `public.key` | This machine's X25519 keypair (owner-only permissions) - see "Machine identity" above. | Generated automatically the first time it's needed; not user-editable. `whoami`/`export-key` read it. |
+| `~/.rikiki-vault/identity/private.key` / `public.key` | This machine's X25519 keypair (owner-only permissions) - see "Machine identity" above. `private.key` is optionally passphrase-protected - see "Protecting the private key with a passphrase" above. | Generated automatically the first time it's needed; not user-editable directly. `whoami`/`export-key` read it; `set-passphrase`/`remove-passphrase` (or Configurações → Segurança) change its protection. |
 | `~/.rikiki-vault/config/config.yaml` | Bootstrap settings for the vault mechanics: where the identity directory lives, and the encryption parameters (algorithm, key sizes). Written once with sensible defaults on first run. | Not exposed in the UI/CLI - most users never need to touch it; edit the YAML directly only if you know what you're changing. |
 | `~/.rikiki-vault/preferences/preferences.json` | Everything the Settings screen / `git-auth` command manage: which Git authentication method is active and its values (SSH key path, GitHub token, HTTP username/password), plus the app's display language (`PT`/`EN` - both the GUI and the CLI read it, so switching it in one place changes what both show). Owner-only (`rw-------`) permissions, since it can hold secrets. | Desktop: "Configurações...", including the language. CLI: `git-auth ...` for the Git side (see above); there's no CLI command to *set* the language yet, but the CLI's own output (usage, confirmations, errors) already follows whatever language was last saved from the desktop app's Settings screen. |
 

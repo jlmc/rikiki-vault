@@ -19,6 +19,8 @@ import javafx.scene.control.TabPane;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
+import java.util.function.Consumer;
+
 /**
  * Single "Configurações" screen (Milestone 19) replacing the standalone "Definições de Git"
  * dialog - one clearly-labelled, navigable tab per concern (Git today, Idioma; more later)
@@ -45,18 +47,25 @@ public final class SettingsController {
      * Builds the Settings content as a plain, embeddable {@link Parent} - used both by
      * {@link #openModal} (wrapped in its own {@link Stage}) and directly by the main window's
      * sidebar panel, so the two hosting styles never duplicate any of this screen's logic.
+     *
+     * @param onPassphraseChanged notified with the new passphrase (or {@code null} if removed)
+     *                            right after a change is applied in the Segurança tab - lets a
+     *                            host with an open vault session refresh its own cached unlocked
+     *                            {@code KeyStorePort} instead of asking the user to re-enter it.
+     *                            Pass {@code null} when there's no session to keep in sync (e.g.
+     *                            {@link #openModal}, reached before any vault is open).
      */
-    static Parent embed(Runnable onLanguageChanged, Runnable onClose) {
+    static Parent embed(Runnable onLanguageChanged, Runnable onClose, Consumer<char[]> onPassphraseChanged) {
         FXMLLoader loader = Fxml.loader("/fxml/settings-view.fxml");
         Parent root = loader.getRoot();
         SettingsController controller = loader.getController();
-        controller.init(onLanguageChanged, onClose);
+        controller.init(onLanguageChanged, onClose, onPassphraseChanged);
         return root;
     }
 
     static void openModal(Stage owner, Runnable onLanguageChanged) {
         Stage stage = new Stage();
-        Parent root = embed(onLanguageChanged, stage::close);
+        Parent root = embed(onLanguageChanged, stage::close, null);
         stage.initOwner(owner);
         stage.initModality(Modality.APPLICATION_MODAL);
         stage.setTitle(Messages.get("settings.windowTitle"));
@@ -66,7 +75,7 @@ public final class SettingsController {
         stage.showAndWait();
     }
 
-    private void init(Runnable onLanguageChanged, Runnable onClose) {
+    private void init(Runnable onLanguageChanged, Runnable onClose, Consumer<char[]> onPassphraseChanged) {
         this.onLanguageChanged = onLanguageChanged;
         this.onClose = onClose;
 
@@ -79,6 +88,14 @@ public final class SettingsController {
         gitAuthPanel.init(preferences.gitAuth());
         Tab gitTab = new Tab(Messages.get("settings.tab.git"), gitRoot);
         tabPane.getTabs().add(0, gitTab);
+
+        FXMLLoader securityLoader = Fxml.loader("/fxml/security-settings-panel.fxml");
+        Parent securityRoot = securityLoader.getRoot();
+        SecuritySettingsPanel securityPanel = securityLoader.getController();
+        securityPanel.init(onPassphraseChanged);
+        Tab securityTab = new Tab(Messages.get("settings.tab.security"), securityRoot);
+        tabPane.getTabs().add(1, securityTab);
+
         tabPane.getSelectionModel().select(gitTab);
 
         (preferences.language() == AppLanguage.EN ? enRadio : ptRadio).setSelected(true);

@@ -1,6 +1,8 @@
 package io.github.jlmc.rikikivault.core.adapters.keystore;
 
+import io.github.jlmc.rikikivault.core.domain.exception.InvalidPassphraseException;
 import io.github.jlmc.rikikivault.core.domain.exception.MachineIdentityAlreadyExistsException;
+import io.github.jlmc.rikikivault.core.domain.exception.PassphraseRequiredException;
 import io.github.jlmc.rikikivault.core.domain.exception.PrivateKeyNotFoundException;
 import io.github.jlmc.rikikivault.core.domain.model.KeyFingerprint;
 import io.github.jlmc.rikikivault.core.domain.model.MachineIdentity;
@@ -94,5 +96,128 @@ class LocalKeyStoreAdapterTest {
 
         Set<PosixFilePermission> permissions = Files.getPosixFilePermissions(identityDir.resolve("private.key"));
         assertEquals(PosixFilePermissions.fromString("rw-------"), permissions);
+    }
+
+    @Test
+    void isPassphraseProtectedIsFalseBeforeAndAfterAPlainSave(@TempDir Path tempDir) throws Exception {
+        LocalKeyStoreAdapter adapter = new LocalKeyStoreAdapter(tempDir.resolve("identity"));
+
+        assertFalse(adapter.isPassphraseProtected());
+        adapter.save(newIdentity());
+        assertFalse(adapter.isPassphraseProtected());
+    }
+
+    @Test
+    void changePassphraseFromUnprotectedThenLoadWithPassphraseRoundTrips(@TempDir Path tempDir) throws Exception {
+        Path identityDir = tempDir.resolve("identity");
+        LocalKeyStoreAdapter adapter = new LocalKeyStoreAdapter(identityDir);
+        MachineIdentity original = newIdentity();
+        adapter.save(original);
+
+        adapter.changePassphrase(null, "correct horse battery staple".toCharArray());
+
+        assertTrue(adapter.isPassphraseProtected());
+        MachineIdentity loaded = adapter.load("correct horse battery staple".toCharArray());
+        assertEquals(original.id(), loaded.id());
+        assertArrayEquals(original.privateKey().getEncoded(), loaded.privateKey().getEncoded());
+    }
+
+    @Test
+    void loadWithoutPassphraseOnAProtectedIdentityThrows(@TempDir Path tempDir) throws Exception {
+        Path identityDir = tempDir.resolve("identity");
+        LocalKeyStoreAdapter adapter = new LocalKeyStoreAdapter(identityDir);
+        adapter.save(newIdentity());
+        adapter.changePassphrase(null, "correct horse battery staple".toCharArray());
+
+        assertThrows(PassphraseRequiredException.class, adapter::load);
+    }
+
+    @Test
+    void loadWithWrongPassphraseThrows(@TempDir Path tempDir) throws Exception {
+        Path identityDir = tempDir.resolve("identity");
+        LocalKeyStoreAdapter adapter = new LocalKeyStoreAdapter(identityDir);
+        adapter.save(newIdentity());
+        adapter.changePassphrase(null, "correct horse battery staple".toCharArray());
+
+        assertThrows(InvalidPassphraseException.class, () -> adapter.load("wrong passphrase".toCharArray()));
+    }
+
+    @Test
+    void changePassphraseWithWrongCurrentPassphraseThrowsAndLeavesFileUntouched(@TempDir Path tempDir) throws Exception {
+        Path identityDir = tempDir.resolve("identity");
+        LocalKeyStoreAdapter adapter = new LocalKeyStoreAdapter(identityDir);
+        adapter.save(newIdentity());
+        adapter.changePassphrase(null, "correct horse battery staple".toCharArray());
+
+        byte[] before = Files.readAllBytes(identityDir.resolve("private.key"));
+
+        assertThrows(InvalidPassphraseException.class,
+                () -> adapter.changePassphrase("wrong passphrase".toCharArray(), "new passphrase".toCharArray()));
+
+        assertArrayEquals(before, Files.readAllBytes(identityDir.resolve("private.key")));
+    }
+
+    @Test
+    void changePassphraseRotatesToANewPassphrase(@TempDir Path tempDir) throws Exception {
+        Path identityDir = tempDir.resolve("identity");
+        LocalKeyStoreAdapter adapter = new LocalKeyStoreAdapter(identityDir);
+        MachineIdentity original = newIdentity();
+        adapter.save(original);
+        adapter.changePassphrase(null, "first passphrase".toCharArray());
+
+        adapter.changePassphrase("first passphrase".toCharArray(), "second passphrase".toCharArray());
+
+        assertThrows(InvalidPassphraseException.class, () -> adapter.load("first passphrase".toCharArray()));
+        MachineIdentity loaded = adapter.load("second passphrase".toCharArray());
+        assertEquals(original.id(), loaded.id());
+    }
+
+    @Test
+    void changePassphraseToNullRemovesProtection(@TempDir Path tempDir) throws Exception {
+        Path identityDir = tempDir.resolve("identity");
+        LocalKeyStoreAdapter adapter = new LocalKeyStoreAdapter(identityDir);
+        MachineIdentity original = newIdentity();
+        adapter.save(original);
+        adapter.changePassphrase(null, "correct horse battery staple".toCharArray());
+
+        adapter.changePassphrase("correct horse battery staple".toCharArray(), null);
+
+        assertFalse(adapter.isPassphraseProtected());
+        MachineIdentity loaded = adapter.load();
+        assertEquals(original.id(), loaded.id());
+    }
+
+    @Test
+    void changePassphraseRejectsCurrentPassphraseWhenNotProtected(@TempDir Path tempDir) throws Exception {
+        LocalKeyStoreAdapter adapter = new LocalKeyStoreAdapter(tempDir.resolve("identity"));
+        adapter.save(newIdentity());
+
+        assertThrows(IllegalArgumentException.class,
+                () -> adapter.changePassphrase("anything".toCharArray(), "new".toCharArray()));
+    }
+
+    @Test
+    void changePassphraseRejectsBothArgumentsNull(@TempDir Path tempDir) throws Exception {
+        LocalKeyStoreAdapter adapter = new LocalKeyStoreAdapter(tempDir.resolve("identity"));
+        adapter.save(newIdentity());
+
+        assertThrows(IllegalArgumentException.class, () -> adapter.changePassphrase(null, null));
+    }
+
+    @Test
+    void changePassphraseWithoutCurrentOnAProtectedIdentityThrows(@TempDir Path tempDir) throws Exception {
+        Path identityDir = tempDir.resolve("identity");
+        LocalKeyStoreAdapter adapter = new LocalKeyStoreAdapter(identityDir);
+        adapter.save(newIdentity());
+        adapter.changePassphrase(null, "correct horse battery staple".toCharArray());
+
+        assertThrows(PassphraseRequiredException.class, () -> adapter.changePassphrase(null, "new".toCharArray()));
+    }
+
+    @Test
+    void changePassphraseThrowsWhenNoIdentityExists(@TempDir Path tempDir) {
+        LocalKeyStoreAdapter adapter = new LocalKeyStoreAdapter(tempDir.resolve("identity"));
+
+        assertThrows(PrivateKeyNotFoundException.class, () -> adapter.changePassphrase(null, "new".toCharArray()));
     }
 }
