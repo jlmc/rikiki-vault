@@ -4,6 +4,7 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.scene.control.Control;
 import javafx.scene.control.Skin;
+import javafx.scene.layout.Region;
 
 /**
  * A {@link javafx.scene.control.PasswordField} with a "reveal" eye toggle beside it, swapping
@@ -25,6 +26,9 @@ public final class RevealablePasswordField extends Control {
 
     public RevealablePasswordField() {
         getStyleClass().add("revealable-password-field");
+        // Control's default max-width is unbounded, unlike a layout Pane's - without this, this
+        // stretches to fill any fillWidth VBox/parent instead of respecting its own prefWidth.
+        setMaxWidth(Region.USE_PREF_SIZE);
     }
 
     @Override
