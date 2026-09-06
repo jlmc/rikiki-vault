@@ -59,7 +59,7 @@
 
             <VBox spacing="8">
                 <RadioButton fx:id="httpRadio" text="%gitAuthPanel.type.http" toggleGroup="$authTypeGroup"/>
-                <TextField fx:id="httpUsernameField" promptText="%gitAuthPanel.usernamePrompt" prefWidth="220"/>
+                <TextField fx:id="httpUsernameField" promptText="%gitAuthPanel.usernamePrompt" prefWidth="220" maxWidth="220"/>
                 <RevealablePasswordField fx:id="httpPasswordField" prefWidth="220"/>
                 <Button text="%gitAuthPanel.removeHttpBasic" onAction="#onClearHttpBasic">
                     <tooltip>
