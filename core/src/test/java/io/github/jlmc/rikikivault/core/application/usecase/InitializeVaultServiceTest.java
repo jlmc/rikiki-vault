@@ -85,7 +85,7 @@ class InitializeVaultServiceTest {
 
         RecipientRegistry registry = recipientRegistryPort.load();
         assertEquals(1, registry.recipients().size());
-        assertEquals(new Recipient("machine-a", identity.id(), identity.publicKey()), registry.recipients().get(0));
+        assertEquals(new Recipient("machine-a", identity.id(), identity.publicKey()), registry.recipients().getFirst());
     }
 
     @Test
@@ -106,7 +106,7 @@ class InitializeVaultServiceTest {
         assertEquals(existingIdentity, result);
         assertEquals(0, initializeIdentityUseCase.initializeCallCount);
         assertEquals(new Recipient("second-vault", existingIdentity.id(), existingIdentity.publicKey()),
-                recipientRegistryPort.load().recipients().get(0));
+                recipientRegistryPort.load().recipients().getFirst());
     }
 
     @Test

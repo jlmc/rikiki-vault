@@ -74,7 +74,7 @@ class PublishVaultServiceTest {
 
         VaultManifest updated = manifestPort.load();
         assertEquals(1, updated.files().size());
-        assertEquals("notes.md.enc", updated.files().get(0).path());
+        assertEquals("notes.md.enc", updated.files().getFirst().path());
     }
 
     @Test
@@ -145,7 +145,7 @@ class PublishVaultServiceTest {
         service.publish(new PublishVaultCommand(List.of(new VaultChange(ChangeType.ADDED, "cv.pdf")), "publish cv.pdf"));
 
         assertEquals(1, encryptionPort.receivedRecipients.size());
-        assertEquals(List.of(machineA, machineB), List.copyOf(encryptionPort.receivedRecipients.get(0)));
+        assertEquals(List.of(machineA, machineB), List.copyOf(encryptionPort.receivedRecipients.getFirst()));
     }
 
     @Test

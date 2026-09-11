@@ -121,7 +121,7 @@ class EndToEndClonePullTest {
         PullResult conflictedPull = pullVaultService(machineB, encryptionPort, hashPort).pull();
 
         assertEquals(1, conflictedPull.conflicts().size());
-        assertEquals("cv.pdf", conflictedPull.conflicts().get(0).plaintextPath());
+        assertEquals("cv.pdf", conflictedPull.conflicts().getFirst().plaintextPath());
         assertTrue(conflictedPull.updatedPaths().isEmpty());
         assertArrayEquals("cv content v3 - edited on B".getBytes(StandardCharsets.UTF_8), readLocalFile(machineB, "cv.pdf"));
     }

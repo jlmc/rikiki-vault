@@ -49,10 +49,10 @@ class RevokeMachineServiceTest {
 
         RecipientRegistry updated = recipientRegistryPort.load();
         assertEquals(1, updated.recipients().size());
-        assertEquals("machine-a", updated.recipients().get(0).label());
+        assertEquals("machine-a", updated.recipients().getFirst().label());
 
         assertEquals(1, encryptionPort.receivedRecipients.size());
-        assertEquals(List.of(remainingKey), List.copyOf(encryptionPort.receivedRecipients.get(0)));
+        assertEquals(List.of(remainingKey), List.copyOf(encryptionPort.receivedRecipients.getFirst()));
 
         assertEquals(1, gitRepositoryPort.pushCallCount);
     }

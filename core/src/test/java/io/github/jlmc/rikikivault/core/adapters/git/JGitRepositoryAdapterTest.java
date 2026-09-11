@@ -45,8 +45,8 @@ class JGitRepositoryAdapterTest {
         try (Git git = Git.open(root.toFile())) {
             List<org.eclipse.jgit.transport.RemoteConfig> remotes = git.remoteList().call();
             assertEquals(1, remotes.size());
-            assertEquals("origin", remotes.get(0).getName());
-            assertEquals("file:///some/remote.git", remotes.get(0).getURIs().get(0).toString());
+            assertEquals("origin", remotes.getFirst().getName());
+            assertEquals("file:///some/remote.git", remotes.getFirst().getURIs().getFirst().toString());
         }
     }
 

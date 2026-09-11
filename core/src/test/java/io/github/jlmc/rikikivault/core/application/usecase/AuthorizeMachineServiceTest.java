@@ -51,7 +51,7 @@ class AuthorizeMachineServiceTest {
         assertTrue(updated.recipients().stream().anyMatch(r -> r.publicKey().equals(newKey)));
 
         assertEquals(1, encryptionPort.receivedRecipients.size());
-        assertEquals(List.of(existingKey, newKey), List.copyOf(encryptionPort.receivedRecipients.get(0)));
+        assertEquals(List.of(existingKey, newKey), List.copyOf(encryptionPort.receivedRecipients.getFirst()));
         assertTrue(documentsFiles.listFiles().contains("cv.pdf.enc"));
 
         assertEquals(1, gitRepositoryPort.addedPathBatches.size());

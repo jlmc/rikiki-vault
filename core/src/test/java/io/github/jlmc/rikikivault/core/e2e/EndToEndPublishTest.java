@@ -105,7 +105,7 @@ class EndToEndPublishTest {
         // The manifest reflects it, and there's nothing left for a re-scan to report.
         VaultManifest manifest = manifestPort.load();
         assertEquals(1, manifest.files().size());
-        assertEquals("cv.pdf", manifest.files().get(0).plaintextPath());
+        assertEquals("cv.pdf", manifest.files().getFirst().plaintextPath());
         assertTrue(scanChangesService.scan().isEmpty());
         assertTrue(gitRepositoryPort.status().isClean());
 
