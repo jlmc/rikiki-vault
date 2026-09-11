@@ -36,6 +36,7 @@ import io.github.jlmc.rikikivault.core.domain.model.ClearLocalFilesResult;
 import io.github.jlmc.rikikivault.core.domain.model.KeyFingerprint;
 import io.github.jlmc.rikikivault.core.domain.model.MachineIdentity;
 import io.github.jlmc.rikikivault.core.domain.model.PullResult;
+import io.github.jlmc.rikikivault.core.domain.model.Recipient;
 import io.github.jlmc.rikikivault.core.domain.model.RemoteSyncStatus;
 import io.github.jlmc.rikikivault.core.domain.model.RestoreLocalFilesResult;
 import io.github.jlmc.rikikivault.core.domain.model.VaultChange;
@@ -377,7 +378,8 @@ public final class Main {
                 new LoadMachineIdentityService(ctx.keyStorePort()),
                 new DecryptFileService(ctx.encryptionPort()),
                 new ScanChangesService(ctx.localFiles(), ctx.hashPort(), ctx.manifestPort()),
-                ctx.localFiles(), ctx.documentsFiles(), ctx.manifestPort(), ctx.gitRepositoryPort(), ctx.hashPort());
+                ctx.localFiles(), ctx.documentsFiles(), ctx.manifestPort(), ctx.gitRepositoryPort(), ctx.hashPort(),
+                ctx.recipientRegistryPort());
 
         PullResult result = service.pull();
 
@@ -404,6 +406,18 @@ public final class Main {
         }
         if (result.updatedPaths().isEmpty() && result.deletedPaths().isEmpty() && !result.hasConflicts()) {
             IO.println(CliMessages.get("pull.upToDate"));
+        }
+        if (!result.newRecipients().isEmpty()) {
+            IO.println(CliMessages.get("pull.newRecipients.header"));
+            for (Recipient recipient : result.newRecipients()) {
+                IO.println("  " + CliMessages.get("pull.newRecipients.entry", recipient.label(), recipient.fingerprint()));
+            }
+        }
+        if (!result.removedRecipients().isEmpty()) {
+            IO.println(CliMessages.get("pull.removedRecipients.header"));
+            for (Recipient recipient : result.removedRecipients()) {
+                IO.println("  " + CliMessages.get("pull.removedRecipients.entry", recipient.label(), recipient.fingerprint()));
+            }
         }
     }
 

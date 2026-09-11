@@ -31,6 +31,14 @@
         <Label text="%pullResult.conflictsSection" styleClass="section-title conflict-title"/>
         <ListView fx:id="conflictsList" prefHeight="140"/>
     </VBox>
+    <VBox fx:id="newRecipientsSection" spacing="6">
+        <Label text="%pullResult.newRecipientsSection" styleClass="section-title conflict-title"/>
+        <ListView fx:id="newRecipientsList" prefHeight="70"/>
+    </VBox>
+    <VBox fx:id="removedRecipientsSection" spacing="6">
+        <Label text="%pullResult.removedRecipientsSection" styleClass="section-title"/>
+        <ListView fx:id="removedRecipientsList" prefHeight="70"/>
+    </VBox>
     <HBox alignment="CENTER_RIGHT">
         <Button text="%common.ok" styleClass="compact-button, primary-button" onAction="#onClose">
             <tooltip>

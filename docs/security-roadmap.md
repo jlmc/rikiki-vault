@@ -99,7 +99,13 @@ below.
 
 ---
 
-### 2. Detect unexpected new recipients during `pull`
+### 2. Detect unexpected new recipients during `pull` — ✅ Implemented
+
+Delivered: `PullVaultService` gained a `RecipientRegistryPort` dependency, `PullResult` gained
+`newRecipients`/`removedRecipients` (diffed by fingerprint between before/after snapshots around
+`gitRepositoryPort.pull()`), and both the CLI (`runPull`) and GUI
+(`PullResultController`/`pull-result-view.fxml`) surface both lists. The rest of this section is
+kept as a record of the original design.
 
 **Why:** `recipients.json` lives in the same git-tracked `vault/` directory as `manifest.json` and
 travels through the exact same `git pull` as everything else. If a compromised git host, a

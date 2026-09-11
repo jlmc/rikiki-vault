@@ -373,7 +373,8 @@ public final class MainWindowController {
                         new LoadMachineIdentityService(ctx.keyStorePort()),
                         new DecryptFileService(ctx.encryptionPort()),
                         new ScanChangesService(ctx.localFiles(), ctx.hashPort(), ctx.manifestPort()),
-                        ctx.localFiles(), ctx.documentsFiles(), ctx.manifestPort(), ctx.gitRepositoryPort(), ctx.hashPort())
+                        ctx.localFiles(), ctx.documentsFiles(), ctx.manifestPort(), ctx.gitRepositoryPort(), ctx.hashPort(),
+                        ctx.recipientRegistryPort())
                         .pull(),
                 (PullResult result) -> {
                     // vaultPathLabel lives in the top toolbar, which (unlike fileTable) is never

@@ -126,6 +126,62 @@ class EndToEndClonePullTest {
         assertArrayEquals("cv content v3 - edited on B".getBytes(StandardCharsets.UTF_8), readLocalFile(machineB, "cv.pdf"));
     }
 
+    @Test
+    void pullReportsANewRecipientAuthorizedByAnotherMachine(@TempDir Path tempDir) throws Exception {
+        Path bareRepoDir = tempDir.resolve("remote.git");
+        try (Git ignored = Git.init().setDirectory(bareRepoDir.toFile()).setBare(true).call()) {
+            // empty bare "remote" - machine A's first publish below creates and pushes the first commit
+        }
+        String remoteUri = "file://" + bareRepoDir;
+
+        JceHybridEncryptionAdapter encryptionPort = new JceHybridEncryptionAdapter(EncryptionSettings.defaults());
+        Sha256HashAdapter hashPort = new Sha256HashAdapter();
+
+        Machine machineA = new Machine(tempDir.resolve("machine-a-vault"), tempDir.resolve("machine-a-identity"));
+        Machine machineB = new Machine(tempDir.resolve("machine-b-vault"), tempDir.resolve("machine-b-identity"));
+        Machine machineC = new Machine(tempDir.resolve("machine-c-vault"), tempDir.resolve("machine-c-identity"));
+
+        MachineIdentity identityB = new InitializeMachineIdentityService(
+                new X25519KeyPairGeneratorAdapter(), machineB.keyStorePort).initialize();
+        MachineIdentity identityC = new InitializeMachineIdentityService(
+                new X25519KeyPairGeneratorAdapter(), machineC.keyStorePort).initialize();
+
+        machineA.gitRepositoryPort.clone(remoteUri);
+        new InitializeVaultService(
+                new LoadMachineIdentityService(machineA.keyStorePort),
+                new InitializeMachineIdentityService(new X25519KeyPairGeneratorAdapter(), machineA.keyStorePort),
+                new LocalFileSystemAdapter(machineA.vaultRoot), machineA.manifestPort, machineA.recipientRegistryPort, machineA.gitRepositoryPort)
+                .initialize(new InitializeVaultCommand(false, "machine-a", null));
+        new AuthorizeMachineService(
+                machineA.recipientRegistryPort, machineA.localFiles, machineA.documentsFiles,
+                machineA.manifestPort, encryptionPort, machineA.gitRepositoryPort)
+                .authorize(new AuthorizeMachineCommand("machine-b", identityB.publicKey()));
+
+        Files.createDirectories(machineA.vaultRoot.resolve("local"));
+        writeLocalFile(machineA, "cv.pdf", "cv content v1");
+        publishAllChanges(machineA, encryptionPort, hashPort, "publish cv.pdf v1");
+
+        // Machine B clones (a third, independent machine) - it never asked for machine C to be
+        // authorized, so its next pull must notice that recipients.json changed underneath it.
+        new CloneVaultService(
+                new LoadMachineIdentityService(machineB.keyStorePort),
+                new InitializeMachineIdentityService(new X25519KeyPairGeneratorAdapter(), machineB.keyStorePort),
+                new DecryptFileService(encryptionPort),
+                machineB.localFiles, machineB.documentsFiles, machineB.manifestPort, machineB.recipientRegistryPort, machineB.gitRepositoryPort)
+                .clone(new CloneVaultCommand(remoteUri));
+
+        new AuthorizeMachineService(
+                machineA.recipientRegistryPort, machineA.localFiles, machineA.documentsFiles,
+                machineA.manifestPort, encryptionPort, machineA.gitRepositoryPort)
+                .authorize(new AuthorizeMachineCommand("machine-c", identityC.publicKey()));
+
+        PullResult pull = pullVaultService(machineB, encryptionPort, hashPort).pull();
+
+        assertEquals(1, pull.newRecipients().size());
+        assertEquals("machine-c", pull.newRecipients().getFirst().label());
+        assertTrue(pull.removedRecipients().isEmpty());
+    }
+
     private static void writeLocalFile(Machine machine, String fileName, String content) throws Exception {
         Files.createDirectories(machine.vaultRoot.resolve("local"));
         Files.write(machine.vaultRoot.resolve("local").resolve(fileName), content.getBytes(StandardCharsets.UTF_8));
@@ -152,7 +208,8 @@ class EndToEndClonePullTest {
         return new PullVaultService(
                 new LoadMachineIdentityService(machine.keyStorePort), new DecryptFileService(encryptionPort),
                 new ScanChangesService(machine.localFiles, hashPort, machine.manifestPort),
-                machine.localFiles, machine.documentsFiles, machine.manifestPort, machine.gitRepositoryPort, hashPort);
+                machine.localFiles, machine.documentsFiles, machine.manifestPort, machine.gitRepositoryPort, hashPort,
+                machine.recipientRegistryPort);
     }
 
     private static final class Machine {

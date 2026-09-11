@@ -7,6 +7,8 @@ import io.github.jlmc.rikikivault.core.domain.model.MachineIdentity;
 import io.github.jlmc.rikikivault.core.domain.model.ManifestEntry;
 import io.github.jlmc.rikikivault.core.domain.model.PlaintextFile;
 import io.github.jlmc.rikikivault.core.domain.model.PullResult;
+import io.github.jlmc.rikikivault.core.domain.model.Recipient;
+import io.github.jlmc.rikikivault.core.domain.model.RecipientRegistry;
 import io.github.jlmc.rikikivault.core.domain.model.VaultChange;
 import io.github.jlmc.rikikivault.core.domain.model.VaultChange.ChangeType;
 import io.github.jlmc.rikikivault.core.domain.model.VaultConflict;
@@ -20,6 +22,7 @@ import io.github.jlmc.rikikivault.core.ports.out.FileStoragePort;
 import io.github.jlmc.rikikivault.core.ports.out.GitRepositoryPort;
 import io.github.jlmc.rikikivault.core.ports.out.HashPort;
 import io.github.jlmc.rikikivault.core.ports.out.ManifestPort;
+import io.github.jlmc.rikikivault.core.ports.out.RecipientRegistryPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,6 +53,7 @@ public final class PullVaultService implements PullVaultUseCase {
     private final ManifestPort manifestPort;
     private final GitRepositoryPort gitRepositoryPort;
     private final HashPort hashPort;
+    private final RecipientRegistryPort recipientRegistryPort;
     private final RvEncryptedFileFormatCodec codec = new RvEncryptedFileFormatCodec();
 
     public PullVaultService(
@@ -60,7 +64,8 @@ public final class PullVaultService implements PullVaultUseCase {
             FileStoragePort documentsFiles,
             ManifestPort manifestPort,
             GitRepositoryPort gitRepositoryPort,
-            HashPort hashPort) {
+            HashPort hashPort,
+            RecipientRegistryPort recipientRegistryPort) {
         this.loadMachineIdentityUseCase = Objects.requireNonNull(
                 loadMachineIdentityUseCase, "loadMachineIdentityUseCase must not be null");
         this.decryptFileUseCase = Objects.requireNonNull(decryptFileUseCase, "decryptFileUseCase must not be null");
@@ -70,6 +75,7 @@ public final class PullVaultService implements PullVaultUseCase {
         this.manifestPort = Objects.requireNonNull(manifestPort, "manifestPort must not be null");
         this.gitRepositoryPort = Objects.requireNonNull(gitRepositoryPort, "gitRepositoryPort must not be null");
         this.hashPort = Objects.requireNonNull(hashPort, "hashPort must not be null");
+        this.recipientRegistryPort = Objects.requireNonNull(recipientRegistryPort, "recipientRegistryPort must not be null");
     }
 
     @Override
@@ -80,10 +86,12 @@ public final class PullVaultService implements PullVaultUseCase {
             localChangeTypesByPath.put(change.path(), change.type());
         }
         Map<String, ManifestEntry> before = indexByPlaintextPath(manifestPort.load());
+        Map<String, Recipient> recipientsBefore = indexByFingerprint(recipientRegistryPort.load());
 
         gitRepositoryPort.pull();
 
         Map<String, ManifestEntry> after = indexByPlaintextPath(manifestPort.load());
+        Map<String, Recipient> recipientsAfter = indexByFingerprint(recipientRegistryPort.load());
         MachineIdentity identity = loadMachineIdentityUseCase.load();
 
         List<String> updatedPaths = new ArrayList<>();
@@ -122,9 +130,22 @@ public final class PullVaultService implements PullVaultUseCase {
             }
         }
 
-        log.info("Pull completed: {} updated, {} deleted, {} conflict(s)",
-                updatedPaths.size(), deletedPaths.size(), conflicts.size());
-        return new PullResult(updatedPaths, deletedPaths, conflicts, localChanges);
+        List<Recipient> newRecipients = new ArrayList<>();
+        for (Recipient recipient : recipientsAfter.values()) {
+            if (!recipientsBefore.containsKey(recipient.fingerprint().hex())) {
+                newRecipients.add(recipient);
+            }
+        }
+        List<Recipient> removedRecipients = new ArrayList<>();
+        for (Recipient recipient : recipientsBefore.values()) {
+            if (!recipientsAfter.containsKey(recipient.fingerprint().hex())) {
+                removedRecipients.add(recipient);
+            }
+        }
+
+        log.info("Pull completed: {} updated, {} deleted, {} conflict(s), {} new recipient(s), {} removed recipient(s)",
+                updatedPaths.size(), deletedPaths.size(), conflicts.size(), newRecipients.size(), removedRecipients.size());
+        return new PullResult(updatedPaths, deletedPaths, conflicts, localChanges, newRecipients, removedRecipients);
     }
 
     private FileHash hashLocalFileIfPresent(String path, ChangeType localType) {
@@ -148,5 +169,13 @@ public final class PullVaultService implements PullVaultUseCase {
             byPath.put(entry.plaintextPath(), entry);
         }
         return byPath;
+    }
+
+    private static Map<String, Recipient> indexByFingerprint(RecipientRegistry registry) {
+        Map<String, Recipient> byFingerprint = new LinkedHashMap<>();
+        for (Recipient recipient : registry.recipients()) {
+            byFingerprint.put(recipient.fingerprint().hex(), recipient);
+        }
+        return byFingerprint;
     }
 }

@@ -101,7 +101,12 @@ proposta #3 (bloqueio automático) abaixo.
 
 ---
 
-### 2. Detetar destinatários novos inesperados durante o `pull`
+### 2. Detetar destinatários novos inesperados durante o `pull` — ✅ Implementado
+
+Entregue: `PullVaultService` ganhou uma dependência `RecipientRegistryPort`, `PullResult` ganhou
+`newRecipients`/`removedRecipients` (diff por fingerprint entre snapshots antes/depois do
+`gitRepositoryPort.pull()`), CLI (`runPull`) e GUI (`PullResultController`/`pull-result-view.fxml`)
+mostram ambas as listas. O resto desta secção fica como registo do desenho original.
 
 **Porquê:** `recipients.json` vive na mesma pasta `vault/` git-tracked que `manifest.json`, e viaja
 exatamente pelo mesmo `git pull` que tudo o resto. Se um git host comprometido, um colaborador

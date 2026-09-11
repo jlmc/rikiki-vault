@@ -13,17 +13,23 @@ public record PullResult(
         List<String> updatedPaths,
         List<String> deletedPaths,
         List<VaultConflict> conflicts,
-        List<VaultChange> uncommittedLocalChangesAtStart) {
+        List<VaultChange> uncommittedLocalChangesAtStart,
+        List<Recipient> newRecipients,
+        List<Recipient> removedRecipients) {
 
     public PullResult {
         Objects.requireNonNull(updatedPaths, "updatedPaths must not be null");
         Objects.requireNonNull(deletedPaths, "deletedPaths must not be null");
         Objects.requireNonNull(conflicts, "conflicts must not be null");
         Objects.requireNonNull(uncommittedLocalChangesAtStart, "uncommittedLocalChangesAtStart must not be null");
+        Objects.requireNonNull(newRecipients, "newRecipients must not be null");
+        Objects.requireNonNull(removedRecipients, "removedRecipients must not be null");
         updatedPaths = List.copyOf(updatedPaths);
         deletedPaths = List.copyOf(deletedPaths);
         conflicts = List.copyOf(conflicts);
         uncommittedLocalChangesAtStart = List.copyOf(uncommittedLocalChangesAtStart);
+        newRecipients = List.copyOf(newRecipients);
+        removedRecipients = List.copyOf(removedRecipients);
     }
 
     public boolean hasConflicts() {

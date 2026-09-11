@@ -1,6 +1,7 @@
 package io.github.jlmc.rikikivault.gui.controllers;
 
 import io.github.jlmc.rikikivault.core.domain.model.PullResult;
+import io.github.jlmc.rikikivault.core.domain.model.Recipient;
 import io.github.jlmc.rikikivault.core.domain.model.VaultChange;
 import io.github.jlmc.rikikivault.core.domain.model.VaultConflict;
 import io.github.jlmc.rikikivault.gui.App;
@@ -34,6 +35,10 @@ public final class PullResultController {
     @FXML private ListView<String> deletedList;
     @FXML private VBox conflictsSection;
     @FXML private ListView<String> conflictsList;
+    @FXML private VBox newRecipientsSection;
+    @FXML private ListView<String> newRecipientsList;
+    @FXML private VBox removedRecipientsSection;
+    @FXML private ListView<String> removedRecipientsList;
 
     private Stage stage;
 
@@ -61,6 +66,10 @@ public final class PullResultController {
         fillOrHide(deletedSection, deletedList, result.deletedPaths());
         fillOrHide(conflictsSection, conflictsList,
                 result.conflicts().stream().map(this::describe).toList());
+        fillOrHide(newRecipientsSection, newRecipientsList,
+                result.newRecipients().stream().map(this::describe).toList());
+        fillOrHide(removedRecipientsSection, removedRecipientsList,
+                result.removedRecipients().stream().map(this::describe).toList());
 
         boolean nothingHappened = result.updatedPaths().isEmpty() && result.deletedPaths().isEmpty() && !result.hasConflicts();
         emptyLabel.setManaged(nothingHappened);
@@ -75,6 +84,10 @@ public final class PullResultController {
 
     private String describe(VaultChange change) {
         return change.type() + "  " + change.path();
+    }
+
+    private String describe(Recipient recipient) {
+        return recipient.label() + "  (" + recipient.fingerprint() + ")";
     }
 
     private String describe(VaultConflict conflict) {
