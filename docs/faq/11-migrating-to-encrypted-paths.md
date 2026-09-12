@@ -32,13 +32,23 @@ old shape to the new one.
 
 ## Running it
 
-From the machine you picked, with the CLI:
+From a checkout of this repository, `scripts/migrate-format.sh` is the documented, ready-to-run way
+to do this — it builds the CLI jar if needed (same as `scripts/run-cli.sh`) and takes the vault
+folder as a plain first argument:
 
 ```bash
 # See what would happen, without changing anything:
-rikiki-vault -C /path/to/your/vault migrate-format --dry-run
+scripts/migrate-format.sh /path/to/your/vault --dry-run
 
 # Once you're ready:
+scripts/migrate-format.sh /path/to/your/vault --yes
+```
+
+If you're running from an installed/packaged build instead of a checkout (no `scripts/` folder
+available), use the `migrate-format` command directly:
+
+```bash
+rikiki-vault -C /path/to/your/vault migrate-format --dry-run
 rikiki-vault -C /path/to/your/vault migrate-format --yes
 ```
 

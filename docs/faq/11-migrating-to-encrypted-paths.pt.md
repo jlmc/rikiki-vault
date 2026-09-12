@@ -33,13 +33,23 @@ um vault existente da forma antiga para a nova.
 
 ## A correr
 
-Na máquina que escolheste, com o CLI:
+A partir de um checkout deste repositório, o `scripts/migrate-format.sh` é a forma documentada e
+pronta a correr de fazer isto — compila a jar do CLI se for preciso (tal como o
+`scripts/run-cli.sh`) e recebe a pasta do vault como primeiro argumento simples:
 
 ```bash
 # Ver o que aconteceria, sem mudar nada:
-rikiki-vault -C /caminho/para/o/teu/vault migrate-format --dry-run
+scripts/migrate-format.sh /caminho/para/o/teu/vault --dry-run
 
 # Quando estiveres pronto:
+scripts/migrate-format.sh /caminho/para/o/teu/vault --yes
+```
+
+Se estiveres a correr a partir de uma instalação/build empacotado em vez de um checkout (sem a
+pasta `scripts/` disponível), usa o comando `migrate-format` diretamente:
+
+```bash
+rikiki-vault -C /caminho/para/o/teu/vault migrate-format --dry-run
 rikiki-vault -C /caminho/para/o/teu/vault migrate-format --yes
 ```
 
