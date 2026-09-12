@@ -1,16 +1,23 @@
 package io.github.jlmc.rikikivault.gui;
 
+import io.github.jlmc.rikikivault.core.adapters.configuration.LocalAppPreferencesAdapter;
+import io.github.jlmc.rikikivault.core.configuration.VaultPaths;
+import io.github.jlmc.rikikivault.core.ports.out.AppPreferencesPort;
 import io.github.jlmc.rikikivault.gui.controllers.InitOrCloneController;
 import io.github.jlmc.rikikivault.gui.controllers.MainWindowController;
 import io.github.jlmc.rikikivault.gui.controllers.PassphrasePromptController;
 import io.github.jlmc.rikikivault.gui.controllers.WelcomeController;
 import io.github.jlmc.rikikivault.gui.support.BackgroundTasks;
 import io.github.jlmc.rikikivault.gui.support.Fxml;
+import io.github.jlmc.rikikivault.gui.support.Notifications;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,15 +26,48 @@ public final class App extends Application {
 
     private static final Logger log = LoggerFactory.getLogger(App.class);
 
+    private StackPane contentSlot;
+
     @Override
     public void start(Stage stage) {
         log.info("Starting Rikiki Vault GUI");
         stage.setTitle("Rikiki Vault");
         stage.getIcons().add(new Image(App.class.getResourceAsStream("/branding/icon.png")));
-        Scene scene = new Scene(loadWelcome(stage), 900, 600);
+
+        contentSlot = new StackPane();
+
+        // A persistent overlay above whatever screen is currently in contentSlot, so toasts
+        // survive every setContent(...)-style screen swap below instead of being
+        // torn down with the screen that triggered them. pickOnBounds(false) on both empty
+        // wrapper panes lets clicks pass through to the screen underneath; the toasts themselves
+        // (added as children of notificationStack) stay clickable.
+        VBox notificationStack = new VBox(8);
+        notificationStack.setPickOnBounds(false);
+        // Layout panes default to expanding to fill their parent's full content area (unlike
+        // Controls, which default to their preferred size) - with no bound on its own max size,
+        // this VBox stretches to fill the entire window, which makes the StackPane alignment
+        // below a no-op (there's no leftover space left to align it *within*). What actually
+        // positions the toasts is this VBox's own alignment, governing where it lays out its
+        // children inside its own (now window-sized) bounds.
+        notificationStack.setAlignment(Pos.BOTTOM_RIGHT);
+        StackPane.setAlignment(notificationStack, Pos.BOTTOM_RIGHT);
+        StackPane notificationsPane = new StackPane(notificationStack);
+        notificationsPane.setPickOnBounds(false);
+        notificationsPane.getStyleClass().add("notifications-pane");
+
+        setContent(loadWelcome(stage));
+        Scene scene = new Scene(new StackPane(contentSlot, notificationsPane), 900, 600);
         scene.getStylesheets().add(App.class.getResource("/css/app.css").toExternalForm());
         stage.setScene(scene);
+
+        AppPreferencesPort preferencesPort = new LocalAppPreferencesAdapter(VaultPaths.defaultPreferencesDirectory());
+        Notifications.attach(notificationStack, preferencesPort.load().notifications());
+
         stage.show();
+    }
+
+    private void setContent(Parent screen) {
+        contentSlot.getChildren().setAll(screen);
     }
 
     @Override
@@ -43,14 +83,14 @@ public final class App extends Application {
         // Settings change) take effect immediately, instead of only after the app is restarted -
         // Messages.bundle() already re-reads the current preference on every FXML load, so a
         // fresh load is all that's needed.
-        controller.init(stage, ctx -> openVault(stage, ctx), () -> stage.getScene().setRoot(loadWelcome(stage)));
+        controller.init(stage, ctx -> openVault(stage, ctx), () -> setContent(loadWelcome(stage)));
         return loader.getRoot();
     }
 
     private void openVault(Stage stage, VaultContext ctx) {
         log.info("Opening vault at {}", ctx.vaultRoot());
         if (ctx.keyStorePort().isPassphraseProtected()) {
-            stage.getScene().setRoot(loadPassphrasePrompt(stage, ctx));
+            setContent(loadPassphrasePrompt(stage, ctx));
         } else {
             proceedToVault(stage, ctx);
         }
@@ -58,7 +98,7 @@ public final class App extends Application {
 
     private void proceedToVault(Stage stage, VaultContext ctx) {
         Parent next = ctx.isInitialized() ? loadMainWindow(stage, ctx) : loadInitOrClone(stage, ctx);
-        stage.getScene().setRoot(next);
+        setContent(next);
     }
 
     private Parent loadPassphrasePrompt(Stage stage, VaultContext ctx) {
@@ -66,21 +106,21 @@ public final class App extends Application {
         PassphrasePromptController controller = loader.getController();
         controller.init(ctx,
                 unlocked -> proceedToVault(stage, unlocked),
-                () -> stage.getScene().setRoot(loadWelcome(stage)));
+                () -> setContent(loadWelcome(stage)));
         return loader.getRoot();
     }
 
     private Parent loadInitOrClone(Stage stage, VaultContext ctx) {
         FXMLLoader loader = load("/fxml/init-or-clone-view.fxml");
         InitOrCloneController controller = loader.getController();
-        controller.init(ctx, opened -> stage.getScene().setRoot(loadMainWindow(stage, opened)));
+        controller.init(ctx, opened -> setContent(loadMainWindow(stage, opened)));
         return loader.getRoot();
     }
 
     private Parent loadMainWindow(Stage stage, VaultContext ctx) {
         FXMLLoader loader = load("/fxml/main-window-view.fxml");
         MainWindowController controller = loader.getController();
-        controller.init(ctx, () -> stage.getScene().setRoot(loadMainWindow(stage, ctx)));
+        controller.init(ctx, () -> setContent(loadMainWindow(stage, ctx)));
         return loader.getRoot();
     }
 

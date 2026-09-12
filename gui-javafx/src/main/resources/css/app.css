@@ -14,6 +14,14 @@
     -fx-text-primary: #1F2430;
     -fx-text-secondary: #5A5F70;
 
+    /* Same values already used by the file-status badges (.status-synced/.status-added/
+       .status-modified/.status-deleted) - kept as their own variables here since notifications are
+       a separate vocabulary from file status, even though the colors happen to coincide. */
+    -fx-success: #1E7A34;
+    -fx-danger: #C42B2B;
+    -fx-warning: #B54708;
+    -fx-info: #1565C0;
+
     -fx-font-family: "Helvetica Neue", "Segoe UI", Arial, sans-serif;
     -fx-font-size: 13px;
     -fx-background-color: -fx-base-bg;
@@ -82,6 +90,10 @@
     -fx-opacity: 0.55;
 }
 
+.button:pressed, .menu-button:pressed {
+    -fx-background-color: derive(-fx-card-bg, -8%);
+}
+
 .primary-button {
     -fx-background-color: -fx-accent;
     -fx-border-color: transparent;
@@ -91,6 +103,10 @@
 
 .primary-button:hover {
     -fx-background-color: derive(-fx-accent, -10%);
+}
+
+.primary-button:pressed {
+    -fx-background-color: derive(-fx-accent, -16%);
 }
 
 .compact-button {
@@ -340,4 +356,54 @@
     -fx-icon-color: -fx-accent;
     -fx-border-color: transparent transparent transparent -fx-accent;
     -fx-border-width: 0 0 0 3px;
+}
+
+/* --- Notifications --- */
+
+.notifications-pane {
+    -fx-padding: 0 16px 16px 0;
+}
+
+.notification-toast {
+    -fx-background-color: -fx-card-bg;
+    -fx-background-radius: 8px;
+    -fx-border-radius: 8px;
+    -fx-border-width: 0 0 0 4px;
+    -fx-padding: 16px 14px;
+    -fx-pref-width: 400px;
+    -fx-max-width: 400px;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.28), 18, 0, 0, 4);
+}
+
+.notification-success { -fx-border-color: -fx-success; }
+.notification-error    { -fx-border-color: -fx-danger; }
+.notification-warning  { -fx-border-color: -fx-warning; }
+.notification-info     { -fx-border-color: -fx-info; }
+
+.notification-success .notification-icon { -fx-icon-color: -fx-success; }
+.notification-error    .notification-icon { -fx-icon-color: -fx-danger; }
+.notification-warning  .notification-icon { -fx-icon-color: -fx-warning; }
+.notification-info     .notification-icon { -fx-icon-color: -fx-info; }
+
+.notification-message {
+    -fx-text-fill: -fx-text-primary;
+    -fx-font-size: 12px;
+    -fx-wrap-text: true;
+}
+
+.notification-close-button {
+    -fx-background-color: transparent;
+    -fx-border-width: 0;
+    -fx-padding: 2px;
+    -fx-cursor: hand;
+    -fx-icon-color: -fx-text-secondary;
+}
+
+.notification-close-button:hover {
+    -fx-icon-color: -fx-text-primary;
+}
+
+.compact-progress {
+    -fx-pref-width: 18px;
+    -fx-pref-height: 18px;
 }
