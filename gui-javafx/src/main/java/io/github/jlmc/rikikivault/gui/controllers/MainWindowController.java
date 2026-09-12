@@ -437,8 +437,8 @@ public final class MainWindowController {
                 () -> new PullVaultService(
                         new LoadMachineIdentityService(ctx.keyStorePort()),
                         new DecryptFileService(ctx.encryptionPort()),
-                        new ScanChangesService(ctx.localFiles(), ctx.hashPort(), ctx.manifestPort()),
-                        ctx.localFiles(), ctx.documentsFiles(), ctx.manifestPort(), ctx.gitRepositoryPort(), ctx.hashPort(),
+                        new ScanChangesService(ctx.localFiles(), ctx.manifestPort()),
+                        ctx.localFiles(), ctx.documentsFiles(), ctx.manifestPort(), ctx.gitRepositoryPort(),
                         ctx.recipientRegistryPort())
                         .pull(),
                 (PullResult result) -> {
@@ -511,7 +511,7 @@ public final class MainWindowController {
         setToolbarBusy(true);
         BackgroundTasks.run(
                 () -> new ClearLocalFilesService(
-                        new ScanChangesService(ctx.localFiles(), ctx.hashPort(), ctx.manifestPort()), ctx.localFiles())
+                        new ScanChangesService(ctx.localFiles(), ctx.manifestPort()), ctx.localFiles())
                         .clear(new ClearLocalFilesCommand(includeUnpublished)),
                 result -> {
                     setToolbarBusy(false);
@@ -648,7 +648,7 @@ public final class MainWindowController {
         // because of a broken remote/credentials. Whether to publish to the remote is asked
         // separately, inside ChangeReviewController, only when there's something new to encrypt.
         BackgroundTasks.run(
-                () -> new ScanChangesService(ctx.localFiles(), ctx.hashPort(), ctx.manifestPort()).scan(),
+                () -> new ScanChangesService(ctx.localFiles(), ctx.manifestPort()).scan(),
                 (List<VaultChange> changes) -> {
                     if (changes.isEmpty()) {
                         offerPushWhenNothingToCommit();
@@ -717,7 +717,7 @@ public final class MainWindowController {
                 () -> {
                     List<String> localPaths = ctx.localFiles().listFiles();
                     List<VaultChange> changes = new ScanChangesService(
-                            ctx.localFiles(), ctx.hashPort(), ctx.manifestPort()).scan();
+                            ctx.localFiles(), ctx.manifestPort()).scan();
                     List<FileEntry> flat = FileTreeBuilder.build(localPaths, changes);
                     return FolderTreeBuilder.build(flat);
                 },

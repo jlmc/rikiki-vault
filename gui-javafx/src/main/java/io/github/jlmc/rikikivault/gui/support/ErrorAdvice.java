@@ -6,6 +6,7 @@ import io.github.jlmc.rikikivault.core.domain.exception.MachineIdentityAlreadyEx
 import io.github.jlmc.rikikivault.core.domain.exception.UnauthorizedMachineException;
 import io.github.jlmc.rikikivault.core.domain.exception.UninitializedVaultException;
 import io.github.jlmc.rikikivault.core.domain.exception.VaultAlreadyInitializedException;
+import io.github.jlmc.rikikivault.core.domain.exception.VaultNotMigratedException;
 
 import java.util.Locale;
 
@@ -41,6 +42,10 @@ record ErrorAdvice(String explanation, String suggestion) {
                 || findInChain(error, CorruptedRecipientRegistryException.class) != null) {
             return new ErrorAdvice(Messages.get("errorAdvice.corruptedData.explanation"),
                     Messages.get("errorAdvice.corruptedData.suggestion"));
+        }
+        if (findInChain(error, VaultNotMigratedException.class) != null) {
+            return new ErrorAdvice(Messages.get("errorAdvice.vaultNotMigrated.explanation"),
+                    Messages.get("errorAdvice.vaultNotMigrated.suggestion"));
         }
 
         String rootMessage = rootMessageOf(error).toLowerCase(Locale.ROOT);
