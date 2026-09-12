@@ -116,6 +116,9 @@ public final class MainWindowController {
         vaultPathLabel.setText(ctx.vaultRoot().toString());
         fingerprintLabel.setText(Messages.get("mainWindow.identity", identity.id()));
 
+        // FXML's columnResizePolicy="CONSTRAINED_RESIZE_POLICY" fails to coerce for
+        // TreeTableView on this JavaFX version - set the constant directly instead.
+        fileTable.setColumnResizePolicy(TreeTableView.CONSTRAINED_RESIZE_POLICY);
         nameColumn.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getValue().name()));
         statusColumn.setCellValueFactory(data -> new ReadOnlyObjectWrapper<>(data.getValue().getValue()));
         statusColumn.setCellFactory(column -> new StatusBadgeTreeCell<>(

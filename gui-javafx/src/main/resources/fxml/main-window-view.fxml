@@ -105,8 +105,7 @@
         <StackPane fx:id="centerContainer">
             <SplitPane fx:id="filesView" dividerPositions="0.45">
                 <StackPane>
-                    <TreeTableView fx:id="fileTable" styleClass="file-table" showRoot="false"
-                                   columnResizePolicy="CONSTRAINED_RESIZE_POLICY">
+                    <TreeTableView fx:id="fileTable" styleClass="file-table" showRoot="false">
                         <columns>
                             <TreeTableColumn fx:id="nameColumn" text="%mainWindow.column.file" prefWidth="330"/>
                             <TreeTableColumn fx:id="statusColumn" text="%mainWindow.column.status" prefWidth="90"
