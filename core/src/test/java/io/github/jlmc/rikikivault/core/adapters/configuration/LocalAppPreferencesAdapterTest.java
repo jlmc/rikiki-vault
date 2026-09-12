@@ -4,6 +4,7 @@ import io.github.jlmc.rikikivault.core.configuration.AppLanguage;
 import io.github.jlmc.rikikivault.core.configuration.AppPreferences;
 import io.github.jlmc.rikikivault.core.configuration.GitAuthSettings;
 import io.github.jlmc.rikikivault.core.configuration.GitAuthType;
+import io.github.jlmc.rikikivault.core.configuration.NotificationPosition;
 import io.github.jlmc.rikikivault.core.configuration.NotificationSettings;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -50,7 +51,8 @@ class LocalAppPreferencesAdapterTest {
     void roundTripsNotificationSettings(@TempDir Path tempDir) {
         LocalAppPreferencesAdapter adapter = adapter(tempDir);
         AppPreferences preferences = new AppPreferences(
-                GitAuthSettings.empty(), AppLanguage.PT, new NotificationSettings(false, 15));
+                GitAuthSettings.empty(), AppLanguage.PT,
+                new NotificationSettings(false, 15, NotificationPosition.TOP_LEFT));
 
         adapter.save(preferences);
 
@@ -67,6 +69,19 @@ class LocalAppPreferencesAdapterTest {
         AppPreferences loaded = adapter(tempDir).load();
 
         assertEquals(NotificationSettings.empty(), loaded.notifications());
+    }
+
+    @Test
+    void missingPositionFieldInOlderNotificationsObjectDefaultsToBottomRight(@TempDir Path tempDir) throws Exception {
+        Path dir = tempDir.resolve("preferences");
+        Files.createDirectories(dir);
+        Files.writeString(dir.resolve("preferences.json"),
+                "{\"gitAuth\":{\"activeType\":\"NONE\"},\"language\":\"EN\","
+                        + "\"notifications\":{\"autoDismiss\":false,\"autoDismissSeconds\":8}}", StandardCharsets.UTF_8);
+
+        AppPreferences loaded = adapter(tempDir).load();
+
+        assertEquals(NotificationPosition.BOTTOM_RIGHT, loaded.notifications().position());
     }
 
     @Test
