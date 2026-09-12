@@ -12,12 +12,11 @@ import io.github.jlmc.rikikivault.gui.support.Fxml;
 import io.github.jlmc.rikikivault.gui.support.Notifications;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
-import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
-import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,31 +36,16 @@ public final class App extends Application {
         contentSlot = new StackPane();
 
         // A persistent overlay above whatever screen is currently in contentSlot, so toasts
-        // survive every setContent(...)-style screen swap below instead of being
-        // torn down with the screen that triggered them. pickOnBounds(false) on both empty
-        // wrapper panes lets clicks pass through to the screen underneath; the toasts themselves
-        // (added as children of notificationStack) stay clickable.
-        VBox notificationStack = new VBox(8);
-        notificationStack.setPickOnBounds(false);
-        // Layout panes default to expanding to fill their parent's full content area (unlike
-        // Controls, which default to their preferred size) - with no bound on its own max size,
-        // this VBox stretches to fill the entire window, which makes the StackPane alignment
-        // below a no-op (there's no leftover space left to align it *within*). What actually
-        // positions the toasts is this VBox's own alignment, governing where it lays out its
-        // children inside its own (now window-sized) bounds.
-        notificationStack.setAlignment(Pos.BOTTOM_RIGHT);
-        StackPane.setAlignment(notificationStack, Pos.BOTTOM_RIGHT);
-        StackPane notificationsPane = new StackPane(notificationStack);
-        notificationsPane.setPickOnBounds(false);
-        notificationsPane.getStyleClass().add("notifications-pane");
+        // survive every setContent(...)-style screen swap below instead of being torn down with
+        // the screen that triggered them - the panel's own internal structure (VBox/StackPane/
+        // alignment/pickOnBounds) is Notifications' own implementation detail, not App's concern.
+        AppPreferencesPort preferencesPort = new LocalAppPreferencesAdapter(VaultPaths.defaultPreferencesDirectory());
+        Region notificationsHost = Notifications.createHost(preferencesPort.load().notifications());
 
         setContent(loadWelcome(stage));
-        Scene scene = new Scene(new StackPane(contentSlot, notificationsPane), 900, 600);
+        Scene scene = new Scene(new StackPane(contentSlot, notificationsHost), 900, 600);
         scene.getStylesheets().add(App.class.getResource("/css/app.css").toExternalForm());
         stage.setScene(scene);
-
-        AppPreferencesPort preferencesPort = new LocalAppPreferencesAdapter(VaultPaths.defaultPreferencesDirectory());
-        Notifications.attach(notificationStack, preferencesPort.load().notifications());
 
         stage.show();
     }

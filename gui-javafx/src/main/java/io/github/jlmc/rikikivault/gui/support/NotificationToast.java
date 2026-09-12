@@ -1,5 +1,6 @@
 package io.github.jlmc.rikikivault.gui.support;
 
+import io.github.jlmc.rikikivault.core.configuration.NotificationPosition;
 import io.github.jlmc.rikikivault.core.configuration.NotificationSettings;
 import javafx.animation.FadeTransition;
 import javafx.animation.Interpolator;
@@ -58,7 +59,10 @@ final class NotificationToast {
         StackPane.setAlignment(closeButton, Pos.TOP_RIGHT);
         toast.getStyleClass().addAll("notification-toast", type.styleClass());
         toast.setOpacity(0);
-        toast.setTranslateX(SLIDE_DISTANCE);
+        // Slides in/out towards whichever screen edge the toast is anchored to - a left-anchored
+        // corner slides from/to the left, a right-anchored one from/to the right.
+        double offscreenX = isRightAnchored(settings.position()) ? SLIDE_DISTANCE : -SLIDE_DISTANCE;
+        toast.setTranslateX(offscreenX);
 
         container.getChildren().add(toast);
         animateIn(toast);
@@ -66,7 +70,7 @@ final class NotificationToast {
         PauseTransition autoDismiss = settings.autoDismiss()
                 ? new PauseTransition(Duration.seconds(settings.autoDismissSeconds()))
                 : null;
-        Runnable dismiss = () -> animateOut(toast, () -> container.getChildren().remove(toast));
+        Runnable dismiss = () -> animateOut(toast, offscreenX, () -> container.getChildren().remove(toast));
 
         closeButton.setOnAction(_ -> dismiss.run());
         if (autoDismiss != null) {
@@ -76,6 +80,10 @@ final class NotificationToast {
             toast.setOnMouseExited(_ -> autoDismiss.play());
             autoDismiss.play();
         }
+    }
+
+    private static boolean isRightAnchored(NotificationPosition position) {
+        return position == NotificationPosition.TOP_RIGHT || position == NotificationPosition.BOTTOM_RIGHT;
     }
 
     private static void animateIn(StackPane toast) {
@@ -88,9 +96,9 @@ final class NotificationToast {
         transition.play();
     }
 
-    private static void animateOut(StackPane toast, Runnable onFinished) {
+    private static void animateOut(StackPane toast, double offscreenX, Runnable onFinished) {
         TranslateTransition slide = new TranslateTransition(ANIMATION_DURATION, toast);
-        slide.setToX(SLIDE_DISTANCE);
+        slide.setToX(offscreenX);
         FadeTransition fade = new FadeTransition(ANIMATION_DURATION, toast);
         fade.setToValue(0);
         ParallelTransition transition = new ParallelTransition(slide, fade);
