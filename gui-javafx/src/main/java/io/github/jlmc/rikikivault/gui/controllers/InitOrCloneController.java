@@ -35,7 +35,6 @@ public final class InitOrCloneController {
     @FXML private TextField remoteField;
     @FXML private Button cloneButton;
     @FXML private ProgressIndicator progress;
-    @FXML private Label statusLabel;
 
     private VaultContext ctx;
     private Consumer<VaultContext> onReady;
@@ -51,10 +50,10 @@ public final class InitOrCloneController {
     private void onInitialize() {
         String machineLabel = labelField.getText();
         if (machineLabel == null || machineLabel.isBlank()) {
-            statusLabel.setText(Messages.get("initOrClone.status.needMachineLabel"));
+            Notifications.warning(Messages.get("initOrClone.status.needMachineLabel"));
             return;
         }
-        setBusy(initButton, Messages.get("initOrClone.busy.initializing"));
+        setBusy(initButton);
         boolean initGit = gitCheckBox.isSelected();
         String remoteUri = initRemoteUrlField.getText();
         boolean hadNoIdentityBefore = !ctx.keyStorePort().exists();
@@ -70,6 +69,7 @@ public final class InitOrCloneController {
                     if (hadNoIdentityBefore) {
                         offerPassphraseAtCreation();
                     }
+                    Notifications.success(Messages.get("initOrClone.initialized.success"));
                     onReady.accept(ctx);
                 },
                 error -> {
@@ -82,10 +82,10 @@ public final class InitOrCloneController {
     private void onClone() {
         String remoteUri = remoteField.getText();
         if (remoteUri == null || remoteUri.isBlank()) {
-            statusLabel.setText(Messages.get("initOrClone.status.needRemoteUrl"));
+            Notifications.warning(Messages.get("initOrClone.status.needRemoteUrl"));
             return;
         }
-        setBusy(cloneButton, Messages.get("initOrClone.busy.cloning"));
+        setBusy(cloneButton);
         JceHybridEncryptionAdapter encryptionPort = ctx.encryptionPort();
         boolean hadNoIdentityBefore = !ctx.keyStorePort().exists();
         BackgroundTasks.runVoid(
@@ -100,6 +100,7 @@ public final class InitOrCloneController {
                     if (hadNoIdentityBefore) {
                         offerPassphraseAtCreation();
                     }
+                    Notifications.success(Messages.get("initOrClone.cloned.success"));
                     onReady.accept(ctx);
                 },
                 error -> {
@@ -129,16 +130,14 @@ public final class InitOrCloneController {
                         }));
     }
 
-    private void setBusy(Button button, String message) {
+    private void setBusy(Button button) {
         progress.setVisible(true);
         button.setDisable(true);
-        statusLabel.setText(message);
     }
 
     private void clearBusy() {
         progress.setVisible(false);
         initButton.setDisable(false);
         cloneButton.setDisable(false);
-        statusLabel.setText("");
     }
 }
