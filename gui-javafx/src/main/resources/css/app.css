@@ -228,6 +228,12 @@
     -fx-font-size: 11px;
 }
 
+/* Right-aligned in the fixed-width file-tree status column specifically - status-badge is shared
+   with the Change Review dialog's table (StatusBadgeCell), which stays centered. */
+.tree-table-view .status-badge {
+    -fx-alignment: CENTER-RIGHT;
+}
+
 .status-synced {
     -fx-text-fill: #1E7A34;
     -fx-icon-color: #1E7A34;

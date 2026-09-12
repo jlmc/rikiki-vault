@@ -105,10 +105,13 @@
         <StackPane fx:id="centerContainer">
             <SplitPane fx:id="filesView" dividerPositions="0.45">
                 <StackPane>
-                    <TreeTableView fx:id="fileTable" styleClass="file-table" showRoot="false">
+                    <TreeTableView fx:id="fileTable" styleClass="file-table" showRoot="false"
+                                   columnResizePolicy="CONSTRAINED_RESIZE_POLICY">
                         <columns>
                             <TreeTableColumn fx:id="nameColumn" text="%mainWindow.column.file" prefWidth="330"/>
-                            <TreeTableColumn fx:id="statusColumn" text="%mainWindow.column.status" prefWidth="90"/>
+                            <TreeTableColumn fx:id="statusColumn" text="%mainWindow.column.status" prefWidth="90"
+                                             minWidth="90" maxWidth="90" resizable="false"
+                                             style="-fx-alignment: CENTER-RIGHT;"/>
                         </columns>
                     </TreeTableView>
                     <Label fx:id="emptyStateLabel" text="%mainWindow.emptyVault" styleClass="preview-unsupported"
