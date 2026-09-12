@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.RadioButton?>
 <?import javafx.scene.control.Spinner?>
+<?import javafx.scene.control.ToggleGroup?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
@@ -13,6 +16,20 @@
         <Insets top="16" right="16" bottom="16" left="16"/>
     </padding>
     <Label text="%appSettingsPanel.subtitle" styleClass="subtitle" wrapText="true"/>
+
+    <Label text="%settings.language.title" styleClass="section-title"/>
+    <RadioButton fx:id="ptRadio" text="Português">
+        <toggleGroup>
+            <ToggleGroup fx:id="languageGroup"/>
+        </toggleGroup>
+    </RadioButton>
+    <RadioButton fx:id="enRadio" text="English" toggleGroup="$languageGroup"/>
+
+    <Label text="%appSettingsPanel.notifications.title" styleClass="section-title"/>
+    <HBox spacing="8" alignment="CENTER_LEFT">
+        <Label text="%appSettingsPanel.position"/>
+        <ComboBox fx:id="positionComboBox" prefWidth="180"/>
+    </HBox>
     <CheckBox fx:id="autoDismissCheckBox" text="%appSettingsPanel.autoDismiss"/>
     <HBox spacing="8" alignment="CENTER_LEFT">
         <Label text="%appSettingsPanel.autoDismissSeconds"/>

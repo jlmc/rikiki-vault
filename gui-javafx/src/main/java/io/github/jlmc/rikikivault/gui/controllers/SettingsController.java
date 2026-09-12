@@ -15,7 +15,6 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
-import javafx.scene.control.RadioButton;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.stage.Modality;
@@ -25,18 +24,18 @@ import java.util.function.Consumer;
 
 /**
  * Single "Configurações" screen (Milestone 19) replacing the standalone "Definições de Git"
- * dialog - one clearly-labelled, navigable tab per concern (Git today, Idioma; more later)
- * instead of a separate modal window per setting. Global to the machine, not tied to any open
- * vault, so it's reachable both before one is opened (Welcome screen, still as a modal dialog via
- * {@link #openModal}) and from the main window's toolbar (Milestone 31, embedded in the sidebar
- * panel via {@link #embed}). Both sections persist together through {@link AppPreferencesPort}
- * ({@link LocalAppPreferencesAdapter}), written once on Save.
+ * dialog - one clearly-labelled, navigable tab per concern (Git, Segurança, Aplicação - the
+ * latter covering language plus notification behaviour) instead of a separate modal window per
+ * setting. Global to the machine, not tied to any open vault, so it's reachable both before one
+ * is opened (Welcome screen, still as a modal dialog via {@link #openModal}) and from the main
+ * window's toolbar (Milestone 31, embedded in the sidebar panel via {@link #embed}). Git and
+ * Aplicação persist together through {@link AppPreferencesPort} ({@link
+ * LocalAppPreferencesAdapter}), written once on Save; Segurança applies immediately instead (see
+ * {@link SecuritySettingsPanel}).
  */
 public final class SettingsController {
 
     @FXML private TabPane tabPane;
-    @FXML private RadioButton ptRadio;
-    @FXML private RadioButton enRadio;
     @FXML private Label statusLabel;
 
     private final AppPreferencesPort preferencesPort = new LocalAppPreferencesAdapter(VaultPaths.defaultPreferencesDirectory());
@@ -90,31 +89,29 @@ public final class SettingsController {
         gitAuthPanel = gitLoader.getController();
         gitAuthPanel.init(preferences.gitAuth());
         Tab gitTab = new Tab(Messages.get("settings.tab.git"), gitRoot);
-        tabPane.getTabs().add(0, gitTab);
+        tabPane.getTabs().add(gitTab);
 
         FXMLLoader securityLoader = Fxml.loader("/fxml/security-settings-panel.fxml");
         Parent securityRoot = securityLoader.getRoot();
         SecuritySettingsPanel securityPanel = securityLoader.getController();
         securityPanel.init(onPassphraseChanged);
         Tab securityTab = new Tab(Messages.get("settings.tab.security"), securityRoot);
-        tabPane.getTabs().add(1, securityTab);
+        tabPane.getTabs().add(securityTab);
 
         FXMLLoader appLoader = Fxml.loader("/fxml/app-settings-panel.fxml");
         Parent appRoot = appLoader.getRoot();
         appSettingsPanel = appLoader.getController();
-        appSettingsPanel.init(preferences.notifications());
+        appSettingsPanel.init(preferences.language(), preferences.notifications());
         Tab appTab = new Tab(Messages.get("settings.tab.app"), appRoot);
-        tabPane.getTabs().add(2, appTab);
+        tabPane.getTabs().add(appTab);
 
         tabPane.getSelectionModel().select(gitTab);
-
-        (preferences.language() == AppLanguage.EN ? enRadio : ptRadio).setSelected(true);
     }
 
     @FXML
     private void onSave() {
-        AppLanguage language = enRadio.isSelected() ? AppLanguage.EN : AppLanguage.PT;
-        NotificationSettings notificationSettings = appSettingsPanel.buildSettings();
+        AppLanguage language = appSettingsPanel.selectedLanguage();
+        NotificationSettings notificationSettings = appSettingsPanel.buildNotificationSettings();
         preferencesPort.save(new AppPreferences(gitAuthPanel.buildSettings(), language, notificationSettings));
         Notifications.updateSettings(notificationSettings);
         statusLabel.setText(Messages.get("settings.saved"));
