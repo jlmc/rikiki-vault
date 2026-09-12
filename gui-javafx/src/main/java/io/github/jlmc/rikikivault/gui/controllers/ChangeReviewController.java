@@ -23,7 +23,6 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
-import javafx.scene.control.Label;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
@@ -47,7 +46,6 @@ public final class ChangeReviewController {
     @FXML private TableColumn<SelectableChange, String> pathColumn;
     @FXML private TextField commitMessageField;
     @FXML private ProgressIndicator progress;
-    @FXML private Label statusLabel;
     @FXML private Button cancelButton;
     @FXML private Button publishButton;
 
@@ -99,7 +97,7 @@ public final class ChangeReviewController {
     private void onPublish() {
         String commitMessage = commitMessageField.getText();
         if (commitMessage == null || commitMessage.isBlank()) {
-            statusLabel.setText(Messages.get("changeReview.status.needMessage"));
+            Notifications.warning(Messages.get("changeReview.status.needMessage"));
             return;
         }
         List<VaultChange> selected = changesTable.getItems().stream()
@@ -107,7 +105,7 @@ public final class ChangeReviewController {
                 .map(SelectableChange::change)
                 .toList();
         if (selected.isEmpty()) {
-            statusLabel.setText(Messages.get("changeReview.status.needSelection"));
+            Notifications.warning(Messages.get("changeReview.status.needSelection"));
             return;
         }
         if (!Dialogs.confirm(Messages.get("mainWindow.publish.title"), Messages.get("changeReview.confirmBody", selected.size()))) {
@@ -120,12 +118,12 @@ public final class ChangeReviewController {
 
         // Phase 1 - local only. Must never fail because of the remote; a failure here means
         // nothing was actually saved, so it's a genuine blocking error.
-        setBusy(true, Messages.get("changeReview.busy.publishingLocally"));
+        setBusy(true);
         BackgroundTasks.runVoid(
                 () -> service.publishLocally(new PublishVaultCommand(selected, commitMessage)),
                 this::onLocalPublishSucceeded,
                 error -> {
-                    setBusy(false, "");
+                    setBusy(false);
                     Notifications.error(error);
                 });
     }
@@ -142,13 +140,13 @@ public final class ChangeReviewController {
                         Notifications.success(Messages.get("common.savedLocallyNoRemote"));
                         return;
                     }
-                    setBusy(false, "");
+                    setBusy(false);
                     if (!Dialogs.confirm(Messages.get("mainWindow.publish.remoteTitle"), Messages.get("changeReview.confirmRemoteBody"))) {
                         finishPublish();
                         Notifications.success(Messages.get("changeReview.savedLocallyLater"));
                         return;
                     }
-                    setBusy(true, Messages.get("changeReview.busy.publishingRemote"));
+                    setBusy(true);
                     RemotePush.pushInBackground(ctx.gitRepositoryPort(), this::finishPublish);
                 },
                 error -> {
@@ -158,15 +156,14 @@ public final class ChangeReviewController {
     }
 
     private void finishPublish() {
-        setBusy(false, "");
+        setBusy(false);
         onPublished.run();
         stage.close();
     }
 
-    private void setBusy(boolean busy, String message) {
+    private void setBusy(boolean busy) {
         progress.setVisible(busy);
         publishButton.setDisable(busy);
         cancelButton.setDisable(busy);
-        statusLabel.setText(message);
     }
 }

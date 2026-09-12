@@ -29,7 +29,6 @@
     <TextField fx:id="commitMessageField" promptText="%changeReview.commitMessage.prompt"/>
     <HBox spacing="8" alignment="CENTER_LEFT">
         <ProgressIndicator fx:id="progress" maxWidth="24" maxHeight="24" visible="false"/>
-        <Label fx:id="statusLabel" styleClass="status-label"/>
         <Region HBox.hgrow="ALWAYS"/>
         <Button fx:id="cancelButton" text="%common.cancel" styleClass="compact-button" onAction="#onCancel">
             <tooltip>
