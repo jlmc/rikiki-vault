@@ -222,6 +222,13 @@ any order relative to the other two.
 
 ## Priority: Medium
 
+- Plaintext content hash in `manifest.json` allows offline confirmation of known files — each
+  entry's `hash` field (SHA-256 of the plaintext content, computed by `ScanChangesService` for
+  change detection) can be compared by anyone with read access to the Git repository against the
+  SHA-256 of a candidate file, confirming without decryption whether that exact content is in the
+  vault. Candidate mitigation: replace plain SHA-256 with HMAC-SHA256 keyed by a vault-derived
+  secret, preserving change detection while preventing offline confirmation by anyone without that
+  key.
 - Out-of-band fingerprint verification in the `authorize` flow (a checklist step to confirm a
   fingerprint over a separate channel before confirming) — complements #2 from the side of who
   gets added, but is mostly a process/UX nudge rather than new cryptography.

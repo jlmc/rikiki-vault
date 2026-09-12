@@ -231,6 +231,12 @@ independente e pode ser construída em qualquer ordem face às outras duas.
 
 ## Prioridade: Média
 
+- Hash de conteúdo em claro no `manifest.json` permite confirmação offline de ficheiros conhecidos —
+  o campo `hash` de cada entrada (SHA-256 do conteúdo em claro, calculado por `ScanChangesService`
+  para deteção de mudanças) é comparável por qualquer leitor do repositório Git contra o SHA-256 de
+  um ficheiro candidato, confirmando sem decifrar se esse conteúdo exato está no cofre. Mitigação
+  candidata: substituir o SHA-256 puro por um HMAC-SHA256 com uma chave derivada do cofre,
+  preservando a deteção de mudanças sem permitir confirmação offline a quem não tiver essa chave.
 - Verificação de fingerprint fora de banda no fluxo de `authorize` (um passo de checklist para
   confirmar um fingerprint por um canal separado antes de confirmar) — complementa a #2 do lado de
   quem é adicionado, mas é sobretudo um incentivo de processo/UX, não criptografia nova.
