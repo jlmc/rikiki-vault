@@ -35,6 +35,6 @@ public final class LocalLanguagePreferenceAdapter implements LanguagePreferenceP
     public void save(LanguagePreference preference) {
         Objects.requireNonNull(preference, "preference must not be null");
         AppPreferences current = preferencesAdapter.load();
-        preferencesAdapter.save(new AppPreferences(current.gitAuth(), preference.language()));
+        preferencesAdapter.save(new AppPreferences(current.gitAuth(), preference.language(), current.notifications()));
     }
 }

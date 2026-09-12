@@ -4,6 +4,7 @@ import io.github.jlmc.rikikivault.core.configuration.AppLanguage;
 import io.github.jlmc.rikikivault.core.configuration.AppPreferences;
 import io.github.jlmc.rikikivault.core.configuration.GitAuthSettings;
 import io.github.jlmc.rikikivault.core.configuration.GitAuthType;
+import io.github.jlmc.rikikivault.core.configuration.NotificationSettings;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -38,11 +39,34 @@ class LocalAppPreferencesAdapterTest {
         LocalAppPreferencesAdapter adapter = adapter(tempDir);
         AppPreferences preferences = new AppPreferences(
                 new GitAuthSettings(GitAuthType.SSH, Path.of("/Users/jlmc/.ssh/id_jc"), "ghp_example", "jlmc", "hunter2"),
-                AppLanguage.EN);
+                AppLanguage.EN, NotificationSettings.empty());
 
         adapter.save(preferences);
 
         assertEquals(preferences, adapter.load());
+    }
+
+    @Test
+    void roundTripsNotificationSettings(@TempDir Path tempDir) {
+        LocalAppPreferencesAdapter adapter = adapter(tempDir);
+        AppPreferences preferences = new AppPreferences(
+                GitAuthSettings.empty(), AppLanguage.PT, new NotificationSettings(false, 15));
+
+        adapter.save(preferences);
+
+        assertEquals(preferences, adapter.load());
+    }
+
+    @Test
+    void missingNotificationsFieldInOlderFileDefaultsToEmpty(@TempDir Path tempDir) throws Exception {
+        Path dir = tempDir.resolve("preferences");
+        Files.createDirectories(dir);
+        Files.writeString(dir.resolve("preferences.json"),
+                "{\"gitAuth\":{\"activeType\":\"NONE\"},\"language\":\"EN\"}", StandardCharsets.UTF_8);
+
+        AppPreferences loaded = adapter(tempDir).load();
+
+        assertEquals(NotificationSettings.empty(), loaded.notifications());
     }
 
     @Test
@@ -83,7 +107,7 @@ class LocalAppPreferencesAdapterTest {
         Files.writeString(legacyFile, "{\"githubToken\":\"ghp_example\"}", StandardCharsets.UTF_8);
         LocalAppPreferencesAdapter adapter = new LocalAppPreferencesAdapter(tempDir.resolve("preferences"), legacyDir);
 
-        adapter.save(new AppPreferences(GitAuthSettings.empty(), AppLanguage.EN));
+        adapter.save(new AppPreferences(GitAuthSettings.empty(), AppLanguage.EN, NotificationSettings.empty()));
 
         assertEquals("{\"githubToken\":\"ghp_example\"}", Files.readString(legacyFile, StandardCharsets.UTF_8),
                 "the legacy file is only ever read, never rewritten or deleted");

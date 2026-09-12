@@ -13,11 +13,13 @@ class AppPreferencesTest {
 
         assertEquals(GitAuthSettings.empty(), preferences.gitAuth());
         assertEquals(AppLanguage.PT, preferences.language());
+        assertEquals(NotificationSettings.empty(), preferences.notifications());
     }
 
     @Test
     void rejectsNullFields() {
-        assertThrows(NullPointerException.class, () -> new AppPreferences(null, AppLanguage.PT));
-        assertThrows(NullPointerException.class, () -> new AppPreferences(GitAuthSettings.empty(), null));
+        assertThrows(NullPointerException.class, () -> new AppPreferences(null, AppLanguage.PT, NotificationSettings.empty()));
+        assertThrows(NullPointerException.class, () -> new AppPreferences(GitAuthSettings.empty(), null, NotificationSettings.empty()));
+        assertThrows(NullPointerException.class, () -> new AppPreferences(GitAuthSettings.empty(), AppLanguage.PT, null));
     }
 }

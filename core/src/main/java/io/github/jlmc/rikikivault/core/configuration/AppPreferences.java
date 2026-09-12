@@ -10,14 +10,15 @@ import java.util.Objects;
  * {@link VaultConfig} - that's bootstrap configuration for the vault/identity mechanics, not a
  * user-facing preference, and keeps its own {@code config.yaml}.
  */
-public record AppPreferences(GitAuthSettings gitAuth, AppLanguage language) {
+public record AppPreferences(GitAuthSettings gitAuth, AppLanguage language, NotificationSettings notifications) {
 
     public AppPreferences {
         Objects.requireNonNull(gitAuth, "gitAuth must not be null");
         Objects.requireNonNull(language, "language must not be null");
+        Objects.requireNonNull(notifications, "notifications must not be null");
     }
 
     public static AppPreferences empty() {
-        return new AppPreferences(GitAuthSettings.empty(), AppLanguage.PT);
+        return new AppPreferences(GitAuthSettings.empty(), AppLanguage.PT, NotificationSettings.empty());
     }
 }

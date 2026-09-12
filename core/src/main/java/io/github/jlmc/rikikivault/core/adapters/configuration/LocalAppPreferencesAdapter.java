@@ -6,6 +6,7 @@ import io.github.jlmc.rikikivault.core.configuration.AppLanguage;
 import io.github.jlmc.rikikivault.core.configuration.AppPreferences;
 import io.github.jlmc.rikikivault.core.configuration.GitAuthSettings;
 import io.github.jlmc.rikikivault.core.configuration.GitAuthType;
+import io.github.jlmc.rikikivault.core.configuration.NotificationSettings;
 import io.github.jlmc.rikikivault.core.configuration.VaultPaths;
 import io.github.jlmc.rikikivault.core.ports.out.AppPreferencesPort;
 
@@ -85,7 +86,7 @@ public final class LocalAppPreferencesAdapter implements AppPreferencesPort {
             if (dto == null) {
                 return AppPreferences.empty();
             }
-            return new AppPreferences(toGitAuthSettings(dto), AppLanguage.PT);
+            return new AppPreferences(toGitAuthSettings(dto), AppLanguage.PT, NotificationSettings.empty());
         } catch (IOException | RuntimeException e) {
             return AppPreferences.empty();
         }
@@ -94,7 +95,20 @@ public final class LocalAppPreferencesAdapter implements AppPreferencesPort {
     private static AppPreferences toAppPreferences(SettingsDto dto) {
         GitAuthSettings gitAuth = dto.gitAuth() == null ? GitAuthSettings.empty() : toGitAuthSettings(dto.gitAuth());
         AppLanguage language = parseLanguageOrDefault(dto.language());
-        return new AppPreferences(gitAuth, language);
+        NotificationSettings notifications = toNotificationSettings(dto.notifications());
+        return new AppPreferences(gitAuth, language, notifications);
+    }
+
+    /**
+     * A {@code preferences.json} written before this field existed has no {@code notifications}
+     * object at all - default to {@link NotificationSettings#empty()} instead of failing to load.
+     */
+    private static NotificationSettings toNotificationSettings(NotificationsDto dto) {
+        if (dto == null) {
+            return NotificationSettings.empty();
+        }
+        int autoDismissSeconds = dto.autoDismissSeconds() != null ? dto.autoDismissSeconds() : NotificationSettings.empty().autoDismissSeconds();
+        return new NotificationSettings(dto.autoDismiss(), autoDismissSeconds);
     }
 
     private static GitAuthSettings toGitAuthSettings(GitAuthDto dto) {
@@ -143,13 +157,18 @@ public final class LocalAppPreferencesAdapter implements AppPreferencesPort {
                 g.activeType().name(),
                 g.sshPrivateKeyPath() != null ? g.sshPrivateKeyPath().toString() : null,
                 g.githubToken(), g.httpUsername(), g.httpPassword());
-        return new SettingsDto(gitAuthDto, preferences.language().name());
+        NotificationsDto notificationsDto = new NotificationsDto(
+                preferences.notifications().autoDismiss(), preferences.notifications().autoDismissSeconds());
+        return new SettingsDto(gitAuthDto, preferences.language().name(), notificationsDto);
     }
 
-    private record SettingsDto(GitAuthDto gitAuth, String language) {
+    private record SettingsDto(GitAuthDto gitAuth, String language, NotificationsDto notifications) {
     }
 
     private record GitAuthDto(
             String activeType, String sshPrivateKeyPath, String githubToken, String httpUsername, String httpPassword) {
+    }
+
+    private record NotificationsDto(boolean autoDismiss, Integer autoDismissSeconds) {
     }
 }

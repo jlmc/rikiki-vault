@@ -5,6 +5,7 @@ import io.github.jlmc.rikikivault.core.configuration.AppPreferences;
 import io.github.jlmc.rikikivault.core.configuration.GitAuthSettings;
 import io.github.jlmc.rikikivault.core.configuration.GitAuthType;
 import io.github.jlmc.rikikivault.core.configuration.LanguagePreference;
+import io.github.jlmc.rikikivault.core.configuration.NotificationSettings;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -51,7 +52,7 @@ class LocalLanguagePreferenceAdapterTest {
         LocalAppPreferencesAdapter preferencesAdapter =
                 new LocalAppPreferencesAdapter(tempDir.resolve("preferences"), tempDir.resolve("no-legacy-here"));
         GitAuthSettings gitAuth = new GitAuthSettings(GitAuthType.TOKEN, null, "ghp_example", null, null);
-        preferencesAdapter.save(new AppPreferences(gitAuth, AppLanguage.PT));
+        preferencesAdapter.save(new AppPreferences(gitAuth, AppLanguage.PT, NotificationSettings.empty()));
 
         new LocalLanguagePreferenceAdapter(preferencesAdapter).save(new LanguagePreference(AppLanguage.EN));
 

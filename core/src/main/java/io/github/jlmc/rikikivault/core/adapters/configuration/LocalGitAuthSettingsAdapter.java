@@ -37,6 +37,6 @@ public final class LocalGitAuthSettingsAdapter implements GitAuthSettingsPort {
     public void save(GitAuthSettings settings) {
         Objects.requireNonNull(settings, "settings must not be null");
         AppPreferences current = preferencesAdapter.load();
-        preferencesAdapter.save(new AppPreferences(settings, current.language()));
+        preferencesAdapter.save(new AppPreferences(settings, current.language(), current.notifications()));
     }
 }
