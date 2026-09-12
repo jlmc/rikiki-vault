@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class FolderTreeBuilderTest {
@@ -59,5 +60,29 @@ class FolderTreeBuilderTest {
         assertEquals(List.of("a-folder", "z-file.txt"), root.children().stream().map(FolderTreeNode::name).toList());
         assertTrue(root.children().get(0).isFolder());
         assertTrue(!root.children().get(1).isFolder());
+    }
+
+    /**
+     * MainWindowController's auto-refresh relies on FolderTreeNode/FileEntry's record equality to
+     * decide "did anything actually change?" before touching the UI - this fixes that contract.
+     */
+    @Test
+    void identicalFlatInputsProduceEqualTrees() {
+        List<FileEntry> entries = List.of(
+                new FileEntry("cv/CV.pdf", FileStatus.SYNCED),
+                new FileEntry("notes.md", FileStatus.MODIFIED));
+        List<FileEntry> reordered = List.of(
+                new FileEntry("notes.md", FileStatus.MODIFIED),
+                new FileEntry("cv/CV.pdf", FileStatus.SYNCED));
+
+        assertEquals(FolderTreeBuilder.build(entries), FolderTreeBuilder.build(reordered));
+    }
+
+    @Test
+    void aDifferentStatusForTheSamePathProducesUnequalTrees() {
+        FolderTreeNode synced = FolderTreeBuilder.build(List.of(new FileEntry("notes.md", FileStatus.SYNCED)));
+        FolderTreeNode modified = FolderTreeBuilder.build(List.of(new FileEntry("notes.md", FileStatus.MODIFIED)));
+
+        assertNotEquals(synced, modified);
     }
 }

@@ -65,6 +65,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Objects;
 
 public final class MainWindowController {
 
@@ -99,6 +100,14 @@ public final class MainWindowController {
     private MainView currentView = MainView.FILES;
     private boolean railExpanded = true;
 
+    // Auto-refresh flicker avoidance (see startAutoRefresh()): only touch the tree/preview when
+    // something actually changed, instead of unconditionally rebuilding on every 3s tick.
+    private FolderTreeNode currentRoot;
+    private boolean suppressSelectionEvents;
+    private FolderTreeNode lastRenderedNode;
+    private boolean previewRendered;
+    private long previewRequestSeq;
+
     private enum MainView { FILES, SETTINGS, MANAGE_ACCESS }
 
     public void init(VaultContext ctx, Runnable onLanguageChanged) {
@@ -114,7 +123,12 @@ public final class MainWindowController {
                 node -> node.fileEntry() == null ? null : node.fileEntry().status()));
 
         fileTable.getSelectionModel().selectedItemProperty()
-                .addListener((_, _, newValue) -> showPreview(newValue == null ? null : newValue.getValue()));
+                .addListener((_, _, newValue) -> {
+                    if (suppressSelectionEvents) {
+                        return;
+                    }
+                    showPreview(newValue == null ? null : newValue.getValue());
+                });
         showPreview(null);
 
         refresh();
@@ -191,8 +205,19 @@ public final class MainWindowController {
                 return;
             }
         }
+        if (previewRendered && Objects.equals(node, lastRenderedNode)) {
+            // Same file, same status as what's already on screen (e.g. a no-op auto-refresh
+            // reselect) - nothing to repaint, and re-reading the file would just flash the viewer.
+            currentNode = node;
+            return;
+        }
         currentNode = node;
+        lastRenderedNode = node;
+        previewRendered = true;
         exitEditMode();
+        // Invalidates any in-flight async preview read below, so a slow stale load can never
+        // clobber a newer selection's result.
+        previewRequestSeq++;
 
         if (node == null) {
             editToggleButton.setDisable(true);
@@ -211,6 +236,7 @@ public final class MainWindowController {
                     ViewerResultRenderer.renderUnsupported(Messages.get("mainWindow.preview.deletedFile")));
             return;
         }
+        long requestId = previewRequestSeq;
         BackgroundTasks.run(
                 () -> {
                     byte[] content = ctx.localFiles().readFile(entry.path());
@@ -220,10 +246,16 @@ public final class MainWindowController {
                     return new PreviewLoad(result, editable);
                 },
                 load -> {
+                    if (requestId != previewRequestSeq) {
+                        return;
+                    }
                     editToggleButton.setDisable(!load.editable());
                     previewContainer.getChildren().setAll(ViewerResultRenderer.render(load.result()));
                 },
                 error -> {
+                    if (requestId != previewRequestSeq) {
+                        return;
+                    }
                     editToggleButton.setDisable(true);
                     previewContainer.getChildren().setAll(
                             ViewerResultRenderer.renderUnsupported(Messages.get("mainWindow.preview.error", error.getMessage())));
@@ -255,6 +287,9 @@ public final class MainWindowController {
                     editorArea.setWrapText(false);
                     editorArea.getStyleClass().add("preview-text");
                     previewContainer.getChildren().setAll(editorArea);
+                    // The preview cache must not skip the rebuild when edit mode exits back to the
+                    // same file, since the panel currently holds the editor, not the rendered viewer.
+                    previewRendered = false;
                     editMode = true;
                     editToggleButton.setText(Messages.get("mainWindow.editor.view"));
                     setEditActionButtonsVisible(true);
@@ -629,11 +664,29 @@ public final class MainWindowController {
                     return FolderTreeBuilder.build(flat);
                 },
                 root -> {
-                    TreeItem<FolderTreeNode> rootItem = toTreeItem(root);
-                    fileTable.setRoot(rootItem);
-                    if (previouslySelectedPath != null) {
-                        reselect(rootItem, previouslySelectedPath);
+                    if (root.equals(currentRoot)) {
+                        // Scan already ran, but nothing changed since the last repaint - touching
+                        // fileTable/selection/preview here is exactly what causes the flicker.
+                        return;
                     }
+                    currentRoot = root;
+
+                    TreeItem<FolderTreeNode> rootItem = toTreeItem(root);
+                    suppressSelectionEvents = true;
+                    try {
+                        fileTable.setRoot(rootItem);
+                        if (previouslySelectedPath != null) {
+                            reselect(rootItem, previouslySelectedPath);
+                        }
+                    } finally {
+                        suppressSelectionEvents = false;
+                    }
+                    // setRoot() above would otherwise fire the selection listener with a
+                    // transient null before reselect() restores it - suppressed above, so resolve
+                    // the final selection once here instead of letting that flash through.
+                    TreeItem<FolderTreeNode> selected = fileTable.getSelectionModel().getSelectedItem();
+                    showPreview(selected == null ? null : selected.getValue());
+
                     boolean empty = rootItem.getChildren().isEmpty();
                     fileTable.setVisible(!empty);
                     fileTable.setManaged(!empty);
