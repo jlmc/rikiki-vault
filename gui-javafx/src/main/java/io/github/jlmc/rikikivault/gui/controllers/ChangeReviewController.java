@@ -12,6 +12,7 @@ import io.github.jlmc.rikikivault.gui.support.BackgroundTasks;
 import io.github.jlmc.rikikivault.gui.support.Dialogs;
 import io.github.jlmc.rikikivault.gui.support.Fxml;
 import io.github.jlmc.rikikivault.gui.support.Messages;
+import io.github.jlmc.rikikivault.gui.support.Notifications;
 import io.github.jlmc.rikikivault.gui.support.RemotePush;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -125,7 +126,7 @@ public final class ChangeReviewController {
                 this::onLocalPublishSucceeded,
                 error -> {
                     setBusy(false, "");
-                    Dialogs.showError(error);
+                    Notifications.error(error);
                 });
     }
 
@@ -138,13 +139,13 @@ public final class ChangeReviewController {
                 hasRemote -> {
                     if (!hasRemote) {
                         finishPublish();
-                        Dialogs.showInfo(Messages.get("changeReview.publishedLocally.title"), Messages.get("common.savedLocallyNoRemote"));
+                        Notifications.success(Messages.get("common.savedLocallyNoRemote"));
                         return;
                     }
                     setBusy(false, "");
                     if (!Dialogs.confirm(Messages.get("mainWindow.publish.remoteTitle"), Messages.get("changeReview.confirmRemoteBody"))) {
                         finishPublish();
-                        Dialogs.showInfo(Messages.get("changeReview.publishedLocally.title"), Messages.get("changeReview.savedLocallyLater"));
+                        Notifications.success(Messages.get("changeReview.savedLocallyLater"));
                         return;
                     }
                     setBusy(true, Messages.get("changeReview.busy.publishingRemote"));
@@ -152,8 +153,7 @@ public final class ChangeReviewController {
                 },
                 error -> {
                     finishPublish();
-                    Dialogs.showWarning(Messages.get("changeReview.savedLocally.title"),
-                            Messages.get("changeReview.remoteCheckFailed", Dialogs.fullMessage(error)));
+                    Notifications.warning(Messages.get("changeReview.remoteCheckFailed", Dialogs.fullMessage(error)));
                 });
     }
 

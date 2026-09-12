@@ -35,6 +35,7 @@ import io.github.jlmc.rikikivault.gui.filetree.StatusBadgeTreeCell;
 import io.github.jlmc.rikikivault.gui.support.BackgroundTasks;
 import io.github.jlmc.rikikivault.gui.support.Dialogs;
 import io.github.jlmc.rikikivault.gui.support.Messages;
+import io.github.jlmc.rikikivault.gui.support.Notifications;
 import io.github.jlmc.rikikivault.gui.support.PassphraseDialogs;
 import io.github.jlmc.rikikivault.gui.support.RemotePush;
 import io.github.jlmc.rikikivault.gui.support.StaleRequestGuard;
@@ -51,6 +52,8 @@ import javafx.fxml.FXML;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.MenuButton;
+import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.SplitPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.ToggleButton;
@@ -92,6 +95,11 @@ public final class MainWindowController {
     @FXML private ToggleButton manageAccessNavButton;
     @FXML private StackPane centerContainer;
     @FXML private SplitPane filesView;
+    @FXML private ProgressIndicator toolbarProgress;
+    @FXML private ProgressIndicator editorProgress;
+    @FXML private Button refreshButton;
+    @FXML private Button pullButton;
+    @FXML private MenuButton moreMenuButton;
 
     private VaultContext ctx;
     private FolderTreeNode currentNode;
@@ -144,7 +152,7 @@ public final class MainWindowController {
         } catch (PrivateKeyNotFoundException e) {
             MachineIdentity identity = new InitializeMachineIdentityService(
                     new X25519KeyPairGeneratorAdapter(), ctx.keyStorePort()).initialize();
-            Dialogs.showInfo(Messages.get("mainWindow.newIdentity.title"), Messages.get("mainWindow.newIdentity.body"));
+            Notifications.info(Messages.get("mainWindow.newIdentity.body"));
             offerPassphraseAtCreation();
             return identity;
         }
@@ -163,11 +171,11 @@ public final class MainWindowController {
                         () -> ctx.keyStorePort().changePassphrase(null, newPassphrase),
                         () -> {
                             java.util.Arrays.fill(newPassphrase, '\0');
-                            Dialogs.showInfo(Messages.get("passphraseOffer.title"), Messages.get("passphrase.setSuccess"));
+                            Notifications.success(Messages.get("passphrase.setSuccess"));
                         },
                         error -> {
                             java.util.Arrays.fill(newPassphrase, '\0');
-                            Dialogs.showError(error);
+                            Notifications.error(error);
                         }));
     }
 
@@ -293,7 +301,7 @@ public final class MainWindowController {
                     editToggleButton.setText(Messages.get("mainWindow.editor.view"));
                     setEditActionButtonsVisible(true);
                 },
-                Dialogs::showError);
+                Notifications::error);
     }
 
     private void exitEditMode() {
@@ -321,10 +329,18 @@ public final class MainWindowController {
         }
         String path = currentNode.fileEntry().path();
         String text = editorArea.getText();
+        setEditorBusy(true);
         BackgroundTasks.runVoid(
                 () -> ctx.localFiles().writeFile(path, text.getBytes(StandardCharsets.UTF_8)),
-                () -> refresh(true),
-                Dialogs::showError);
+                () -> {
+                    setEditorBusy(false);
+                    refresh(true);
+                    Notifications.success(Messages.get("mainWindow.save.success"));
+                },
+                error -> {
+                    setEditorBusy(false);
+                    Notifications.error(error);
+                });
     }
 
     @FXML
@@ -338,7 +354,7 @@ public final class MainWindowController {
         BackgroundTasks.runVoid(
                 () -> ctx.localFiles().writeFile(path, text.getBytes(StandardCharsets.UTF_8)),
                 this::onPublish,
-                Dialogs::showError);
+                Notifications::error);
     }
 
     @FXML
@@ -350,25 +366,33 @@ public final class MainWindowController {
         if (!Dialogs.confirm(Messages.get("mainWindow.revert.title"), Messages.get("mainWindow.revert.confirm", path))) {
             return;
         }
+        setEditorBusy(true);
         BackgroundTasks.runVoid(
                 () -> new RevertFileService(
                         ctx.manifestPort(), ctx.localFiles(), ctx.documentsFiles(),
                         new DecryptFileService(ctx.encryptionPort()), new LoadMachineIdentityService(ctx.keyStorePort()))
                         .revert(new RevertFileCommand(path)),
                 () -> reloadEditorContent(path),
-                Dialogs::showError);
+                error -> {
+                    setEditorBusy(false);
+                    Notifications.error(error);
+                });
     }
 
     private void reloadEditorContent(String path) {
         BackgroundTasks.run(
                 () -> ctx.localFiles().readFile(path),
                 bytes -> {
+                    setEditorBusy(false);
                     if (editorArea != null) {
                         editorArea.setText(TextFileViewer.tryDecodeUtf8(bytes));
                     }
                     refresh(true);
                 },
-                Dialogs::showError);
+                error -> {
+                    setEditorBusy(false);
+                    Notifications.error(error);
+                });
     }
 
     @FXML
@@ -378,6 +402,7 @@ public final class MainWindowController {
         }
         String path = currentNode.fileEntry().path();
         byte[] currentContent = editorArea.getText().getBytes(StandardCharsets.UTF_8);
+        setEditorBusy(true);
         BackgroundTasks.run(
                 () -> new DiffFileService(
                         ctx.manifestPort(), ctx.documentsFiles(),
@@ -385,23 +410,28 @@ public final class MainWindowController {
                         new TextDiffAdapter())
                         .diff(new DiffFileCommand(path, currentContent)),
                 diffText -> {
+                    setEditorBusy(false);
                     // vaultPathLabel lives in the top toolbar, which (unlike fileTable) is never
                     // detached from the scene when the rail switches away from the Files view.
                     Stage owner = (Stage) vaultPathLabel.getScene().getWindow();
                     DiffResultController.open(owner, diffText);
                 },
-                Dialogs::showError);
+                error -> {
+                    setEditorBusy(false);
+                    Notifications.error(error);
+                });
     }
 
     @FXML
     private void onRefresh() {
-        refresh(true);
+        refresh(true, true);
         refreshRemoteSyncStatus();
     }
 
     @FXML
     private void onPull() {
         log.info("User triggered Pull");
+        setToolbarBusy(true);
         BackgroundTasks.run(
                 () -> new PullVaultService(
                         new LoadMachineIdentityService(ctx.keyStorePort()),
@@ -411,6 +441,7 @@ public final class MainWindowController {
                         ctx.recipientRegistryPort())
                         .pull(),
                 (PullResult result) -> {
+                    setToolbarBusy(false);
                     // vaultPathLabel lives in the top toolbar, which (unlike fileTable) is never
                     // detached from the scene when the rail switches away from the Files view.
                     Stage owner = (Stage) vaultPathLabel.getScene().getWindow();
@@ -418,7 +449,10 @@ public final class MainWindowController {
                     refresh();
                     refreshRemoteSyncStatus();
                 },
-                Dialogs::showError);
+                error -> {
+                    setToolbarBusy(false);
+                    Notifications.error(error);
+                });
     }
 
     @FXML
@@ -428,18 +462,25 @@ public final class MainWindowController {
     }
 
     private void runRestore(boolean force, java.util.function.Consumer<RestoreLocalFilesResult> onDone) {
+        setToolbarBusy(true);
         BackgroundTasks.run(
                 () -> new RestoreLocalFilesService(
                         new LoadMachineIdentityService(ctx.keyStorePort()),
                         new DecryptFileService(ctx.encryptionPort()),
                         ctx.localFiles(), ctx.documentsFiles(), ctx.manifestPort())
                         .restore(new RestoreLocalFilesCommand(force)),
-                onDone,
-                Dialogs::showError);
+                result -> {
+                    setToolbarBusy(false);
+                    onDone.accept(result);
+                },
+                error -> {
+                    setToolbarBusy(false);
+                    Notifications.error(error);
+                });
     }
 
     private void afterRestore(RestoreLocalFilesResult result) {
-        Dialogs.showInfo(Messages.get("mainWindow.restore.title"),
+        Notifications.success(
                 Messages.get("mainWindow.restore.summary", result.restoredPaths().size(), result.unauthorizedPaths().size()));
         if (!result.restoredPaths().isEmpty()) {
             refresh();
@@ -448,7 +489,7 @@ public final class MainWindowController {
                 && Dialogs.confirm(Messages.get("mainWindow.restore.forceTitle"),
                         Messages.get("mainWindow.restore.forceConfirm", result.skippedPaths().size()))) {
             runRestore(true, forced -> {
-                Dialogs.showInfo(Messages.get("mainWindow.restore.title"),
+                Notifications.success(
                         Messages.get("mainWindow.restore.summary", forced.restoredPaths().size(), forced.unauthorizedPaths().size()));
                 refresh();
             });
@@ -465,17 +506,23 @@ public final class MainWindowController {
     }
 
     private void runClearLocal(boolean includeUnpublished, java.util.function.Consumer<ClearLocalFilesResult> onDone) {
+        setToolbarBusy(true);
         BackgroundTasks.run(
                 () -> new ClearLocalFilesService(
                         new ScanChangesService(ctx.localFiles(), ctx.hashPort(), ctx.manifestPort()), ctx.localFiles())
                         .clear(new ClearLocalFilesCommand(includeUnpublished)),
-                onDone,
-                Dialogs::showError);
+                result -> {
+                    setToolbarBusy(false);
+                    onDone.accept(result);
+                },
+                error -> {
+                    setToolbarBusy(false);
+                    Notifications.error(error);
+                });
     }
 
     private void afterClearLocal(ClearLocalFilesResult result) {
-        Dialogs.showInfo(Messages.get("mainWindow.clearLocal.title"),
-                Messages.get("mainWindow.clearLocal.summary", result.clearedPaths().size()));
+        Notifications.success(Messages.get("mainWindow.clearLocal.summary", result.clearedPaths().size()));
         if (!result.clearedPaths().isEmpty()) {
             refresh();
         }
@@ -484,8 +531,7 @@ public final class MainWindowController {
                         Messages.get("mainWindow.clearLocal.forceConfirm",
                                 result.unpublishedPaths().size(), String.join("\n", result.unpublishedPaths())))) {
             runClearLocal(true, forced -> {
-                Dialogs.showInfo(Messages.get("mainWindow.clearLocal.title"),
-                        Messages.get("mainWindow.clearLocal.summary", forced.clearedPaths().size()));
+                Notifications.success(Messages.get("mainWindow.clearLocal.summary", forced.clearedPaths().size()));
                 refresh();
             });
         }
@@ -611,7 +657,7 @@ public final class MainWindowController {
                     Stage owner = (Stage) vaultPathLabel.getScene().getWindow();
                     ChangeReviewController.open(owner, ctx, changes, this::refreshAfterPublish);
                 },
-                Dialogs::showError);
+                Notifications::error);
     }
 
     /**
@@ -625,22 +671,21 @@ public final class MainWindowController {
                 () -> ctx.gitRepositoryPort().hasRemote() ? ctx.gitRepositoryPort().remoteSyncStatus() : RemoteSyncStatus.noRemote(),
                 status -> {
                     if (!status.hasRemote()) {
-                        Dialogs.showInfo(Messages.get("mainWindow.publish.title"), Messages.get("mainWindow.publish.nothing"));
+                        Notifications.info(Messages.get("mainWindow.publish.nothing"));
                     } else if (status.isDiverged()) {
-                        Dialogs.showInfo(Messages.get("mainWindow.publish.title"),
-                                Messages.get("mainWindow.publish.diverged", status.aheadCount(), status.behindCount()));
+                        Notifications.info(Messages.get("mainWindow.publish.diverged", status.aheadCount(), status.behindCount()));
                     } else if (status.aheadCount() > 0) {
                         if (Dialogs.confirm(Messages.get("mainWindow.publish.remoteTitle"),
                                 Messages.get("mainWindow.publish.aheadConfirm", status.aheadCount()))) {
                             RemotePush.pushInBackground(ctx.gitRepositoryPort(), this::refreshRemoteSyncStatus);
                         }
                     } else if (status.behindCount() > 0) {
-                        Dialogs.showInfo(Messages.get("mainWindow.publish.title"), Messages.get("mainWindow.publish.behind"));
+                        Notifications.info(Messages.get("mainWindow.publish.behind"));
                     } else {
-                        Dialogs.showInfo(Messages.get("mainWindow.publish.title"), Messages.get("mainWindow.publish.nothing"));
+                        Notifications.info(Messages.get("mainWindow.publish.nothing"));
                     }
                 },
-                _ -> Dialogs.showInfo(Messages.get("mainWindow.publish.title"), Messages.get("mainWindow.publish.unknownRemote")));
+                _ -> Notifications.info(Messages.get("mainWindow.publish.unknownRemote")));
     }
 
     private void refreshAfterPublish() {
@@ -649,11 +694,23 @@ public final class MainWindowController {
     }
 
     private void refresh() {
-        refresh(true);
+        refresh(true, false);
     }
 
     private void refresh(boolean reportErrors) {
+        refresh(reportErrors, false);
+    }
+
+    /**
+     * {@code showBusy} is only ever {@code true} from {@link #onRefresh()} - every other caller
+     * (the 3s auto-refresh timer, post-publish/restore/clear-local refreshes, ...) must stay
+     * silent, so the toolbar spinner never flickers for work the user didn't explicitly ask for.
+     */
+    private void refresh(boolean reportErrors, boolean showBusy) {
         String previouslySelectedPath = currentSelectedPath();
+        if (showBusy) {
+            setToolbarBusy(true);
+        }
         BackgroundTasks.run(
                 () -> {
                     List<String> localPaths = ctx.localFiles().listFiles();
@@ -663,6 +720,9 @@ public final class MainWindowController {
                     return FolderTreeBuilder.build(flat);
                 },
                 root -> {
+                    if (showBusy) {
+                        setToolbarBusy(false);
+                    }
                     if (!repaintCache.rootChanged(root)) {
                         // Scan already ran, but nothing changed since the last repaint - touching
                         // fileTable/selection/preview here is exactly what causes the flicker.
@@ -689,10 +749,29 @@ public final class MainWindowController {
                     emptyStateLabel.setManaged(empty);
                 },
                 error -> {
+                    if (showBusy) {
+                        setToolbarBusy(false);
+                    }
                     if (reportErrors) {
-                        Dialogs.showError(error);
+                        Notifications.error(error);
                     }
                 });
+    }
+
+    private void setToolbarBusy(boolean busy) {
+        toolbarProgress.setVisible(busy);
+        toolbarProgress.setManaged(busy);
+        refreshButton.setDisable(busy);
+        pullButton.setDisable(busy);
+        moreMenuButton.setDisable(busy);
+    }
+
+    private void setEditorBusy(boolean busy) {
+        editorProgress.setVisible(busy);
+        editorProgress.setManaged(busy);
+        saveButton.setDisable(busy);
+        revertButton.setDisable(busy);
+        diffButton.setDisable(busy);
     }
 
     private void withSuppressedSelectionEvents(Runnable action) {

@@ -7,7 +7,7 @@ import io.github.jlmc.rikikivault.core.ports.out.GitRepositoryPort;
  * ({@code ChangeReviewController}) and when there's nothing new to encrypt but local is already
  * ahead of the remote ({@code MainWindowController}). By the time this runs, whatever needed
  * saving locally already has - so a push failure is always a non-blocking warning, never
- * {@link Dialogs#showError(Throwable)}.
+ * {@link Notifications#error(Throwable)}.
  */
 public final class RemotePush {
 
@@ -20,8 +20,7 @@ public final class RemotePush {
                 _ -> onDone.run(),
                 error -> {
                     onDone.run();
-                    Dialogs.showWarning(Messages.get("remotePush.failed.title"),
-                            Messages.get("remotePush.failed.body", Dialogs.fullMessage(error)));
+                    Notifications.warning(Messages.get("remotePush.failed.body", Dialogs.fullMessage(error)));
                 });
     }
 }

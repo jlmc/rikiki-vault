@@ -10,6 +10,7 @@ import io.github.jlmc.rikikivault.gui.support.BackgroundTasks;
 import io.github.jlmc.rikikivault.gui.support.Dialogs;
 import io.github.jlmc.rikikivault.gui.support.Fxml;
 import io.github.jlmc.rikikivault.gui.support.Messages;
+import io.github.jlmc.rikikivault.gui.support.Notifications;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -101,13 +102,13 @@ public final class ManageAccessController {
                     if (onClose != null) {
                         onClose.run();
                     }
-                    if (!pushed) {
-                        Dialogs.showInfo(Messages.get("manageAccess.authorizedLocally.title"), Messages.get("common.savedLocallyNoRemote"));
-                    }
+                    Notifications.success(pushed
+                            ? Messages.get("manageAccess.authorized.pushed")
+                            : Messages.get("common.savedLocallyNoRemote"));
                 },
                 error -> {
                     setBusy(false, "");
-                    Dialogs.showError(error);
+                    Notifications.error(error);
                 });
     }
 
@@ -141,13 +142,13 @@ public final class ManageAccessController {
                     if (onClose != null) {
                         onClose.run();
                     }
-                    if (!pushed) {
-                        Dialogs.showInfo(Messages.get("manageAccess.revokedLocally.title"), Messages.get("common.savedLocallyNoRemote"));
-                    }
+                    Notifications.success(pushed
+                            ? Messages.get("manageAccess.revoked.pushed")
+                            : Messages.get("common.savedLocallyNoRemote"));
                 },
                 error -> {
                     setBusy(false, "");
-                    Dialogs.showError(error);
+                    Notifications.error(error);
                 });
     }
 

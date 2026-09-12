@@ -4,6 +4,7 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.MenuButton?>
 <?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.ProgressIndicator?>
 <?import javafx.scene.control.SplitPane?>
 <?import javafx.scene.control.ToggleButton?>
 <?import javafx.scene.control.ToggleGroup?>
@@ -26,6 +27,7 @@
             </padding>
             <Label fx:id="vaultPathLabel" styleClass="toolbar-title"/>
             <Region HBox.hgrow="ALWAYS"/>
+            <ProgressIndicator fx:id="toolbarProgress" styleClass="compact-progress" visible="false" managed="false"/>
             <Label fx:id="fingerprintLabel" styleClass="fingerprint-label"/>
             <Label fx:id="remoteSyncLabel" styleClass="status-label"/>
             <Button fx:id="refreshButton" text="%mainWindow.button.refresh" styleClass="compact-button" onAction="#onRefresh" minWidth="-Infinity">
@@ -128,6 +130,7 @@
                                 </tooltip>
                             </Button>
                             <Region HBox.hgrow="ALWAYS"/>
+                            <ProgressIndicator fx:id="editorProgress" styleClass="compact-progress" visible="false" managed="false"/>
                             <Button fx:id="saveButton" text="%mainWindow.editor.save" styleClass="primary-button" onAction="#onSave" managed="false" visible="false">
                                 <tooltip>
                                     <Tooltip text="%mainWindow.editor.save.tooltip"/>

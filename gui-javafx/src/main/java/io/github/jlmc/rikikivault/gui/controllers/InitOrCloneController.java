@@ -14,6 +14,7 @@ import io.github.jlmc.rikikivault.gui.VaultContext;
 import io.github.jlmc.rikikivault.gui.support.BackgroundTasks;
 import io.github.jlmc.rikikivault.gui.support.Dialogs;
 import io.github.jlmc.rikikivault.gui.support.Messages;
+import io.github.jlmc.rikikivault.gui.support.Notifications;
 import io.github.jlmc.rikikivault.gui.support.PassphraseDialogs;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
@@ -73,7 +74,7 @@ public final class InitOrCloneController {
                 },
                 error -> {
                     clearBusy();
-                    Dialogs.showError(error);
+                    Notifications.error(error);
                 });
     }
 
@@ -103,7 +104,7 @@ public final class InitOrCloneController {
                 },
                 error -> {
                     clearBusy();
-                    Dialogs.showError(error);
+                    Notifications.error(error);
                 });
     }
 
@@ -120,11 +121,11 @@ public final class InitOrCloneController {
                         () -> ctx.keyStorePort().changePassphrase(null, newPassphrase),
                         () -> {
                             java.util.Arrays.fill(newPassphrase, '\0');
-                            Dialogs.showInfo(Messages.get("passphraseOffer.title"), Messages.get("passphrase.setSuccess"));
+                            Notifications.success(Messages.get("passphrase.setSuccess"));
                         },
                         error -> {
                             java.util.Arrays.fill(newPassphrase, '\0');
-                            Dialogs.showError(error);
+                            Notifications.error(error);
                         }));
     }
 
