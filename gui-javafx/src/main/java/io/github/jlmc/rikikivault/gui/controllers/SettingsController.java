@@ -14,7 +14,6 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.Label;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.stage.Modality;
@@ -36,7 +35,6 @@ import java.util.function.Consumer;
 public final class SettingsController {
 
     @FXML private TabPane tabPane;
-    @FXML private Label statusLabel;
 
     private final AppPreferencesPort preferencesPort = new LocalAppPreferencesAdapter(VaultPaths.defaultPreferencesDirectory());
     private GitAuthSettingsPanel gitAuthPanel;
@@ -114,7 +112,7 @@ public final class SettingsController {
         NotificationSettings notificationSettings = appSettingsPanel.buildNotificationSettings();
         preferencesPort.save(new AppPreferences(gitAuthPanel.buildSettings(), language, notificationSettings));
         Notifications.updateSettings(notificationSettings);
-        statusLabel.setText(Messages.get("settings.saved"));
+        Notifications.success(Messages.get("settings.saved"));
 
         // Real re-rendering in the new language arrives with Milestone 20's message bundles -
         // for now this just notifies the caller that a language change was saved.

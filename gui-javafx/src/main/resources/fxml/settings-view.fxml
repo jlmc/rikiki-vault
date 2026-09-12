@@ -29,7 +29,6 @@
             <BorderPane.margin>
                 <Insets top="12" right="20" bottom="20" left="20"/>
             </BorderPane.margin>
-            <Label fx:id="statusLabel" styleClass="status-label"/>
             <Button text="%common.close" styleClass="compact-button" onAction="#onClose">
                 <tooltip>
                     <Tooltip text="%settings.close.tooltip"/>
