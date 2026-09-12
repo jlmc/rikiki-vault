@@ -6,6 +6,9 @@ package io.github.jlmc.rikikivault.gui.support;
  * state. Not thread-safe - both next() and isStale(long) must be called from the same thread (in
  * this codebase, always the JavaFX Application Thread, matching BackgroundTasks' callback
  * dispatch).
+ * A plain counter, not a timestamp: only relative order matters ("is this the latest?"), and
+ * unlike System.currentTimeMillis() a counter can't run backward across a clock adjustment; a
+ * String/UUID would carry no ordering by itself, so it wouldn't help either.
  */
 public final class StaleRequestGuard {
 
