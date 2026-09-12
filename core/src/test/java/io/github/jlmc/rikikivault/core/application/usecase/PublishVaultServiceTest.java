@@ -1,6 +1,6 @@
 package io.github.jlmc.rikikivault.core.application.usecase;
 
-import io.github.jlmc.rikikivault.core.adapters.hashing.Sha256HashAdapter;
+import io.github.jlmc.rikikivault.core.domain.model.FileHash;
 import io.github.jlmc.rikikivault.core.domain.model.KeyFingerprint;
 import io.github.jlmc.rikikivault.core.domain.model.ManifestEntry;
 import io.github.jlmc.rikikivault.core.domain.model.Recipient;
@@ -46,47 +46,46 @@ class PublishVaultServiceTest {
         FakeManifestPort manifestPort = new FakeManifestPort();
         FakeGitRepositoryPort gitRepositoryPort = new FakeGitRepositoryPort();
         PublishVaultService service = new PublishVaultService(
-                localFiles, documentsFiles, encryptionPort, new Sha256HashAdapter(), manifestPort,
+                localFiles, documentsFiles, encryptionPort, manifestPort,
                 registryWithOneRecipient(someRecipientKey()), gitRepositoryPort);
 
         service.publish(new PublishVaultCommand(List.of(new VaultChange(ChangeType.ADDED, "cv.pdf")), "publish cv.pdf"));
 
         assertEquals(1, encryptionPort.encryptCallCount);
-        assertTrue(documentsFiles.listFiles().contains("cv.pdf.enc"));
         Optional<ManifestEntry> entry = entryFor(manifestPort.load(), "cv.pdf");
         assertTrue(entry.isPresent());
-        assertEquals("cv.pdf.enc", entry.get().path());
+        assertTrue(documentsFiles.listFiles().contains(entry.get().documentsRelativePath()));
     }
 
     @Test
-    void modifiedChangeReplacesTheExistingManifestEntryRatherThanDuplicatingIt() throws Exception {
+    void modifiedChangeReplacesTheExistingManifestEntryRatherThanDuplicatingItAndReusesItsId() throws Exception {
         FakeFileStoragePort localFiles = new FakeFileStoragePort().withFile("notes.md", "new content");
         FakeFileStoragePort documentsFiles = new FakeFileStoragePort();
         ManifestEntry existing = new ManifestEntry(
-                "notes.md.enc", "notes.md", new Sha256HashAdapter().hash("old content".getBytes()), "RV01");
-        FakeManifestPort manifestPort = new FakeManifestPort(new VaultManifest(1, List.of(existing)));
+                "existing-id", "notes.md", FileHash.of("old content".getBytes()), "RV02");
+        FakeManifestPort manifestPort = new FakeManifestPort(new VaultManifest(1, VaultManifest.generateHmacKey(), List.of(existing)));
         FakeGitRepositoryPort gitRepositoryPort = new FakeGitRepositoryPort();
         PublishVaultService service = new PublishVaultService(
-                localFiles, documentsFiles, new FakeEncryptionPort(), new Sha256HashAdapter(), manifestPort,
+                localFiles, documentsFiles, new FakeEncryptionPort(), manifestPort,
                 registryWithOneRecipient(someRecipientKey()), gitRepositoryPort);
 
         service.publish(new PublishVaultCommand(List.of(new VaultChange(ChangeType.MODIFIED, "notes.md")), "publish notes.md"));
 
         VaultManifest updated = manifestPort.load();
         assertEquals(1, updated.files().size());
-        assertEquals("notes.md.enc", updated.files().getFirst().path());
+        assertEquals("existing-id", updated.files().getFirst().id());
     }
 
     @Test
     void deletedChangeRemovesTheManifestEntryAndTheEncryptedFile() throws Exception {
         FakeFileStoragePort localFiles = new FakeFileStoragePort();
-        FakeFileStoragePort documentsFiles = new FakeFileStoragePort().withFile("old.pdf.enc", "encrypted bytes");
         ManifestEntry existing = new ManifestEntry(
-                "old.pdf.enc", "old.pdf", new Sha256HashAdapter().hash("gone".getBytes()), "RV01");
-        FakeManifestPort manifestPort = new FakeManifestPort(new VaultManifest(1, List.of(existing)));
+                "old-id", "old.pdf", FileHash.of("gone".getBytes()), "RV02");
+        FakeFileStoragePort documentsFiles = new FakeFileStoragePort().withFile(existing.documentsRelativePath(), "encrypted bytes");
+        FakeManifestPort manifestPort = new FakeManifestPort(new VaultManifest(1, VaultManifest.generateHmacKey(), List.of(existing)));
         FakeGitRepositoryPort gitRepositoryPort = new FakeGitRepositoryPort();
         PublishVaultService service = new PublishVaultService(
-                localFiles, documentsFiles, new FakeEncryptionPort(), new Sha256HashAdapter(), manifestPort,
+                localFiles, documentsFiles, new FakeEncryptionPort(), manifestPort,
                 registryWithOneRecipient(someRecipientKey()), gitRepositoryPort);
 
         service.publish(new PublishVaultCommand(List.of(new VaultChange(ChangeType.DELETED, "old.pdf")), "remove old.pdf"));
@@ -100,15 +99,15 @@ class PublishVaultServiceTest {
         FakeFileStoragePort localFiles = new FakeFileStoragePort()
                 .withFile("added.txt", "new file")
                 .withFile("modified.txt", "new bytes");
-        FakeFileStoragePort documentsFiles = new FakeFileStoragePort().withFile("deleted.txt.enc", "gone bytes");
         ManifestEntry modifiedEntry = new ManifestEntry(
-                "modified.txt.enc", "modified.txt", new Sha256HashAdapter().hash("old bytes".getBytes()), "RV01");
+                "modified-id", "modified.txt", FileHash.of("old bytes".getBytes()), "RV02");
         ManifestEntry deletedEntry = new ManifestEntry(
-                "deleted.txt.enc", "deleted.txt", new Sha256HashAdapter().hash("gone".getBytes()), "RV01");
-        FakeManifestPort manifestPort = new FakeManifestPort(new VaultManifest(1, List.of(modifiedEntry, deletedEntry)));
+                "deleted-id", "deleted.txt", FileHash.of("gone".getBytes()), "RV02");
+        FakeFileStoragePort documentsFiles = new FakeFileStoragePort().withFile(deletedEntry.documentsRelativePath(), "gone bytes");
+        FakeManifestPort manifestPort = new FakeManifestPort(new VaultManifest(1, VaultManifest.generateHmacKey(), List.of(modifiedEntry, deletedEntry)));
         FakeGitRepositoryPort gitRepositoryPort = new FakeGitRepositoryPort();
         PublishVaultService service = new PublishVaultService(
-                localFiles, documentsFiles, new FakeEncryptionPort(), new Sha256HashAdapter(), manifestPort,
+                localFiles, documentsFiles, new FakeEncryptionPort(), manifestPort,
                 registryWithOneRecipient(someRecipientKey()), gitRepositoryPort);
 
         service.publish(new PublishVaultCommand(
@@ -139,7 +138,7 @@ class PublishVaultServiceTest {
                 new Recipient("machine-a", KeyFingerprint.of(machineA), machineA),
                 new Recipient("machine-b", KeyFingerprint.of(machineB), machineB))));
         PublishVaultService service = new PublishVaultService(
-                localFiles, documentsFiles, encryptionPort, new Sha256HashAdapter(), new FakeManifestPort(),
+                localFiles, documentsFiles, encryptionPort, new FakeManifestPort(),
                 recipientRegistryPort, new FakeGitRepositoryPort());
 
         service.publish(new PublishVaultCommand(List.of(new VaultChange(ChangeType.ADDED, "cv.pdf")), "publish cv.pdf"));
@@ -153,7 +152,7 @@ class PublishVaultServiceTest {
         FakeFileStoragePort localFiles = new FakeFileStoragePort().withFile("cv.pdf", "cv content");
         FakeGitRepositoryPort gitRepositoryPort = new FakeGitRepositoryPort();
         PublishVaultService service = new PublishVaultService(
-                localFiles, new FakeFileStoragePort(), new FakeEncryptionPort(), new Sha256HashAdapter(),
+                localFiles, new FakeFileStoragePort(), new FakeEncryptionPort(),
                 new FakeManifestPort(), registryWithOneRecipient(someRecipientKey()), gitRepositoryPort);
         PublishVaultCommand command = new PublishVaultCommand(List.of(new VaultChange(ChangeType.ADDED, "cv.pdf")), "publish cv.pdf");
 
@@ -168,7 +167,7 @@ class PublishVaultServiceTest {
         FakeFileStoragePort localFiles = new FakeFileStoragePort().withFile("cv.pdf", "cv content");
         FakeGitRepositoryPort gitRepositoryPort = new FakeGitRepositoryPort();
         PublishVaultService service = new PublishVaultService(
-                localFiles, new FakeFileStoragePort(), new FakeEncryptionPort(), new Sha256HashAdapter(),
+                localFiles, new FakeFileStoragePort(), new FakeEncryptionPort(),
                 new FakeManifestPort(), registryWithOneRecipient(someRecipientKey()), gitRepositoryPort);
 
         service.publishLocally(new PublishVaultCommand(List.of(new VaultChange(ChangeType.ADDED, "cv.pdf")), "publish cv.pdf"));
@@ -181,7 +180,7 @@ class PublishVaultServiceTest {
     void pushToRemoteDelegatesToGitRepositoryPort() {
         FakeGitRepositoryPort gitRepositoryPort = new FakeGitRepositoryPort();
         PublishVaultService service = new PublishVaultService(
-                new FakeFileStoragePort(), new FakeFileStoragePort(), new FakeEncryptionPort(), new Sha256HashAdapter(),
+                new FakeFileStoragePort(), new FakeFileStoragePort(), new FakeEncryptionPort(),
                 new FakeManifestPort(), new FakeRecipientRegistryPort(), gitRepositoryPort);
 
         gitRepositoryPort.pushReturnValue = false;

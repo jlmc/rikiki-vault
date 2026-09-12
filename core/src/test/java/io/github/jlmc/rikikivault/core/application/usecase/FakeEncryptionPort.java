@@ -27,7 +27,9 @@ final class FakeEncryptionPort implements EncryptionPort {
         List<RecipientKeyEntry> entries = recipients.stream()
                 .map(publicKey -> new RecipientKeyEntry(KeyFingerprint.of(publicKey), new byte[]{1}))
                 .collect(Collectors.toList());
-        return new EncryptedFile("RV01", 1, 1, file.fileName(), entries, new byte[12], new byte[]{1, 2, 3});
+        // Real EncryptedFile no longer carries a filename (RV02) - formatVersion is repurposed
+        // here, test-only, to let FakeDecryptFileUseCase look up a canned result by name.
+        return new EncryptedFile(file.fileName(), 1, 1, entries, new byte[12], new byte[]{1, 2, 3});
     }
 
     @Override

@@ -72,7 +72,7 @@ public final class RestoreLocalFilesService implements RestoreLocalFilesUseCase 
                 continue;
             }
             try {
-                EncryptedFile encryptedFile = codec.decode(documentsFiles.readFile(entry.path()));
+                EncryptedFile encryptedFile = codec.decode(documentsFiles.readFile(entry.documentsRelativePath()));
                 PlaintextFile plaintext = decryptFileUseCase.decrypt(new DecryptFileCommand(encryptedFile, identity));
                 localFiles.writeFile(plaintextPath, plaintext.content());
                 restored.add(plaintextPath);

@@ -28,6 +28,6 @@ class EncryptFileServiceTest {
         EncryptedFile result = service.encrypt(new EncryptFileCommand(file, List.of(recipient)));
 
         assertEquals(1, port.encryptCallCount);
-        assertEquals("x.txt", result.originalFileName());
+        assertEquals("x.txt", result.formatVersion());
     }
 }

@@ -20,7 +20,6 @@ import io.github.jlmc.rikikivault.core.ports.in.PullVaultUseCase;
 import io.github.jlmc.rikikivault.core.ports.in.ScanChangesUseCase;
 import io.github.jlmc.rikikivault.core.ports.out.FileStoragePort;
 import io.github.jlmc.rikikivault.core.ports.out.GitRepositoryPort;
-import io.github.jlmc.rikikivault.core.ports.out.HashPort;
 import io.github.jlmc.rikikivault.core.ports.out.ManifestPort;
 import io.github.jlmc.rikikivault.core.ports.out.RecipientRegistryPort;
 import org.slf4j.Logger;
@@ -52,7 +51,6 @@ public final class PullVaultService implements PullVaultUseCase {
     private final FileStoragePort documentsFiles;
     private final ManifestPort manifestPort;
     private final GitRepositoryPort gitRepositoryPort;
-    private final HashPort hashPort;
     private final RecipientRegistryPort recipientRegistryPort;
     private final RvEncryptedFileFormatCodec codec = new RvEncryptedFileFormatCodec();
 
@@ -64,7 +62,6 @@ public final class PullVaultService implements PullVaultUseCase {
             FileStoragePort documentsFiles,
             ManifestPort manifestPort,
             GitRepositoryPort gitRepositoryPort,
-            HashPort hashPort,
             RecipientRegistryPort recipientRegistryPort) {
         this.loadMachineIdentityUseCase = Objects.requireNonNull(
                 loadMachineIdentityUseCase, "loadMachineIdentityUseCase must not be null");
@@ -74,7 +71,6 @@ public final class PullVaultService implements PullVaultUseCase {
         this.documentsFiles = Objects.requireNonNull(documentsFiles, "documentsFiles must not be null");
         this.manifestPort = Objects.requireNonNull(manifestPort, "manifestPort must not be null");
         this.gitRepositoryPort = Objects.requireNonNull(gitRepositoryPort, "gitRepositoryPort must not be null");
-        this.hashPort = Objects.requireNonNull(hashPort, "hashPort must not be null");
         this.recipientRegistryPort = Objects.requireNonNull(recipientRegistryPort, "recipientRegistryPort must not be null");
     }
 
@@ -85,12 +81,14 @@ public final class PullVaultService implements PullVaultUseCase {
         for (VaultChange change : localChanges) {
             localChangeTypesByPath.put(change.path(), change.type());
         }
-        Map<String, ManifestEntry> before = indexByPlaintextPath(manifestPort.load());
+        VaultManifest beforeManifest = manifestPort.load();
+        Map<String, ManifestEntry> before = indexByPlaintextPath(beforeManifest);
         Map<String, Recipient> recipientsBefore = indexByFingerprint(recipientRegistryPort.load());
 
         gitRepositoryPort.pull();
 
-        Map<String, ManifestEntry> after = indexByPlaintextPath(manifestPort.load());
+        VaultManifest afterManifest = manifestPort.load();
+        Map<String, ManifestEntry> after = indexByPlaintextPath(afterManifest);
         Map<String, Recipient> recipientsAfter = indexByFingerprint(recipientRegistryPort.load());
         MachineIdentity identity = loadMachineIdentityUseCase.load();
 
@@ -108,7 +106,7 @@ public final class PullVaultService implements PullVaultUseCase {
             ChangeType localType = localChangeTypesByPath.get(path);
             if (localType != null) {
                 conflicts.add(new VaultConflict(path, localType, beforeEntry == null ? ChangeType.ADDED : ChangeType.MODIFIED,
-                        hashLocalFileIfPresent(path, localType), afterEntry.hash()));
+                        hashLocalFileIfPresent(path, localType, afterManifest.hmacKey()), afterEntry.hash()));
             } else {
                 decryptAndWrite(afterEntry, identity);
                 updatedPaths.add(path);
@@ -123,7 +121,7 @@ public final class PullVaultService implements PullVaultUseCase {
             ChangeType localType = localChangeTypesByPath.get(path);
             if (localType != null) {
                 conflicts.add(new VaultConflict(path, localType, ChangeType.DELETED,
-                        hashLocalFileIfPresent(path, localType), null));
+                        hashLocalFileIfPresent(path, localType, beforeManifest.hmacKey()), null));
             } else {
                 localFiles.deleteFile(path);
                 deletedPaths.add(path);
@@ -148,17 +146,17 @@ public final class PullVaultService implements PullVaultUseCase {
         return new PullResult(updatedPaths, deletedPaths, conflicts, localChanges, newRecipients, removedRecipients);
     }
 
-    private FileHash hashLocalFileIfPresent(String path, ChangeType localType) {
+    private FileHash hashLocalFileIfPresent(String path, ChangeType localType, byte[] hmacKey) {
         // A DELETED local change means there's no local content left to hash (only
         // computes a hash of whichever side still has a version to compare).
         if (localType == ChangeType.DELETED) {
             return null;
         }
-        return hashPort.hash(localFiles.readFile(path));
+        return FileHash.hmac(hmacKey, localFiles.readFile(path));
     }
 
     private void decryptAndWrite(ManifestEntry entry, MachineIdentity identity) {
-        EncryptedFile encryptedFile = codec.decode(documentsFiles.readFile(entry.path()));
+        EncryptedFile encryptedFile = codec.decode(documentsFiles.readFile(entry.documentsRelativePath()));
         PlaintextFile plaintext = decryptFileUseCase.decrypt(new DecryptFileCommand(encryptedFile, identity));
         localFiles.writeFile(entry.plaintextPath(), plaintext.content());
     }

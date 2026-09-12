@@ -32,19 +32,20 @@ class RevertFileServiceTest {
         return new MachineIdentity(KeyFingerprint.of(keyPair.getPublic()), keyPair.getPublic(), keyPair.getPrivate(), "X25519");
     }
 
-    private static byte[] someEncodedEncryptedFile(String fileName) {
-        return CODEC.encode(new EncryptedFile("RV01", 1, 1, fileName, List.of(), new byte[12], new byte[]{1, 2, 3}));
+    private static EncryptedFile someEncryptedFile() {
+        return new EncryptedFile("RV02", 1, 1, List.of(), new byte[12], new byte[]{1, 2, 3});
     }
 
     @Test
     void restoresTheLastPublishedContentOverLocalEdits() throws Exception {
         FakeFileStoragePort localFiles = new FakeFileStoragePort().withFile("cv.pdf", "edited locally, about to be discarded");
         FakeFileStoragePort documentsFiles = new FakeFileStoragePort();
-        documentsFiles.writeFile("cv.pdf.enc", someEncodedEncryptedFile("cv.pdf"));
-        FakeManifestPort manifestPort = new FakeManifestPort(new VaultManifest(1, List.of(
-                new ManifestEntry("cv.pdf.enc", "cv.pdf", FileHash.of("published content".getBytes(StandardCharsets.UTF_8)), "RV01"))));
+        EncryptedFile cvEncrypted = someEncryptedFile();
+        documentsFiles.writeFile("id-cv.enc", CODEC.encode(cvEncrypted));
+        FakeManifestPort manifestPort = new FakeManifestPort(new VaultManifest(1, VaultManifest.generateHmacKey(), List.of(
+                new ManifestEntry("id-cv", "cv.pdf", FileHash.of("published content".getBytes(StandardCharsets.UTF_8)), "RV02"))));
         FakeDecryptFileUseCase decryptFileUseCase = new FakeDecryptFileUseCase()
-                .withResult("cv.pdf", new PlaintextFile("cv.pdf", "published content".getBytes(StandardCharsets.UTF_8)));
+                .withResult(cvEncrypted, new PlaintextFile("cv.pdf", "published content".getBytes(StandardCharsets.UTF_8)));
         FakeLoadMachineIdentityUseCase loadMachineIdentityUseCase = new FakeLoadMachineIdentityUseCase(someIdentity());
         RevertFileService service = new RevertFileService(
                 manifestPort, localFiles, documentsFiles, decryptFileUseCase, loadMachineIdentityUseCase);

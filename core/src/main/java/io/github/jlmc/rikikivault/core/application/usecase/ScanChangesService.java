@@ -1,12 +1,12 @@
 package io.github.jlmc.rikikivault.core.application.usecase;
 
+import io.github.jlmc.rikikivault.core.domain.model.FileHash;
 import io.github.jlmc.rikikivault.core.domain.model.ManifestEntry;
 import io.github.jlmc.rikikivault.core.domain.model.VaultChange;
 import io.github.jlmc.rikikivault.core.domain.model.VaultChange.ChangeType;
 import io.github.jlmc.rikikivault.core.domain.model.VaultManifest;
 import io.github.jlmc.rikikivault.core.ports.in.ScanChangesUseCase;
 import io.github.jlmc.rikikivault.core.ports.out.FileStoragePort;
-import io.github.jlmc.rikikivault.core.ports.out.HashPort;
 import io.github.jlmc.rikikivault.core.ports.out.ManifestPort;
 
 import java.util.ArrayList;
@@ -20,12 +20,10 @@ import java.util.stream.Collectors;
 public final class ScanChangesService implements ScanChangesUseCase {
 
     private final FileStoragePort fileStoragePort;
-    private final HashPort hashPort;
     private final ManifestPort manifestPort;
 
-    public ScanChangesService(FileStoragePort fileStoragePort, HashPort hashPort, ManifestPort manifestPort) {
+    public ScanChangesService(FileStoragePort fileStoragePort, ManifestPort manifestPort) {
         this.fileStoragePort = Objects.requireNonNull(fileStoragePort, "fileStoragePort must not be null");
-        this.hashPort = Objects.requireNonNull(hashPort, "hashPort must not be null");
         this.manifestPort = Objects.requireNonNull(manifestPort, "manifestPort must not be null");
     }
 
@@ -43,7 +41,7 @@ public final class ScanChangesService implements ScanChangesUseCase {
             ManifestEntry entry = byPlaintextPath.get(path);
             if (entry == null) {
                 changes.add(new VaultChange(ChangeType.ADDED, path));
-            } else if (!hashPort.hash(fileStoragePort.readFile(path)).equals(entry.hash())) {
+            } else if (!FileHash.hmac(manifest.hmacKey(), fileStoragePort.readFile(path)).equals(entry.hash())) {
                 changes.add(new VaultChange(ChangeType.MODIFIED, path));
             }
             // matching hash -> unchanged, not reported (mirrors the §27 CLI status example,
