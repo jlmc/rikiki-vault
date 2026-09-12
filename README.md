@@ -90,6 +90,7 @@ first time it's missing and runs it the same way (see "Logging" below for its `-
 | `set-passphrase` | Protects (or changes) this machine's identity with a passphrase - prompts for the current one first if it's already protected, then the new one (twice, to confirm). See "Protecting the private key with a passphrase" below. |
 | `remove-passphrase` | Removes passphrase protection, given the current passphrase. |
 | `unwrap-key <input-file> <output-file>` | Disaster recovery: decrypts a passphrase-protected `private.key` (any file path, not just the live identity) to plain PKCS8 - see "Protecting the private key with a passphrase" below. |
+| `migrate-format [--dry-run] [--yes]` | One-way: converts a vault from the older format (plaintext `manifest.json`, real filenames under `documents/`) to the current one, where paths and filenames are encrypted too - see [FAQ 11](docs/faq/11-migrating-to-encrypted-paths.md). |
 
 ### A full walkthrough
 

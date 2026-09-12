@@ -2,28 +2,36 @@
 
 *[Read in English](05-filenames-and-metadata-are-not-encrypted.md)*
 
-Sim, em duas camadas. Só o *conteúdo* dos teus ficheiros é cifrado - tudo o resto sobre onde estão
-e como se chamam continua visível para quem conseguir ler o repositório.
+Não, desde o formato RV02 (vê a [FAQ 11](11-migrating-to-encrypted-paths.pt.md) se tiveres um vault
+mais antigo ainda no formato anterior) - os paths e nomes de ficheiros reais são cifrados ao lado do
+conteúdo, não são metadados visíveis à parte.
 
-## O próprio caminho
+## O manifest é cifrado por inteiro
 
-Cada ficheiro publicado fica em `documents/<caminho-em-claro>.enc` - esse caminho espelha
-exatamente `local/`, pasta a pasta, nome a nome, só com `.enc` acrescentado (ver a
-[quarta pergunta da FAQ](04-decrypting-without-the-app.pt.md) para o formato completo). Se
-guardares `impostos/2025/declaracao.pdf` em `local/`, quem tiver acesso de leitura ao remoto Git
-vê um ficheiro em `documents/impostos/2025/declaracao.pdf.enc` - o nome da pasta "impostos" e do
-ficheiro "declaracao.pdf" estão ali, mesmo que não consigam abrir o que está lá dentro.
+O `manifest.json` - o ficheiro que mapeia cada entrada seguida para o seu path real - é ele próprio
+selado com a mesma cifra híbrida (X25519 + AES-GCM, envolvida por máquina autorizada) já usada para
+o conteúdo dos ficheiros. Em disco e no histórico do git, é um blob binário opaco; não há nenhum
+path em claro lá dentro, a não ser que sejas uma máquina autorizada capaz de o decifrar mesmo. É
+também por isso que revogar o acesso de uma máquina recifra o manifest, não só o conteúdo dos
+ficheiros - vê a [FAQ 08](08-revoking-a-stolen-machine.pt.md).
 
-## O nome do ficheiro também fica guardado outra vez, dentro do ficheiro
+## Os nomes em `documents/` são aleatórios, não os paths reais
 
-Menos óbvio: o formato RV01 escreve o nome de ficheiro original no próprio cabeçalho do `.enc`,
-*antes* de qualquer cifra acontecer (`RvEncryptedFileFormatCodec` escreve-o como uma string UTF-8
-simples, com o comprimento à frente). Por isso, mesmo que tivesses mudado o nome do ficheiro em
-disco para algo genérico antes de sair de `local/`, o texto cifrado continua a trazer o nome que
-tinha no momento da cifra, em claro. Isto é redundante com o caminho na prática, mas significa que
-o nome do ficheiro não está mesmo nada protegido pela cifra - nunca esteve dentro da parte selada.
+Cada ficheiro publicado fica em `documents/<id-opaco>.enc` - um identificador aleatório gerado uma
+vez por ficheiro, sem relação com o seu nome ou localização reais, e nunca dentro de pastas que
+espelhem a tua estrutura de diretórios real (o nome de uma pasta pode ser tão revelador como o de
+um ficheiro). Se guardares `impostos/2025/declaracao.pdf` em `local/`, quem tiver acesso de leitura
+ao remoto Git vê um ficheiro com um nome tipo
+`documents/f47ac10b-58cc-4372-a567-0e02b2c3d479.enc` - nada sobre "impostos" ou "declaracao.pdf"
+sobrevive a nada visível sem decifrar.
+
+O próprio formato `.enc` (`RV02`) também deixou de trazer qualquer campo de nome de ficheiro no seu
+cabeçalho - o formato anterior trazia, em claro, o que era em si um leak à parte; o manifest (depois
+de decifrado) é agora a única fonte da verdade sobre o que um dado id realmente é.
 
 ## O que mais fica visível
+
+Esta parte não é afetada por nada do que foi dito acima - nunca foi sobre nomes de ficheiros:
 
 - **Mensagens e datas de commit** - o que quer que passes a `publish -m "..."` (ou escrevas no
   ecrã de revisão da app desktop) é uma mensagem de commit Git simples, não cifrada.
@@ -35,10 +43,8 @@ o nome do ficheiro não está mesmo nada protegido pela cifra - nunca esteve den
 
 ## O que fica realmente protegido
 
-Só o conteúdo. É esse o desenho todo: um repositório Git privado (esta app nunca faz afirmações
-sobre que serviço de repositório usas, nem sobre quão privado é - isso é contigo) com o
-*conteúdo* cifrado ponta-a-ponta, não um sistema que esconde a existência ou a forma dos teus
-ficheiros. Conclusão prática: não ponhas nada sensível num nome de ficheiro nem numa mensagem de
-commit, e se o simples facto de certos ficheiros existirem já for sensível, o modelo desta
-ferramenta não esconde isso do teu serviço de Git nem de mais ninguém que consiga ler o
-repositório.
+Conteúdo, paths reais e nomes de ficheiros reais - tudo cifrado da mesma forma, tudo invisível para
+quem não tiver a chave privada de uma máquina autorizada. Conclusão prática: não ponhas nada
+sensível numa mensagem de commit, e se o simples facto de certos ficheiros existirem (independente
+do nome) já for sensível, o modelo desta ferramenta não esconde a contagem ou o tamanho aproximado
+dos ficheiros do teu serviço de Git nem de mais ninguém que consiga ler o repositório.

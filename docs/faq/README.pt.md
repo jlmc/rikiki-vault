@@ -19,7 +19,8 @@ Respostas práticas a perguntas que surgem ao usar um vault no dia a dia - ao co
    — o formato do ficheiro cifrado explicado, mais um script OpenSSL + shell pronto a correr que
    decifra o vault inteiro sem Java, Maven, nem o código-fonte da app.
 5. [O GitHub (ou quem hospeda o remoto) vê os nomes dos meus ficheiros/pastas?](05-filenames-and-metadata-are-not-encrypted.pt.md)
-   — sim: só o conteúdo é cifrado, caminhos/nomes/mensagens de commit/tamanhos ficam todos visíveis.
+   — não, desde o RV02: paths/nomes ficam cifrados como o conteúdo; mensagens de commit/tamanhos/
+   timing continuam visíveis.
 6. [Apaguei um ficheiro do vault — desapareceu mesmo?](06-deleting-a-file-is-not-permanent.pt.md)
    — não do histórico do Git; o que é preciso para o purgar mesmo, e o que a purga não desfaz.
 7. [A minha chave privada em disco está protegida por password?](07-private-key-is-not-password-protected.pt.md)
@@ -32,3 +33,6 @@ Respostas práticas a perguntas que surgem ao usar um vault no dia a dia - ao co
    passo manual.
 10. [Apaguei sem querer a pasta `local/` nesta máquina — como recupero os ficheiros?](10-restoring-a-deleted-local-folder.pt.md)
     — o `restore` reconstrói `local/` a partir de `documents/`, offline, sem precisar da chave de backup.
+11. [Tenho um vault antigo (de antes dos paths serem cifrados) — como o migro?](11-migrating-to-encrypted-paths.pt.md)
+    — o `migrate-format` converte um vault para o formato RV02, em que paths e nomes de ficheiros
+    também ficam cifrados, não só o conteúdo.

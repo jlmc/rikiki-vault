@@ -168,7 +168,37 @@ e muito mais simples.
 
 ---
 
-### 3. Bloqueio automático da GUI por inatividade
+### 3. Cifrar paths e nomes de ficheiros, não só o conteúdo — ✅ Implementado
+
+Lançado: o `manifest.json` passa a ser ele próprio cifrado por inteiro, com o mesmo invólucro
+híbrido X25519+AES-GCM já usado para o conteúdo dos ficheiros (novo `EncryptedManifestFileAdapter`,
+a decorar o `JsonManifestFileAdapter` simples) — uma máquina não autorizada fica com visibilidade
+zero sobre qualquer path real, tal como já tinha visibilidade zero sobre o conteúdo. Os nomes em
+`documents/` passaram de `<path-real>.enc` (a espelhar a estrutura real de pastas) para
+`<id-aleatório>.enc`, em que o id é um UUID novo gerado uma vez por ficheiro e nunca derivado do seu
+path real (uma derivação determinística permitiria a um atacante offline testar nomes candidatos).
+O formato do invólucro `.enc` passou de `RV01` para `RV02`, deixando cair o campo `originalFileName`
+em claro que o formato antigo trazia fora do conteúdo selado — o manifest decifrado passa a ser a
+única fonte da verdade para o mapa id-para-path-real. Descobriu-se que `AuthorizeMachineService`/
+`RevokeMachineService` só alguma vez recifravam o *conteúdo* dos ficheiros para o conjunto de
+destinatários atualizado, nunca o manifest em si — corrigido a par desta mudança, já que uma máquina
+revogada continuaria de outra forma a conseguir decifrar (e portanto ler todos os paths reais de)
+a última versão do manifest a que teve acesso. Um novo `MigrateVaultFormatService` (CLI
+`migrate-format --dry-run`/`--yes`) converte um vault pré-RV02 existente no lugar, em segurança
+(nada antigo é apagado ou publicado até todas as entradas terem recifrado com sucesso) — vê
+`docs/faq/11-migrating-to-encrypted-paths.pt.md` para o guia orientado ao utilizador, e
+`docs/faq/05-filenames-and-metadata-are-not-encrypted.pt.md` para o que isto resolve.
+
+**Porquê:** o campo `plaintextPath` do `manifest.json` e a convenção de nomes
+`documents/<path-real>.enc` significavam que qualquer um com acesso de leitura ao repositório
+remoto - sem precisar de decifrar nada - conseguia ver o nome real e a estrutura de pastas de cada
+ficheiro seguido, o que por si só muitas vezes já revela informação sensível (ex. um ficheiro
+literalmente chamado `passwords.txt` ou `plano-despedimentos.xlsx`), mesmo que o seu conteúdo
+continue ilegível. Reportado diretamente pelo utilizador como uma falha séria.
+
+---
+
+### 4. Bloqueio automático da GUI por inatividade
 
 **Porquê:** mesmo com a chave protegida por passphrase (#1), uma sessão já destrancada deixada
 aberta — uma máquina de onde te afastaste, um portátil a correr sem vigilância — expõe qualquer
@@ -231,12 +261,14 @@ independente e pode ser construída em qualquer ordem face às outras duas.
 
 ## Prioridade: Média
 
-- Hash de conteúdo em claro no `manifest.json` permite confirmação offline de ficheiros conhecidos —
-  o campo `hash` de cada entrada (SHA-256 do conteúdo em claro, calculado por `ScanChangesService`
-  para deteção de mudanças) é comparável por qualquer leitor do repositório Git contra o SHA-256 de
-  um ficheiro candidato, confirmando sem decifrar se esse conteúdo exato está no cofre. Mitigação
-  candidata: substituir o SHA-256 puro por um HMAC-SHA256 com uma chave derivada do cofre,
-  preservando a deteção de mudanças sem permitir confirmação offline a quem não tiver essa chave.
+- ~~Hash de conteúdo em claro no `manifest.json` permite confirmação offline de ficheiros
+  conhecidos~~ — ✅ **Implementado** a par do item #3 acima (paths cifrados): `ManifestEntry.hash`
+  passa a ser HMAC-SHA256 (`FileHash.hmac`) com uma chave aleatória gerada uma vez por vault e
+  guardada dentro do próprio manifest (`VaultManifest.hmacKey`) — seguro de guardar ali porque o
+  manifest passa a estar cifrado por inteiro, logo só a mesma audiência que já consegue ler paths
+  consegue usar esta chave. Preserva a deteção de mudanças (`ScanChangesService`/
+  `PublishVaultService`/`PullVaultService`) evitando confirmação offline de conteúdo conhecido a
+  quem não tiver a chave.
 - Verificação de fingerprint fora de banda no fluxo de `authorize` (um passo de checklist para
   confirmar um fingerprint por um canal separado antes de confirmar) — complementa a #2 do lado de
   quem é adicionado, mas é sobretudo um incentivo de processo/UX, não criptografia nova.

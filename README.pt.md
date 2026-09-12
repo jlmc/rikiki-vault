@@ -93,6 +93,7 @@ jar da primeira vez que falta e corre-o da mesma forma (ver "Logging" mais abaix
 | `set-passphrase` | Protege (ou muda) a identidade desta máquina com uma passphrase — pede a atual primeiro se já estiver protegida, depois a nova (duas vezes, para confirmar). Ver "Proteger a chave privada com passphrase" abaixo. |
 | `remove-passphrase` | Remove a proteção por passphrase, dada a passphrase atual. |
 | `unwrap-key <ficheiro-entrada> <ficheiro-saída>` | Recuperação de desastre: desencripta um `private.key` protegido por passphrase (qualquer caminho de ficheiro, não só a identidade ativa) para PKCS8 em claro — ver "Proteger a chave privada com passphrase" abaixo. |
+| `migrate-format [--dry-run] [--yes]` | Definitivo: converte um vault do formato antigo (`manifest.json` em claro, nomes reais em `documents/`) para o atual, em que paths e nomes de ficheiros também ficam cifrados — ver [FAQ 11](docs/faq/11-migrating-to-encrypted-paths.pt.md). |
 
 ### Um exemplo completo
 
