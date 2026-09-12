@@ -51,7 +51,7 @@ class JceHybridEncryptionAdapterTest {
         EncryptedFile encrypted = adapter.encrypt(original, List.of(recipient.getPublic()));
         PlaintextFile decrypted = adapter.decrypt(encrypted, recipient.getPrivate());
 
-        assertEquals(original, decrypted);
+        assertArrayEquals(original.content(), decrypted.content());
     }
 
     @Test
@@ -63,8 +63,8 @@ class JceHybridEncryptionAdapterTest {
 
         EncryptedFile encrypted = adapter.encrypt(original, List.of(a.getPublic(), b.getPublic()));
 
-        assertEquals(original, adapter.decrypt(encrypted, a.getPrivate()));
-        assertEquals(original, adapter.decrypt(encrypted, b.getPrivate()));
+        assertArrayEquals(original.content(), adapter.decrypt(encrypted, a.getPrivate()).content());
+        assertArrayEquals(original.content(), adapter.decrypt(encrypted, b.getPrivate()).content());
     }
 
     @Test
@@ -126,22 +126,8 @@ class JceHybridEncryptionAdapterTest {
         assertNotEquals(toBase64(first.sealedContent()), toBase64(second.sealedContent()));
 
         // both must still decrypt correctly
-        assertEquals(original, adapter.decrypt(first, recipient.getPrivate()));
-        assertEquals(original, adapter.decrypt(second, recipient.getPrivate()));
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {"archive.tar.gz", "relatório final.pdf", "file with spaces.txt", "no-extension"})
-    void originalFileNameIsPreservedThroughTheCycle(String fileName) throws Exception {
-        JceHybridEncryptionAdapter adapter = adapterWith(256);
-        KeyPair recipient = generateX25519KeyPair();
-        PlaintextFile original = new PlaintextFile(fileName, randomContent(16));
-
-        EncryptedFile encrypted = adapter.encrypt(original, List.of(recipient.getPublic()));
-        PlaintextFile decrypted = adapter.decrypt(encrypted, recipient.getPrivate());
-
-        assertEquals(fileName, encrypted.originalFileName());
-        assertEquals(fileName, decrypted.fileName());
+        assertArrayEquals(original.content(), adapter.decrypt(first, recipient.getPrivate()).content());
+        assertArrayEquals(original.content(), adapter.decrypt(second, recipient.getPrivate()).content());
     }
 
     @Test

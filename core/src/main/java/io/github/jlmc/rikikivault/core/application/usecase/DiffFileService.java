@@ -63,7 +63,7 @@ public final class DiffFileService implements DiffFileUseCase {
 
     private byte[] decryptPublished(ManifestEntry entry) {
         MachineIdentity identity = loadMachineIdentityUseCase.load();
-        EncryptedFile encryptedFile = codec.decode(documentsFiles.readFile(entry.path()));
+        EncryptedFile encryptedFile = codec.decode(documentsFiles.readFile(entry.documentsRelativePath()));
         PlaintextFile plaintext = decryptFileUseCase.decrypt(new DecryptFileCommand(encryptedFile, identity));
         return plaintext.content();
     }

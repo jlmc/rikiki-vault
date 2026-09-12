@@ -36,8 +36,8 @@ class AuthorizeMachineServiceTest {
                 new Recipient("machine-a", KeyFingerprint.of(existingKey), existingKey))));
         FakeFileStoragePort localFiles = new FakeFileStoragePort().withFile("cv.pdf", "cv content");
         FakeFileStoragePort documentsFiles = new FakeFileStoragePort();
-        FakeManifestPort manifestPort = new FakeManifestPort(new VaultManifest(1, List.of(
-                new ManifestEntry("cv.pdf.enc", "cv.pdf", FileHash.of("cv content".getBytes(StandardCharsets.UTF_8)), "RV01"))));
+        FakeManifestPort manifestPort = new FakeManifestPort(new VaultManifest(1, VaultManifest.generateHmacKey(), List.of(
+                new ManifestEntry("id-cv", "cv.pdf", FileHash.of("cv content".getBytes(StandardCharsets.UTF_8)), "RV02"))));
         FakeEncryptionPort encryptionPort = new FakeEncryptionPort();
         FakeGitRepositoryPort gitRepositoryPort = new FakeGitRepositoryPort();
         AuthorizeMachineService service = new AuthorizeMachineService(
@@ -52,7 +52,7 @@ class AuthorizeMachineServiceTest {
 
         assertEquals(1, encryptionPort.receivedRecipients.size());
         assertEquals(List.of(existingKey, newKey), List.copyOf(encryptionPort.receivedRecipients.getFirst()));
-        assertTrue(documentsFiles.listFiles().contains("cv.pdf.enc"));
+        assertTrue(documentsFiles.listFiles().contains("id-cv.enc"));
 
         assertEquals(1, gitRepositoryPort.addedPathBatches.size());
         assertEquals(List.of("authorize machine: machine-b"), gitRepositoryPort.commitMessages);

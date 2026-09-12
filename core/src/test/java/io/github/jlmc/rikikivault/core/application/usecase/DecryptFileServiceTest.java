@@ -34,7 +34,7 @@ class DecryptFileServiceTest {
     void delegatesWhenIdentityIsAnAuthorizedRecipient() throws Exception {
         MachineIdentity identity = identityFrom(generateX25519KeyPair());
         RecipientKeyEntry entry = new RecipientKeyEntry(identity.id(), new byte[]{1});
-        EncryptedFile file = new EncryptedFile("RV01", 1, 1, "x.txt", List.of(entry), new byte[12], new byte[]{1});
+        EncryptedFile file = new EncryptedFile("RV02", 1, 1, List.of(entry), new byte[12], new byte[]{1});
 
         FakeEncryptionPort port = new FakeEncryptionPort();
         PlaintextFile expected = new PlaintextFile("x.txt", new byte[]{9});
@@ -52,7 +52,7 @@ class DecryptFileServiceTest {
         MachineIdentity identity = identityFrom(generateX25519KeyPair());
         RecipientKeyEntry entryForSomeoneElse = new RecipientKeyEntry(
                 KeyFingerprint.of(generateX25519KeyPair().getPublic()), new byte[]{1});
-        EncryptedFile file = new EncryptedFile("RV01", 1, 1, "x.txt", List.of(entryForSomeoneElse), new byte[12], new byte[]{1});
+        EncryptedFile file = new EncryptedFile("RV02", 1, 1, List.of(entryForSomeoneElse), new byte[12], new byte[]{1});
 
         FakeEncryptionPort port = new FakeEncryptionPort();
         DecryptFileService service = new DecryptFileService(port);

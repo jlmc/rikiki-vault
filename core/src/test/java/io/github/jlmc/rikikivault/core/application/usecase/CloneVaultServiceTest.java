@@ -38,8 +38,8 @@ class CloneVaultServiceTest {
         return new MachineIdentity(KeyFingerprint.of(keyPair.getPublic()), keyPair.getPublic(), keyPair.getPrivate(), "X25519");
     }
 
-    private static byte[] someEncodedEncryptedFile(String fileName) {
-        return CODEC.encode(new EncryptedFile("RV01", 1, 1, fileName, List.of(), new byte[12], new byte[]{1, 2, 3}));
+    private static EncryptedFile someEncryptedFile(byte[] marker) {
+        return new EncryptedFile("RV02", 1, 1, List.of(), new byte[12], marker);
     }
 
     private static FakeRecipientRegistryPort registryWithOneRecipient(MachineIdentity identity) {
@@ -52,14 +52,16 @@ class CloneVaultServiceTest {
         MachineIdentity identity = someIdentity();
         FakeFileStoragePort localFiles = new FakeFileStoragePort();
         FakeFileStoragePort documentsFiles = new FakeFileStoragePort();
-        documentsFiles.writeFile("cv.pdf.enc", someEncodedEncryptedFile("cv.pdf"));
-        documentsFiles.writeFile("notes.md.enc", someEncodedEncryptedFile("notes.md"));
+        EncryptedFile cvEncrypted = someEncryptedFile(new byte[]{1, 2, 3});
+        EncryptedFile notesEncrypted = someEncryptedFile(new byte[]{4, 5, 6});
+        documentsFiles.writeFile("id-cv.enc", CODEC.encode(cvEncrypted));
+        documentsFiles.writeFile("id-notes.enc", CODEC.encode(notesEncrypted));
         FakeDecryptFileUseCase decryptFileUseCase = new FakeDecryptFileUseCase()
-                .withResult("cv.pdf", new PlaintextFile("cv.pdf", "cv content".getBytes(StandardCharsets.UTF_8)))
-                .withResult("notes.md", new PlaintextFile("notes.md", "notes content".getBytes(StandardCharsets.UTF_8)));
-        VaultManifest manifest = new VaultManifest(1, List.of(
-                new ManifestEntry("cv.pdf.enc", "cv.pdf", FileHash.of("cv content".getBytes(StandardCharsets.UTF_8)), "RV01"),
-                new ManifestEntry("notes.md.enc", "notes.md", FileHash.of("notes content".getBytes(StandardCharsets.UTF_8)), "RV01")));
+                .withResult(cvEncrypted, new PlaintextFile("cv.pdf", "cv content".getBytes(StandardCharsets.UTF_8)))
+                .withResult(notesEncrypted, new PlaintextFile("notes.md", "notes content".getBytes(StandardCharsets.UTF_8)));
+        VaultManifest manifest = new VaultManifest(1, VaultManifest.generateHmacKey(), List.of(
+                new ManifestEntry("id-cv", "cv.pdf", FileHash.of("cv content".getBytes(StandardCharsets.UTF_8)), "RV02"),
+                new ManifestEntry("id-notes", "notes.md", FileHash.of("notes content".getBytes(StandardCharsets.UTF_8)), "RV02")));
         FakeManifestPort manifestPort = new FakeManifestPort(manifest);
         FakeGitRepositoryPort gitRepositoryPort = new FakeGitRepositoryPort();
         FakeLoadMachineIdentityUseCase loadIdentityUseCase = new FakeLoadMachineIdentityUseCase(identity);

@@ -52,7 +52,8 @@ class InitializeVaultServiceTest {
         assertEquals(identity, result);
         assertEquals(1, gitRepositoryPort.initCallCount);
         assertArrayEquals("local/\n".getBytes(StandardCharsets.UTF_8), vaultRootFiles.readFile(".gitignore"));
-        assertEquals(VaultManifest.empty(), manifestPort.load());
+        assertEquals(1, manifestPort.load().version());
+        assertTrue(manifestPort.load().files().isEmpty());
     }
 
     @Test
@@ -69,7 +70,8 @@ class InitializeVaultServiceTest {
 
         assertEquals(0, gitRepositoryPort.initCallCount);
         assertArrayEquals("local/\n".getBytes(StandardCharsets.UTF_8), vaultRootFiles.readFile(".gitignore"));
-        assertEquals(VaultManifest.empty(), manifestPort.load());
+        assertEquals(1, manifestPort.load().version());
+        assertTrue(manifestPort.load().files().isEmpty());
     }
 
     @Test
@@ -165,6 +167,7 @@ class InitializeVaultServiceTest {
 
         assertEquals(0, gitRepositoryPort.initCallCount);
         assertTrue(vaultRootFiles.listFiles().isEmpty());
-        assertEquals(VaultManifest.empty(), manifestPort.load());
+        assertEquals(1, manifestPort.load().version());
+        assertTrue(manifestPort.load().files().isEmpty());
     }
 }

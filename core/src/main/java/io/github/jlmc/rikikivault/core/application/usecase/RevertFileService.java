@@ -56,7 +56,7 @@ public final class RevertFileService implements RevertFileUseCase {
                         "No published version of " + command.plaintextPath() + " to revert to"));
 
         MachineIdentity identity = loadMachineIdentityUseCase.load();
-        EncryptedFile encryptedFile = codec.decode(documentsFiles.readFile(entry.path()));
+        EncryptedFile encryptedFile = codec.decode(documentsFiles.readFile(entry.documentsRelativePath()));
         PlaintextFile plaintext = decryptFileUseCase.decrypt(new DecryptFileCommand(encryptedFile, identity));
 
         localFiles.writeFile(command.plaintextPath(), plaintext.content());

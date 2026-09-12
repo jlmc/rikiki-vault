@@ -19,7 +19,8 @@ Practical answers to questions that come up when actually using a vault day to d
    — the encrypted file format explained, plus a ready-to-run OpenSSL + shell script that decrypts
    your whole vault with no Java, Maven, or app source code involved.
 5. [Does GitHub (or whoever hosts the remote) see my filenames or folder structure?](05-filenames-and-metadata-are-not-encrypted.md)
-   — yes: only file content is encrypted, paths/filenames/commit messages/sizes are all visible.
+   — no, since RV02: paths/filenames are encrypted like content; commit messages/sizes/timing are
+   still visible.
 6. [I deleted a file from the vault — is it really gone?](06-deleting-a-file-is-not-permanent.md)
    — not from Git history; what it takes to actually purge it, and what purging doesn't undo.
 7. [Is my private key on disk protected by a password?](07-private-key-is-not-password-protected.md)
@@ -32,3 +33,6 @@ Practical answers to questions that come up when actually using a vault day to d
    is a manual step.
 10. [I accidentally deleted my `local/` folder on this machine — how do I get the files back?](10-restoring-a-deleted-local-folder.md)
     — `restore` rebuilds `local/` from `documents/`, offline, without needing your backup key.
+11. [I have an older vault (from before file paths were encrypted) — how do I migrate it?](11-migrating-to-encrypted-paths.md)
+    — `migrate-format` converts a vault to the RV02 format, where paths and filenames are encrypted
+    too, not just content.

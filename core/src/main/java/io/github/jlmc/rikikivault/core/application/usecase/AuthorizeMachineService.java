@@ -86,13 +86,12 @@ public final class AuthorizeMachineService implements AuthorizeMachineUseCase {
         VaultManifest manifest = manifestPort.load();
         for (ManifestEntry entry : manifest.files()) {
             byte[] content = localFiles.readFile(entry.plaintextPath());
-            String plaintextPath = entry.plaintextPath();
-            String fileName = plaintextPath.contains("/")
-                    ? plaintextPath.substring(plaintextPath.lastIndexOf('/') + 1)
-                    : plaintextPath;
-
-            EncryptedFile encrypted = encryptionPort.encrypt(new PlaintextFile(fileName, content), publicKeys);
-            documentsFiles.writeFile(entry.path(), codec.encode(encrypted));
+            EncryptedFile encrypted = encryptionPort.encrypt(new PlaintextFile(entry.plaintextPath(), content), publicKeys);
+            documentsFiles.writeFile(entry.documentsRelativePath(), codec.encode(encrypted));
         }
+        // Re-encrypts (and rewrites) the manifest itself for the updated recipient set too - the
+        // manifest is wrapped just like any tracked file, so the newly authorized machine needs a
+        // fresh copy it can actually decrypt.
+        manifestPort.save(manifest);
     }
 }

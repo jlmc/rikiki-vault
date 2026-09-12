@@ -27,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class RestoreLocalFilesServiceTest {
 
     private static final RvEncryptedFileFormatCodec CODEC = new RvEncryptedFileFormatCodec();
+    private static byte marker = 0;
 
     private static MachineIdentity someIdentity() throws Exception {
         KeyPairGenerator generator = KeyPairGenerator.getInstance("X25519");
@@ -35,8 +36,10 @@ class RestoreLocalFilesServiceTest {
         return new MachineIdentity(KeyFingerprint.of(keyPair.getPublic()), keyPair.getPublic(), keyPair.getPrivate(), "X25519");
     }
 
-    private static byte[] someEncodedEncryptedFile(String fileName) {
-        return CODEC.encode(new EncryptedFile("RV01", 1, 1, fileName, List.of(), new byte[12], new byte[]{1, 2, 3}));
+    /** Each call returns a distinct value (distinct sealedContent byte) so it survives a real
+     * encode/decode round trip and can be told apart as a FakeDecryptFileUseCase map key. */
+    private static EncryptedFile someEncryptedFile() {
+        return new EncryptedFile("RV02", 1, 1, List.of(), new byte[12], new byte[]{marker++});
     }
 
     @Test
@@ -44,14 +47,16 @@ class RestoreLocalFilesServiceTest {
         MachineIdentity identity = someIdentity();
         FakeFileStoragePort localFiles = new FakeFileStoragePort();
         FakeFileStoragePort documentsFiles = new FakeFileStoragePort();
-        documentsFiles.writeFile("cv.pdf.enc", someEncodedEncryptedFile("cv.pdf"));
-        documentsFiles.writeFile("notes.md.enc", someEncodedEncryptedFile("notes.md"));
+        EncryptedFile cvEncrypted = someEncryptedFile();
+        EncryptedFile notesEncrypted = someEncryptedFile();
+        documentsFiles.writeFile("id-cv.enc", CODEC.encode(cvEncrypted));
+        documentsFiles.writeFile("id-notes.enc", CODEC.encode(notesEncrypted));
         FakeDecryptFileUseCase decryptFileUseCase = new FakeDecryptFileUseCase()
-                .withResult("cv.pdf", new PlaintextFile("cv.pdf", "cv content".getBytes(StandardCharsets.UTF_8)))
-                .withResult("notes.md", new PlaintextFile("notes.md", "notes content".getBytes(StandardCharsets.UTF_8)));
-        FakeManifestPort manifestPort = new FakeManifestPort(new VaultManifest(1, List.of(
-                new ManifestEntry("cv.pdf.enc", "cv.pdf", FileHash.of("cv content".getBytes(StandardCharsets.UTF_8)), "RV01"),
-                new ManifestEntry("notes.md.enc", "notes.md", FileHash.of("notes content".getBytes(StandardCharsets.UTF_8)), "RV01"))));
+                .withResult(cvEncrypted, new PlaintextFile("cv.pdf", "cv content".getBytes(StandardCharsets.UTF_8)))
+                .withResult(notesEncrypted, new PlaintextFile("notes.md", "notes content".getBytes(StandardCharsets.UTF_8)));
+        FakeManifestPort manifestPort = new FakeManifestPort(new VaultManifest(1, VaultManifest.generateHmacKey(), List.of(
+                new ManifestEntry("id-cv", "cv.pdf", FileHash.of("cv content".getBytes(StandardCharsets.UTF_8)), "RV02"),
+                new ManifestEntry("id-notes", "notes.md", FileHash.of("notes content".getBytes(StandardCharsets.UTF_8)), "RV02"))));
         RestoreLocalFilesService service = new RestoreLocalFilesService(
                 new FakeLoadMachineIdentityUseCase(identity), decryptFileUseCase, localFiles, documentsFiles, manifestPort);
 
@@ -69,11 +74,12 @@ class RestoreLocalFilesServiceTest {
         MachineIdentity identity = someIdentity();
         FakeFileStoragePort localFiles = new FakeFileStoragePort().withFile("notes.md", "unpublished edit");
         FakeFileStoragePort documentsFiles = new FakeFileStoragePort();
-        documentsFiles.writeFile("notes.md.enc", someEncodedEncryptedFile("notes.md"));
+        EncryptedFile notesEncrypted = someEncryptedFile();
+        documentsFiles.writeFile("id-notes.enc", CODEC.encode(notesEncrypted));
         FakeDecryptFileUseCase decryptFileUseCase = new FakeDecryptFileUseCase()
-                .withResult("notes.md", new PlaintextFile("notes.md", "published content".getBytes(StandardCharsets.UTF_8)));
-        FakeManifestPort manifestPort = new FakeManifestPort(new VaultManifest(1, List.of(
-                new ManifestEntry("notes.md.enc", "notes.md", FileHash.of("published content".getBytes(StandardCharsets.UTF_8)), "RV01"))));
+                .withResult(notesEncrypted, new PlaintextFile("notes.md", "published content".getBytes(StandardCharsets.UTF_8)));
+        FakeManifestPort manifestPort = new FakeManifestPort(new VaultManifest(1, VaultManifest.generateHmacKey(), List.of(
+                new ManifestEntry("id-notes", "notes.md", FileHash.of("published content".getBytes(StandardCharsets.UTF_8)), "RV02"))));
         RestoreLocalFilesService service = new RestoreLocalFilesService(
                 new FakeLoadMachineIdentityUseCase(identity), decryptFileUseCase, localFiles, documentsFiles, manifestPort);
 
@@ -89,11 +95,12 @@ class RestoreLocalFilesServiceTest {
         MachineIdentity identity = someIdentity();
         FakeFileStoragePort localFiles = new FakeFileStoragePort().withFile("notes.md", "unpublished edit");
         FakeFileStoragePort documentsFiles = new FakeFileStoragePort();
-        documentsFiles.writeFile("notes.md.enc", someEncodedEncryptedFile("notes.md"));
+        EncryptedFile notesEncrypted = someEncryptedFile();
+        documentsFiles.writeFile("id-notes.enc", CODEC.encode(notesEncrypted));
         FakeDecryptFileUseCase decryptFileUseCase = new FakeDecryptFileUseCase()
-                .withResult("notes.md", new PlaintextFile("notes.md", "published content".getBytes(StandardCharsets.UTF_8)));
-        FakeManifestPort manifestPort = new FakeManifestPort(new VaultManifest(1, List.of(
-                new ManifestEntry("notes.md.enc", "notes.md", FileHash.of("published content".getBytes(StandardCharsets.UTF_8)), "RV01"))));
+                .withResult(notesEncrypted, new PlaintextFile("notes.md", "published content".getBytes(StandardCharsets.UTF_8)));
+        FakeManifestPort manifestPort = new FakeManifestPort(new VaultManifest(1, VaultManifest.generateHmacKey(), List.of(
+                new ManifestEntry("id-notes", "notes.md", FileHash.of("published content".getBytes(StandardCharsets.UTF_8)), "RV02"))));
         RestoreLocalFilesService service = new RestoreLocalFilesService(
                 new FakeLoadMachineIdentityUseCase(identity), decryptFileUseCase, localFiles, documentsFiles, manifestPort);
 
@@ -109,14 +116,16 @@ class RestoreLocalFilesServiceTest {
         MachineIdentity identity = someIdentity();
         FakeFileStoragePort localFiles = new FakeFileStoragePort();
         FakeFileStoragePort documentsFiles = new FakeFileStoragePort();
-        documentsFiles.writeFile("secret.txt.enc", someEncodedEncryptedFile("secret.txt"));
-        documentsFiles.writeFile("notes.md.enc", someEncodedEncryptedFile("notes.md"));
+        EncryptedFile secretEncrypted = someEncryptedFile();
+        EncryptedFile notesEncrypted = someEncryptedFile();
+        documentsFiles.writeFile("id-secret.enc", CODEC.encode(secretEncrypted));
+        documentsFiles.writeFile("id-notes.enc", CODEC.encode(notesEncrypted));
         FakeDecryptFileUseCase decryptFileUseCase = new FakeDecryptFileUseCase()
-                .withFailure("secret.txt", new UnauthorizedMachineException("not authorized"))
-                .withResult("notes.md", new PlaintextFile("notes.md", "notes content".getBytes(StandardCharsets.UTF_8)));
-        FakeManifestPort manifestPort = new FakeManifestPort(new VaultManifest(1, List.of(
-                new ManifestEntry("secret.txt.enc", "secret.txt", FileHash.of("x".getBytes(StandardCharsets.UTF_8)), "RV01"),
-                new ManifestEntry("notes.md.enc", "notes.md", FileHash.of("notes content".getBytes(StandardCharsets.UTF_8)), "RV01"))));
+                .withFailure(secretEncrypted, new UnauthorizedMachineException("not authorized"))
+                .withResult(notesEncrypted, new PlaintextFile("notes.md", "notes content".getBytes(StandardCharsets.UTF_8)));
+        FakeManifestPort manifestPort = new FakeManifestPort(new VaultManifest(1, VaultManifest.generateHmacKey(), List.of(
+                new ManifestEntry("id-secret", "secret.txt", FileHash.of("x".getBytes(StandardCharsets.UTF_8)), "RV02"),
+                new ManifestEntry("id-notes", "notes.md", FileHash.of("notes content".getBytes(StandardCharsets.UTF_8)), "RV02"))));
         RestoreLocalFilesService service = new RestoreLocalFilesService(
                 new FakeLoadMachineIdentityUseCase(identity), decryptFileUseCase, localFiles, documentsFiles, manifestPort);
 

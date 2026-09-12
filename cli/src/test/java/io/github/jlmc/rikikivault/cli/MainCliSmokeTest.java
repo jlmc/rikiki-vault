@@ -13,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -54,7 +55,11 @@ class MainCliSmokeTest {
 
             String publishOutput = run("-C", vaultDir.toString(), "publish", "-m", "primeiro publish");
             assertTrue(publishOutput.contains("1"), "publish deveria confirmar 1 alteração publicada, foi: " + publishOutput);
-            assertTrue(Files.exists(vaultDir.resolve("documents").resolve("cv.pdf.enc")));
+            // documents/ carries an opaque id, not the real filename - just confirm exactly one
+            // ciphertext landed there, not a file literally named cv.pdf.enc.
+            try (var documentsListing = Files.list(vaultDir.resolve("documents"))) {
+                assertEquals(1, documentsListing.filter(p -> p.toString().endsWith(".enc")).count());
+            }
             assertTrue(Files.exists(vaultDir.resolve("vault").resolve("manifest.json")));
             assertTrue(Files.exists(vaultDir.resolve("vault").resolve("recipients.json")));
 

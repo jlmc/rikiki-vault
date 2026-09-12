@@ -2,6 +2,7 @@ package io.github.jlmc.rikikivault.core.application.usecase;
 
 import io.github.jlmc.rikikivault.core.adapters.encryption.format.RvEncryptedFileFormatCodec;
 import io.github.jlmc.rikikivault.core.domain.exception.PrivateKeyNotFoundException;
+import io.github.jlmc.rikikivault.core.domain.exception.UnauthorizedMachineException;
 import io.github.jlmc.rikikivault.core.domain.exception.UninitializedVaultException;
 import io.github.jlmc.rikikivault.core.domain.model.EncryptedFile;
 import io.github.jlmc.rikikivault.core.domain.model.MachineIdentity;
@@ -86,7 +87,18 @@ public final class CloneVaultService implements CloneVaultUseCase {
                             + "Use 'init' to create a brand-new vault instead of 'clone'.");
         }
 
-        VaultManifest manifest = manifestPort.load();
+        VaultManifest manifest;
+        try {
+            manifest = manifestPort.load();
+        } catch (UnauthorizedMachineException e) {
+            // The manifest is encrypted like any other tracked file - a freshly cloned machine
+            // that hasn't been authorized yet can't decrypt it (so it can't see any real paths
+            // either), same as it already couldn't decrypt file content. Not an error: the clone
+            // itself succeeded, there's just nothing visible until an existing machine authorizes it.
+            log.info("Cloned vault as {}, but this machine is not yet an authorized recipient - "
+                    + "0 files visible until an existing machine runs 'authorize'.", identity.id());
+            return identity;
+        }
         for (ManifestEntry entry : manifest.files()) {
             decryptAndWrite(entry, identity);
         }
@@ -104,7 +116,7 @@ public final class CloneVaultService implements CloneVaultUseCase {
     }
 
     private void decryptAndWrite(ManifestEntry entry, MachineIdentity identity) {
-        EncryptedFile encryptedFile = codec.decode(documentsFiles.readFile(entry.path()));
+        EncryptedFile encryptedFile = codec.decode(documentsFiles.readFile(entry.documentsRelativePath()));
         PlaintextFile plaintext = decryptFileUseCase.decrypt(new DecryptFileCommand(encryptedFile, identity));
         localFiles.writeFile(entry.plaintextPath(), plaintext.content());
     }

@@ -37,8 +37,8 @@ class RevokeMachineServiceTest {
                 new Recipient("machine-b", KeyFingerprint.of(revokedKey), revokedKey))));
         FakeFileStoragePort localFiles = new FakeFileStoragePort().withFile("cv.pdf", "cv content");
         FakeFileStoragePort documentsFiles = new FakeFileStoragePort();
-        FakeManifestPort manifestPort = new FakeManifestPort(new VaultManifest(1, List.of(
-                new ManifestEntry("cv.pdf.enc", "cv.pdf", FileHash.of("cv content".getBytes(StandardCharsets.UTF_8)), "RV01"))));
+        FakeManifestPort manifestPort = new FakeManifestPort(new VaultManifest(1, VaultManifest.generateHmacKey(), List.of(
+                new ManifestEntry("id-cv", "cv.pdf", FileHash.of("cv content".getBytes(StandardCharsets.UTF_8)), "RV02"))));
         FakeEncryptionPort encryptionPort = new FakeEncryptionPort();
         FakeGitRepositoryPort gitRepositoryPort = new FakeGitRepositoryPort();
         RevokeMachineService service = new RevokeMachineService(

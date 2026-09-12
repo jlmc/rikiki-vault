@@ -6,9 +6,8 @@ import io.github.jlmc.rikikivault.core.adapters.encryption.format.RvEncryptedFil
 import io.github.jlmc.rikikivault.core.adapters.filesystem.LocalFileSystemAdapter;
 import io.github.jlmc.rikikivault.core.adapters.git.FakeGitAuthSettingsPort;
 import io.github.jlmc.rikikivault.core.adapters.git.JGitRepositoryAdapter;
-import io.github.jlmc.rikikivault.core.adapters.hashing.Sha256HashAdapter;
 import io.github.jlmc.rikikivault.core.adapters.keystore.LocalKeyStoreAdapter;
-import io.github.jlmc.rikikivault.core.adapters.manifest.JsonManifestFileAdapter;
+import io.github.jlmc.rikikivault.core.adapters.manifest.EncryptedManifestFileAdapter;
 import io.github.jlmc.rikikivault.core.adapters.recipients.JsonRecipientRegistryFileAdapter;
 import io.github.jlmc.rikikivault.core.application.usecase.InitializeMachineIdentityService;
 import io.github.jlmc.rikikivault.core.application.usecase.InitializeVaultService;
@@ -17,12 +16,15 @@ import io.github.jlmc.rikikivault.core.application.usecase.PublishVaultService;
 import io.github.jlmc.rikikivault.core.application.usecase.ScanChangesService;
 import io.github.jlmc.rikikivault.core.configuration.EncryptionSettings;
 import io.github.jlmc.rikikivault.core.domain.model.EncryptedFile;
+import io.github.jlmc.rikikivault.core.domain.model.ManifestEntry;
 import io.github.jlmc.rikikivault.core.domain.model.MachineIdentity;
 import io.github.jlmc.rikikivault.core.domain.model.PlaintextFile;
+import io.github.jlmc.rikikivault.core.domain.model.Recipient;
 import io.github.jlmc.rikikivault.core.domain.model.VaultChange;
 import io.github.jlmc.rikikivault.core.domain.model.VaultManifest;
 import io.github.jlmc.rikikivault.core.ports.in.InitializeVaultCommand;
 import io.github.jlmc.rikikivault.core.ports.in.PublishVaultCommand;
+import io.github.jlmc.rikikivault.core.ports.out.ManifestPort;
 import org.eclipse.jgit.api.Git;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -64,8 +66,12 @@ class EndToEndPublishTest {
         gitRepositoryPort.clone("file://" + bareRepoDir);
 
         LocalKeyStoreAdapter keyStorePort = new LocalKeyStoreAdapter(identityDirectory);
-        JsonManifestFileAdapter manifestPort = new JsonManifestFileAdapter(manifestFile);
+        JceHybridEncryptionAdapter encryptionPort = new JceHybridEncryptionAdapter(EncryptionSettings.defaults());
         JsonRecipientRegistryFileAdapter recipientRegistryPort = new JsonRecipientRegistryFileAdapter(recipientsFile);
+        ManifestPort manifestPort = new EncryptedManifestFileAdapter(
+                manifestFile, encryptionPort,
+                () -> keyStorePort.load().privateKey(),
+                () -> recipientRegistryPort.load().recipients().stream().map(Recipient::publicKey).toList());
         InitializeVaultService initializeVaultService = new InitializeVaultService(
                 new LoadMachineIdentityService(keyStorePort),
                 new InitializeMachineIdentityService(new X25519KeyPairGeneratorAdapter(), keyStorePort),
@@ -77,41 +83,49 @@ class EndToEndPublishTest {
         MachineIdentity identity = initializeVaultService.initialize(new InitializeVaultCommand(false, "machine-a", null));
 
         assertArrayEquals("local/\n".getBytes(StandardCharsets.UTF_8), Files.readAllBytes(vaultRoot.resolve(".gitignore")));
-        assertEquals(VaultManifest.empty(), manifestPort.load());
+        assertTrue(manifestPort.load().files().isEmpty());
+        // manifest.json itself is opaque on disk - not human-readable JSON.
+        assertTrue(Files.readAllBytes(manifestFile).length > 0);
+        assertArrayEquals(RvEncryptedFileFormatCodec.FORMAT_VERSION.getBytes(StandardCharsets.US_ASCII),
+                java.util.Arrays.copyOfRange(Files.readAllBytes(manifestFile), 0, 4));
 
         Files.createDirectories(localRoot);
         byte[] plaintextContent = "cv content".getBytes(StandardCharsets.UTF_8);
         Files.write(localRoot.resolve("cv.pdf"), plaintextContent);
 
-        Sha256HashAdapter hashPort = new Sha256HashAdapter();
         LocalFileSystemAdapter localFiles = new LocalFileSystemAdapter(localRoot);
         LocalFileSystemAdapter documentsFiles = new LocalFileSystemAdapter(documentsRoot);
-        ScanChangesService scanChangesService = new ScanChangesService(localFiles, hashPort, manifestPort);
+        ScanChangesService scanChangesService = new ScanChangesService(localFiles, manifestPort);
         List<VaultChange> changes = scanChangesService.scan();
         assertEquals(1, changes.size());
 
-        JceHybridEncryptionAdapter encryptionPort = new JceHybridEncryptionAdapter(EncryptionSettings.defaults());
         PublishVaultService publishVaultService = new PublishVaultService(
-                localFiles, documentsFiles, encryptionPort, hashPort, manifestPort, recipientRegistryPort, gitRepositoryPort);
+                localFiles, documentsFiles, encryptionPort, manifestPort, recipientRegistryPort, gitRepositoryPort);
 
         publishVaultService.publish(new PublishVaultCommand(changes, "publish cv.pdf"));
-
-        // The .enc file on disk round-trips back to the original plaintext bytes.
-        byte[] encodedBytes = Files.readAllBytes(documentsRoot.resolve("cv.pdf.enc"));
-        EncryptedFile encryptedFile = new RvEncryptedFileFormatCodec().decode(encodedBytes);
-        PlaintextFile decrypted = encryptionPort.decrypt(encryptedFile, identity.privateKey());
-        assertArrayEquals(plaintextContent, decrypted.content());
 
         // The manifest reflects it, and there's nothing left for a re-scan to report.
         VaultManifest manifest = manifestPort.load();
         assertEquals(1, manifest.files().size());
-        assertEquals("cv.pdf", manifest.files().getFirst().plaintextPath());
+        ManifestEntry cvEntry = manifest.files().getFirst();
+        assertEquals("cv.pdf", cvEntry.plaintextPath());
         assertTrue(scanChangesService.scan().isEmpty());
         assertTrue(gitRepositoryPort.status().isClean());
+
+        // documents/ carries only the opaque id, not the real filename - and no plaintext
+        // directory structure either, since this file has no path separators to begin with here.
+        assertTrue(java.nio.file.Files.exists(documentsRoot.resolve(cvEntry.documentsRelativePath())));
+        assertTrue(cvEntry.documentsRelativePath().startsWith(cvEntry.id()));
+
+        // The .enc file on disk round-trips back to the original plaintext bytes.
+        byte[] encodedBytes = Files.readAllBytes(documentsRoot.resolve(cvEntry.documentsRelativePath()));
+        EncryptedFile encryptedFile = new RvEncryptedFileFormatCodec().decode(encodedBytes);
+        PlaintextFile decrypted = encryptionPort.decrypt(encryptedFile, identity.privateKey());
+        assertArrayEquals(plaintextContent, decrypted.content());
 
         // A fresh clone of the remote proves the commit was actually pushed.
         Path freshClone = tempDir.resolve("fresh-clone");
         new JGitRepositoryAdapter(freshClone, new FakeGitAuthSettingsPort()).clone("file://" + bareRepoDir);
-        assertArrayEquals(encodedBytes, Files.readAllBytes(freshClone.resolve("documents").resolve("cv.pdf.enc")));
+        assertArrayEquals(encodedBytes, Files.readAllBytes(freshClone.resolve("documents").resolve(cvEntry.documentsRelativePath())));
     }
 }

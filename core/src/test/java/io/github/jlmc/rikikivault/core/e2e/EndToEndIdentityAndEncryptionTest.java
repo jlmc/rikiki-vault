@@ -23,6 +23,7 @@ import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
@@ -59,7 +60,7 @@ class EndToEndIdentityAndEncryptionTest {
         PlaintextFile decrypted = new DecryptFileService(encryptionAdapter)
                 .decrypt(new DecryptFileCommand(encrypted, identity));
 
-        assertEquals(original, decrypted);
-        assertEquals("cv.pdf", encrypted.originalFileName());
+        assertArrayEquals(original.content(), decrypted.content());
+        assertEquals(io.github.jlmc.rikikivault.core.adapters.encryption.format.RvEncryptedFileFormatCodec.FORMAT_VERSION, encrypted.formatVersion());
     }
 }

@@ -81,7 +81,6 @@ public final class JceHybridEncryptionAdapter implements EncryptionPort {
                     RvEncryptedFileFormatCodec.FORMAT_VERSION,
                     RvEncryptedFileFormatCodec.SYMMETRIC_ALGORITHM_AES_GCM,
                     RvEncryptedFileFormatCodec.KEY_WRAP_X25519_HKDF_AES_GCM,
-                    file.fileName(),
                     recipientEntries,
                     contentNonce,
                     sealedContent);
@@ -105,7 +104,9 @@ public final class JceHybridEncryptionAdapter implements EncryptionPort {
             cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(contentKey, "AES"), new GCMParameterSpec(GCM_TAG_LENGTH_BITS, file.contentNonce()));
             byte[] plaintext = cipher.doFinal(file.sealedContent());
 
-            return new PlaintextFile(file.originalFileName(), plaintext);
+            // The real filename/path is never carried in the ciphertext (RV02) - callers that need
+            // it already have it from the (encrypted) manifest, so this is just a non-blank placeholder.
+            return new PlaintextFile("decrypted-content", plaintext);
         } catch (GeneralSecurityException | IllegalArgumentException e) {
             throw new DecryptionException("Failed to decrypt file: authentication failed or data is corrupted", e);
         } finally {

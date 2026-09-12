@@ -81,9 +81,12 @@ public final class InitializeVaultService implements InitializeVaultUseCase {
             }
         }
         vaultRootFiles.writeFile(".gitignore", GITIGNORE_CONTENT.getBytes(StandardCharsets.UTF_8));
-        manifestPort.save(VaultManifest.empty());
+        // Recipients must be saved before the manifest: the manifest is itself encrypted for the
+        // current recipient list (see EncryptedManifestFileAdapter), so saving it first - while
+        // the registry is still empty - would have nobody to encrypt for.
         recipientRegistryPort.save(new RecipientRegistry(1, List.of(
                 new Recipient(command.machineLabel(), identity.id(), identity.publicKey()))));
+        manifestPort.save(VaultManifest.empty());
 
         return identity;
     }

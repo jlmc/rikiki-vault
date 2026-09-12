@@ -18,24 +18,26 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class JsonManifestFileAdapterTest {
 
     private static ManifestEntry someEntry(String suffix) {
-        return new ManifestEntry("cv/CV" + suffix + ".pdf.enc", "cv/CV" + suffix + ".pdf",
-                FileHash.of(("content-" + suffix).getBytes()), "RV01");
+        return new ManifestEntry("id-" + suffix, "cv/CV" + suffix + ".pdf",
+                FileHash.of(("content-" + suffix).getBytes()), "RV02");
     }
 
     @Test
     void loadWithoutAnExistingFileReturnsEmptyManifest(@TempDir Path tempDir) {
         JsonManifestFileAdapter adapter = new JsonManifestFileAdapter(tempDir.resolve("missing.json"));
 
-        assertEquals(VaultManifest.empty(), adapter.load());
+        VaultManifest loaded = adapter.load();
+        assertEquals(1, loaded.version());
+        assertEquals(List.of(), loaded.files());
     }
 
     @Test
     void saveThenLoadRoundTripsMultipleEntries(@TempDir Path tempDir) {
         Path manifestFile = tempDir.resolve("vault").resolve("manifest.json");
         JsonManifestFileAdapter adapter = new JsonManifestFileAdapter(manifestFile);
-        VaultManifest original = new VaultManifest(1, List.of(
+        VaultManifest original = new VaultManifest(1, VaultManifest.generateHmacKey(), List.of(
                 someEntry("A"),
-                new ManifestEntry("relatório/notas.md.enc", "relatório/notas.md", FileHash.of("café".getBytes()), "RV01")));
+                new ManifestEntry("id-notas", "relatório/notas.md", FileHash.of("café".getBytes()), "RV02")));
 
         adapter.save(original);
         VaultManifest loaded = adapter.load();

@@ -89,13 +89,12 @@ public final class RevokeMachineService implements RevokeMachineUseCase {
         VaultManifest manifest = manifestPort.load();
         for (ManifestEntry entry : manifest.files()) {
             byte[] content = localFiles.readFile(entry.plaintextPath());
-            String plaintextPath = entry.plaintextPath();
-            String fileName = plaintextPath.contains("/")
-                    ? plaintextPath.substring(plaintextPath.lastIndexOf('/') + 1)
-                    : plaintextPath;
-
-            EncryptedFile encrypted = encryptionPort.encrypt(new PlaintextFile(fileName, content), publicKeys);
-            documentsFiles.writeFile(entry.path(), codec.encode(encrypted));
+            EncryptedFile encrypted = encryptionPort.encrypt(new PlaintextFile(entry.plaintextPath(), content), publicKeys);
+            documentsFiles.writeFile(entry.documentsRelativePath(), codec.encode(encrypted));
         }
+        // Re-encrypts (and rewrites) the manifest itself for the reduced recipient set too - it's
+        // wrapped just like any tracked file, so a revoked machine must lose the ability to decrypt
+        // it (and thus read every real path) exactly like it loses access to file content.
+        manifestPort.save(manifest);
     }
 }

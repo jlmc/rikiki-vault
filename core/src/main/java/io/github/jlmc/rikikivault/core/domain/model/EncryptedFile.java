@@ -8,7 +8,6 @@ public record EncryptedFile(
         String formatVersion,
         int symmetricAlgorithmId,
         int keyWrapAlgorithmId,
-        String originalFileName,
         List<RecipientKeyEntry> recipientEntries,
         byte[] contentNonce,
         byte[] sealedContent
@@ -16,7 +15,6 @@ public record EncryptedFile(
 
     public EncryptedFile {
         Objects.requireNonNull(formatVersion, "formatVersion must not be null");
-        Objects.requireNonNull(originalFileName, "originalFileName must not be null");
         Objects.requireNonNull(recipientEntries, "recipientEntries must not be null");
         Objects.requireNonNull(contentNonce, "contentNonce must not be null");
         Objects.requireNonNull(sealedContent, "sealedContent must not be null");
@@ -30,7 +28,6 @@ public record EncryptedFile(
         return symmetricAlgorithmId == other.symmetricAlgorithmId
                 && keyWrapAlgorithmId == other.keyWrapAlgorithmId
                 && formatVersion.equals(other.formatVersion)
-                && originalFileName.equals(other.originalFileName)
                 && recipientEntries.equals(other.recipientEntries)
                 && Arrays.equals(contentNonce, other.contentNonce)
                 && Arrays.equals(sealedContent, other.sealedContent);
@@ -38,7 +35,7 @@ public record EncryptedFile(
 
     @Override
     public int hashCode() {
-        int result = Objects.hash(formatVersion, symmetricAlgorithmId, keyWrapAlgorithmId, originalFileName, recipientEntries);
+        int result = Objects.hash(formatVersion, symmetricAlgorithmId, keyWrapAlgorithmId, recipientEntries);
         result = 31 * result + Arrays.hashCode(contentNonce);
         result = 31 * result + Arrays.hashCode(sealedContent);
         return result;
@@ -49,7 +46,6 @@ public record EncryptedFile(
         return "EncryptedFile[formatVersion=" + formatVersion
                 + ", symmetricAlgorithmId=" + symmetricAlgorithmId
                 + ", keyWrapAlgorithmId=" + keyWrapAlgorithmId
-                + ", originalFileName=" + originalFileName
                 + ", recipients=" + recipientEntries.size()
                 + ", sealedContentLength=" + sealedContent.length + "]";
     }

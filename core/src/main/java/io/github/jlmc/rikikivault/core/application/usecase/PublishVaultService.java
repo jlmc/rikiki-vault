@@ -2,6 +2,7 @@ package io.github.jlmc.rikikivault.core.application.usecase;
 
 import io.github.jlmc.rikikivault.core.adapters.encryption.format.RvEncryptedFileFormatCodec;
 import io.github.jlmc.rikikivault.core.domain.model.EncryptedFile;
+import io.github.jlmc.rikikivault.core.domain.model.FileHash;
 import io.github.jlmc.rikikivault.core.domain.model.ManifestEntry;
 import io.github.jlmc.rikikivault.core.domain.model.PlaintextFile;
 import io.github.jlmc.rikikivault.core.domain.model.Recipient;
@@ -12,7 +13,6 @@ import io.github.jlmc.rikikivault.core.ports.in.PublishVaultUseCase;
 import io.github.jlmc.rikikivault.core.ports.out.EncryptionPort;
 import io.github.jlmc.rikikivault.core.ports.out.FileStoragePort;
 import io.github.jlmc.rikikivault.core.ports.out.GitRepositoryPort;
-import io.github.jlmc.rikikivault.core.ports.out.HashPort;
 import io.github.jlmc.rikikivault.core.ports.out.ManifestPort;
 import io.github.jlmc.rikikivault.core.ports.out.RecipientRegistryPort;
 import org.slf4j.Logger;
@@ -23,6 +23,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 
 /**
  * Composes the "encrypt & push" flow for a batch of approved changes.
@@ -37,7 +38,6 @@ public final class PublishVaultService implements PublishVaultUseCase {
     private final FileStoragePort localFiles;
     private final FileStoragePort documentsFiles;
     private final EncryptionPort encryptionPort;
-    private final HashPort hashPort;
     private final ManifestPort manifestPort;
     private final RecipientRegistryPort recipientRegistryPort;
     private final GitRepositoryPort gitRepositoryPort;
@@ -47,14 +47,12 @@ public final class PublishVaultService implements PublishVaultUseCase {
             FileStoragePort localFiles,
             FileStoragePort documentsFiles,
             EncryptionPort encryptionPort,
-            HashPort hashPort,
             ManifestPort manifestPort,
             RecipientRegistryPort recipientRegistryPort,
             GitRepositoryPort gitRepositoryPort) {
         this.localFiles = Objects.requireNonNull(localFiles, "localFiles must not be null");
         this.documentsFiles = Objects.requireNonNull(documentsFiles, "documentsFiles must not be null");
         this.encryptionPort = Objects.requireNonNull(encryptionPort, "encryptionPort must not be null");
-        this.hashPort = Objects.requireNonNull(hashPort, "hashPort must not be null");
         this.manifestPort = Objects.requireNonNull(manifestPort, "manifestPort must not be null");
         this.recipientRegistryPort = Objects.requireNonNull(recipientRegistryPort, "recipientRegistryPort must not be null");
         this.gitRepositoryPort = Objects.requireNonNull(gitRepositoryPort, "gitRepositoryPort must not be null");
@@ -80,18 +78,21 @@ public final class PublishVaultService implements PublishVaultUseCase {
 
         for (VaultChange change : command.approvedChanges()) {
             switch (change.type()) {
-                case ADDED, MODIFIED -> entriesByPlaintextPath.put(
-                        change.path(), encryptAndStore(change.path(), recipients));
+                case ADDED, MODIFIED -> {
+                    ManifestEntry existing = entriesByPlaintextPath.get(change.path());
+                    String id = existing != null ? existing.id() : UUID.randomUUID().toString();
+                    entriesByPlaintextPath.put(change.path(), encryptAndStore(change.path(), id, manifest.hmacKey(), recipients));
+                }
                 case DELETED -> {
                     ManifestEntry removed = entriesByPlaintextPath.remove(change.path());
                     if (removed != null) {
-                        documentsFiles.deleteFile(removed.path());
+                        documentsFiles.deleteFile(removed.documentsRelativePath());
                     }
                 }
             }
         }
 
-        manifestPort.save(new VaultManifest(manifest.version(), List.copyOf(entriesByPlaintextPath.values())));
+        manifestPort.save(new VaultManifest(manifest.version(), manifest.hmacKey(), List.copyOf(entriesByPlaintextPath.values())));
 
         gitRepositoryPort.add(List.of("."));
         gitRepositoryPort.commit(command.commitMessage());
@@ -105,16 +106,13 @@ public final class PublishVaultService implements PublishVaultUseCase {
         return pushed;
     }
 
-    private ManifestEntry encryptAndStore(String plaintextPath, List<PublicKey> recipients) {
+    private ManifestEntry encryptAndStore(String plaintextPath, String id, byte[] hmacKey, List<PublicKey> recipients) {
         byte[] content = localFiles.readFile(plaintextPath);
-        String fileName = plaintextPath.contains("/")
-                ? plaintextPath.substring(plaintextPath.lastIndexOf('/') + 1)
-                : plaintextPath;
 
-        EncryptedFile encrypted = encryptionPort.encrypt(new PlaintextFile(fileName, content), recipients);
-        String encryptedPath = plaintextPath + ".enc";
-        documentsFiles.writeFile(encryptedPath, codec.encode(encrypted));
+        EncryptedFile encrypted = encryptionPort.encrypt(new PlaintextFile(plaintextPath, content), recipients);
+        ManifestEntry entry = new ManifestEntry(id, plaintextPath, FileHash.hmac(hmacKey, content), RvEncryptedFileFormatCodec.FORMAT_VERSION);
+        documentsFiles.writeFile(entry.documentsRelativePath(), codec.encode(encrypted));
 
-        return new ManifestEntry(encryptedPath, plaintextPath, hashPort.hash(content), RvEncryptedFileFormatCodec.FORMAT_VERSION);
+        return entry;
     }
 }

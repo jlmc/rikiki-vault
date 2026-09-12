@@ -165,7 +165,35 @@ enough that the extra noise is an acceptable, much simpler trade-off.
 
 ---
 
-### 3. Auto-lock the GUI after inactivity
+### 3. Encrypt file paths and filenames, not just content — ✅ Implemented
+
+Shipped: `manifest.json` is now itself encrypted as a whole, the same hybrid X25519+AES-GCM
+envelope already used for file content (new `EncryptedManifestFileAdapter`, decorating the plain
+`JsonManifestFileAdapter`) — an unauthorized machine has zero visibility into any real path, same
+as it already had zero visibility into content. `documents/` filenames changed from
+`<real-path>.enc` (mirroring the real directory structure) to `<random-id>.enc`, where the id is a
+fresh UUID minted once per file and never derived from its real path (a deterministic derivation
+would let an offline attacker test candidate filenames). The `.enc` envelope format bumped
+`RV01` → `RV02`, dropping the plaintext `originalFileName` header field the old format carried
+outside the sealed content — the decrypted manifest is now the single source of truth for the
+id-to-real-path mapping. `AuthorizeMachineService`/`RevokeMachineService` were found to only ever
+re-encrypt file *content* for the updated recipient set, never the manifest itself — fixed
+alongside this change, since a revoked machine would otherwise keep the ability to decrypt (and
+thus read every real path from) the last manifest version it had access to. A new
+`MigrateVaultFormatService` (CLI `migrate-format --dry-run`/`--yes`) converts an existing pre-RV02
+vault in place, safely (nothing old is deleted or published until every entry has re-encrypted
+successfully) — see `docs/faq/11-migrating-to-encrypted-paths.md` for the operator-facing
+walkthrough, and `docs/faq/05-filenames-and-metadata-are-not-encrypted.md` for what this closes.
+
+**Why:** `manifest.json`'s `plaintextPath` field and the `documents/<real-path>.enc` naming
+convention meant anyone with read access to the remote repository — no decryption needed — could
+see every tracked file's real name and folder structure, which itself often leaks sensitive
+information (e.g. a file literally named `passwords.txt` or `layoffs-plan.xlsx`) even when its
+content stays unreadable. Reported directly by the user as a serious gap.
+
+---
+
+### 4. Auto-lock the GUI after inactivity
 
 **Why:** Even with a passphrase-protected key (#1), an already-unlocked session left open — a
 machine walked away from, a laptop left running — exposes every decrypted preview/edit currently
@@ -222,13 +250,13 @@ any order relative to the other two.
 
 ## Priority: Medium
 
-- Plaintext content hash in `manifest.json` allows offline confirmation of known files — each
-  entry's `hash` field (SHA-256 of the plaintext content, computed by `ScanChangesService` for
-  change detection) can be compared by anyone with read access to the Git repository against the
-  SHA-256 of a candidate file, confirming without decryption whether that exact content is in the
-  vault. Candidate mitigation: replace plain SHA-256 with HMAC-SHA256 keyed by a vault-derived
-  secret, preserving change detection while preventing offline confirmation by anyone without that
-  key.
+- ~~Plaintext content hash in `manifest.json` allows offline confirmation of known files~~ — ✅
+  **Implemented** alongside item #3 above (encrypted paths): `ManifestEntry.hash` is now
+  HMAC-SHA256 (`FileHash.hmac`) keyed by a random secret generated once per vault and stored inside
+  the manifest itself (`VaultManifest.hmacKey`) — safe to keep there since the manifest is now
+  encrypted as a whole, so only the same audience that can already read paths can use this key.
+  Preserves change detection (`ScanChangesService`/`PublishVaultService`/`PullVaultService`) while
+  preventing offline confirmation of known content by anyone without it.
 - Out-of-band fingerprint verification in the `authorize` flow (a checklist step to confirm a
   fingerprint over a separate channel before confirming) — complements #2 from the side of who
   gets added, but is mostly a process/UX nudge rather than new cryptography.

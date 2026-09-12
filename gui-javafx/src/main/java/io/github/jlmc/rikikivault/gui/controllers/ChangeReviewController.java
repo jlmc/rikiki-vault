@@ -113,7 +113,7 @@ public final class ChangeReviewController {
         }
 
         PublishVaultService service = new PublishVaultService(
-                ctx.localFiles(), ctx.documentsFiles(), ctx.encryptionPort(), ctx.hashPort(),
+                ctx.localFiles(), ctx.documentsFiles(), ctx.encryptionPort(),
                 ctx.manifestPort(), ctx.recipientRegistryPort(), ctx.gitRepositoryPort());
 
         // Phase 1 - local only. Must never fail because of the remote; a failure here means

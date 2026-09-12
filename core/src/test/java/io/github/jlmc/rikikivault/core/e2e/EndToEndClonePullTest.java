@@ -5,9 +5,8 @@ import io.github.jlmc.rikikivault.core.adapters.encryption.X25519KeyPairGenerato
 import io.github.jlmc.rikikivault.core.adapters.filesystem.LocalFileSystemAdapter;
 import io.github.jlmc.rikikivault.core.adapters.git.FakeGitAuthSettingsPort;
 import io.github.jlmc.rikikivault.core.adapters.git.JGitRepositoryAdapter;
-import io.github.jlmc.rikikivault.core.adapters.hashing.Sha256HashAdapter;
 import io.github.jlmc.rikikivault.core.adapters.keystore.LocalKeyStoreAdapter;
-import io.github.jlmc.rikikivault.core.adapters.manifest.JsonManifestFileAdapter;
+import io.github.jlmc.rikikivault.core.adapters.manifest.EncryptedManifestFileAdapter;
 import io.github.jlmc.rikikivault.core.adapters.recipients.JsonRecipientRegistryFileAdapter;
 import io.github.jlmc.rikikivault.core.application.usecase.AuthorizeMachineService;
 import io.github.jlmc.rikikivault.core.application.usecase.CloneVaultService;
@@ -21,11 +20,13 @@ import io.github.jlmc.rikikivault.core.application.usecase.ScanChangesService;
 import io.github.jlmc.rikikivault.core.configuration.EncryptionSettings;
 import io.github.jlmc.rikikivault.core.domain.model.MachineIdentity;
 import io.github.jlmc.rikikivault.core.domain.model.PullResult;
+import io.github.jlmc.rikikivault.core.domain.model.Recipient;
 import io.github.jlmc.rikikivault.core.domain.model.VaultChange;
 import io.github.jlmc.rikikivault.core.ports.in.AuthorizeMachineCommand;
 import io.github.jlmc.rikikivault.core.ports.in.CloneVaultCommand;
 import io.github.jlmc.rikikivault.core.ports.in.InitializeVaultCommand;
 import io.github.jlmc.rikikivault.core.ports.in.PublishVaultCommand;
+import io.github.jlmc.rikikivault.core.ports.out.ManifestPort;
 import org.eclipse.jgit.api.Git;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -61,10 +62,9 @@ class EndToEndClonePullTest {
         String remoteUri = "file://" + bareRepoDir;
 
         JceHybridEncryptionAdapter encryptionPort = new JceHybridEncryptionAdapter(EncryptionSettings.defaults());
-        Sha256HashAdapter hashPort = new Sha256HashAdapter();
 
-        Machine machineA = new Machine(tempDir.resolve("machine-a-vault"), tempDir.resolve("machine-a-identity"));
-        Machine machineB = new Machine(tempDir.resolve("machine-b-vault"), tempDir.resolve("machine-b-identity"));
+        Machine machineA = new Machine(tempDir.resolve("machine-a-vault"), tempDir.resolve("machine-a-identity"), encryptionPort);
+        Machine machineB = new Machine(tempDir.resolve("machine-b-vault"), tempDir.resolve("machine-b-identity"), encryptionPort);
 
         // Machine B generates its identity ahead of time, so its public key can be handed to
         // Machine A before anything is published (clone loads, not generates).
@@ -86,7 +86,7 @@ class EndToEndClonePullTest {
 
         Files.createDirectories(machineA.vaultRoot.resolve("local"));
         writeLocalFile(machineA, "cv.pdf", "cv content v1");
-        publishAllChanges(machineA, encryptionPort, hashPort, "publish cv.pdf v1");
+        publishAllChanges(machineA, encryptionPort, "publish cv.pdf v1");
 
         // Machine B clones and gets the decrypted file back, byte-for-byte. Its identity was
         // already generated above, so CloneVaultService's "load, don't create" path is exercised
@@ -104,9 +104,9 @@ class EndToEndClonePullTest {
 
         // Machine A publishes an update; Machine B pulls it cleanly (no local changes of its own).
         writeLocalFile(machineA, "cv.pdf", "cv content v2");
-        publishAllChanges(machineA, encryptionPort, hashPort, "publish cv.pdf v2");
+        publishAllChanges(machineA, encryptionPort, "publish cv.pdf v2");
 
-        PullResult happyPull = pullVaultService(machineB, encryptionPort, hashPort).pull();
+        PullResult happyPull = pullVaultService(machineB, encryptionPort).pull();
 
         assertEquals(List.of("cv.pdf"), happyPull.updatedPaths());
         assertFalse(happyPull.hasConflicts());
@@ -116,9 +116,9 @@ class EndToEndClonePullTest {
         // change - Machine B's next pull must report a conflict and leave its local file untouched.
         writeLocalFile(machineB, "cv.pdf", "cv content v3 - edited on B");
         writeLocalFile(machineA, "cv.pdf", "cv content v3 - edited on A");
-        publishAllChanges(machineA, encryptionPort, hashPort, "publish cv.pdf v3");
+        publishAllChanges(machineA, encryptionPort, "publish cv.pdf v3");
 
-        PullResult conflictedPull = pullVaultService(machineB, encryptionPort, hashPort).pull();
+        PullResult conflictedPull = pullVaultService(machineB, encryptionPort).pull();
 
         assertEquals(1, conflictedPull.conflicts().size());
         assertEquals("cv.pdf", conflictedPull.conflicts().getFirst().plaintextPath());
@@ -135,11 +135,10 @@ class EndToEndClonePullTest {
         String remoteUri = "file://" + bareRepoDir;
 
         JceHybridEncryptionAdapter encryptionPort = new JceHybridEncryptionAdapter(EncryptionSettings.defaults());
-        Sha256HashAdapter hashPort = new Sha256HashAdapter();
 
-        Machine machineA = new Machine(tempDir.resolve("machine-a-vault"), tempDir.resolve("machine-a-identity"));
-        Machine machineB = new Machine(tempDir.resolve("machine-b-vault"), tempDir.resolve("machine-b-identity"));
-        Machine machineC = new Machine(tempDir.resolve("machine-c-vault"), tempDir.resolve("machine-c-identity"));
+        Machine machineA = new Machine(tempDir.resolve("machine-a-vault"), tempDir.resolve("machine-a-identity"), encryptionPort);
+        Machine machineB = new Machine(tempDir.resolve("machine-b-vault"), tempDir.resolve("machine-b-identity"), encryptionPort);
+        Machine machineC = new Machine(tempDir.resolve("machine-c-vault"), tempDir.resolve("machine-c-identity"), encryptionPort);
 
         MachineIdentity identityB = new InitializeMachineIdentityService(
                 new X25519KeyPairGeneratorAdapter(), machineB.keyStorePort).initialize();
@@ -159,7 +158,7 @@ class EndToEndClonePullTest {
 
         Files.createDirectories(machineA.vaultRoot.resolve("local"));
         writeLocalFile(machineA, "cv.pdf", "cv content v1");
-        publishAllChanges(machineA, encryptionPort, hashPort, "publish cv.pdf v1");
+        publishAllChanges(machineA, encryptionPort, "publish cv.pdf v1");
 
         // Machine B clones (a third, independent machine) - it never asked for machine C to be
         // authorized, so its next pull must notice that recipients.json changed underneath it.
@@ -175,7 +174,7 @@ class EndToEndClonePullTest {
                 machineA.manifestPort, encryptionPort, machineA.gitRepositoryPort)
                 .authorize(new AuthorizeMachineCommand("machine-c", identityC.publicKey()));
 
-        PullResult pull = pullVaultService(machineB, encryptionPort, hashPort).pull();
+        PullResult pull = pullVaultService(machineB, encryptionPort).pull();
 
         assertEquals(1, pull.newRecipients().size());
         assertEquals("machine-c", pull.newRecipients().getFirst().label());
@@ -191,24 +190,20 @@ class EndToEndClonePullTest {
         return Files.readAllBytes(machine.vaultRoot.resolve("local").resolve(fileName));
     }
 
-    private static void publishAllChanges(
-            Machine machine,
-            JceHybridEncryptionAdapter encryptionPort,
-            Sha256HashAdapter hashPort,
-            String commitMessage) {
-        ScanChangesService scanChangesService = new ScanChangesService(machine.localFiles, hashPort, machine.manifestPort);
+    private static void publishAllChanges(Machine machine, JceHybridEncryptionAdapter encryptionPort, String commitMessage) {
+        ScanChangesService scanChangesService = new ScanChangesService(machine.localFiles, machine.manifestPort);
         List<VaultChange> changes = scanChangesService.scan();
         PublishVaultService publishVaultService = new PublishVaultService(
-                machine.localFiles, machine.documentsFiles, encryptionPort, hashPort, machine.manifestPort,
+                machine.localFiles, machine.documentsFiles, encryptionPort, machine.manifestPort,
                 machine.recipientRegistryPort, machine.gitRepositoryPort);
         publishVaultService.publish(new PublishVaultCommand(changes, commitMessage));
     }
 
-    private static PullVaultService pullVaultService(Machine machine, JceHybridEncryptionAdapter encryptionPort, Sha256HashAdapter hashPort) {
+    private static PullVaultService pullVaultService(Machine machine, JceHybridEncryptionAdapter encryptionPort) {
         return new PullVaultService(
                 new LoadMachineIdentityService(machine.keyStorePort), new DecryptFileService(encryptionPort),
-                new ScanChangesService(machine.localFiles, hashPort, machine.manifestPort),
-                machine.localFiles, machine.documentsFiles, machine.manifestPort, machine.gitRepositoryPort, hashPort,
+                new ScanChangesService(machine.localFiles, machine.manifestPort),
+                machine.localFiles, machine.documentsFiles, machine.manifestPort, machine.gitRepositoryPort,
                 machine.recipientRegistryPort);
     }
 
@@ -216,19 +211,22 @@ class EndToEndClonePullTest {
         final Path vaultRoot;
         final LocalFileSystemAdapter localFiles;
         final LocalFileSystemAdapter documentsFiles;
-        final JsonManifestFileAdapter manifestPort;
+        final ManifestPort manifestPort;
         final JsonRecipientRegistryFileAdapter recipientRegistryPort;
         final JGitRepositoryAdapter gitRepositoryPort;
         final LocalKeyStoreAdapter keyStorePort;
 
-        Machine(Path vaultRoot, Path identityDirectory) {
+        Machine(Path vaultRoot, Path identityDirectory, JceHybridEncryptionAdapter encryptionPort) {
             this.vaultRoot = vaultRoot;
             this.localFiles = new LocalFileSystemAdapter(vaultRoot.resolve("local"));
             this.documentsFiles = new LocalFileSystemAdapter(vaultRoot.resolve("documents"));
-            this.manifestPort = new JsonManifestFileAdapter(vaultRoot.resolve("vault").resolve("manifest.json"));
             this.recipientRegistryPort = new JsonRecipientRegistryFileAdapter(vaultRoot.resolve("vault").resolve("recipients.json"));
             this.gitRepositoryPort = new JGitRepositoryAdapter(vaultRoot, new FakeGitAuthSettingsPort());
             this.keyStorePort = new LocalKeyStoreAdapter(identityDirectory);
+            this.manifestPort = new EncryptedManifestFileAdapter(
+                    vaultRoot.resolve("vault").resolve("manifest.json"), encryptionPort,
+                    () -> keyStorePort.load().privateKey(),
+                    () -> recipientRegistryPort.load().recipients().stream().map(Recipient::publicKey).toList());
         }
     }
 }

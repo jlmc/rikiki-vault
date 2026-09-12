@@ -2,28 +2,35 @@
 
 *[Ler em português](05-filenames-and-metadata-are-not-encrypted.pt.md)*
 
-Yes, on two levels. Only the *content* of your files is encrypted — everything about where they
-are and what they're called stays visible to anyone who can read the repository.
+No, since the RV02 format (see [FAQ 11](11-migrating-to-encrypted-paths.md) if you have an older
+vault still on the previous format) — real paths and filenames are encrypted right alongside file
+content, not just visible metadata sitting next to it.
 
-## The path itself
+## The manifest is encrypted as a whole
 
-Every published file lives at `documents/<plaintext-path>.enc` — that path mirrors `local/`
-exactly, folder for folder, filename for filename, just with `.enc` appended (see
-[the fourth FAQ entry](04-decrypting-without-the-app.md) for the full format). If you keep
-`taxes/2025/return.pdf` in `local/`, anyone with read access to the Git remote sees a file at
-`documents/taxes/2025/return.pdf.enc` — the folder name "taxes" and the filename "return.pdf" are
-right there, even though they can't open what's inside it.
+`manifest.json` — the file that maps every tracked entry to its real path — is itself sealed with
+the exact same hybrid encryption (X25519 + AES-GCM, wrapped per authorized machine) already used
+for file content. On disk and in the git history, it's an opaque binary blob; there is no
+plaintext path anywhere in it unless you're an authorized machine that can actually decrypt it.
+That's also why revoking a machine's access re-encrypts the manifest, not just file content — see
+[FAQ 08](08-revoking-a-stolen-machine.md).
 
-## The filename is also stored again, inside the file
+## `documents/` filenames are random, not real paths
 
-Less obvious: the RV01 format writes the original filename into the `.enc` file's own header,
-*before* any encryption happens (`RvEncryptedFileFormatCodec` writes it as a plain
-length-prefixed UTF-8 string). So even if you renamed the file on disk to something generic before
-it left `local/`, the ciphertext still carries whatever name it had at encryption time, in the
-clear. This is redundant with the path in practice, but it means the filename genuinely isn't
-protected by the encryption at all — it was never inside the sealed part.
+Every published file lives at `documents/<opaque-id>.enc` — a random identifier generated once per
+file, unrelated to its real name or location, and never nested in folders that mirror your real
+directory structure (a folder name can be just as revealing as a filename). If you keep
+`taxes/2025/return.pdf` in `local/`, anyone with read access to the Git remote sees a file with a
+name like `documents/f47ac10b-58cc-4372-a567-0e02b2c3d479.enc` — nothing about "taxes" or
+"return.pdf" survives into anything visible without decryption.
+
+The `.enc` format itself (`RV02`) also no longer carries any filename field in its header at all —
+the previous format did, in the clear, which was its own separate leak; the manifest (once
+decrypted) is the only source of truth for what a given id actually is.
 
 ## What else is visible
+
+This part is unaffected by any of the above — it was never about filenames:
 
 - **Commit messages and dates** — whatever you pass to `publish -m "..."` (or type in the desktop
   app's review screen) is a plain Git commit message, not encrypted.
@@ -34,9 +41,8 @@ protected by the encryption at all — it was never inside the sealed part.
 
 ## What's actually protected
 
-Just the content. That's the whole design: a private Git repository (this app never makes claims
-about which repository host you use, or how private it is — that's on you) with the *content*
-end-to-end encrypted, not a system that hides the existence or shape of your files. Practical
-takeaway: don't put anything sensitive in a filename or a commit message, and if the mere fact
-that certain files exist is itself sensitive, this tool's model doesn't hide that from your Git
-host or from anyone else who can read the repository.
+Content, real paths, and real filenames — all encrypted the same way, all invisible to anyone
+without an authorized machine's private key. Practical takeaway: don't put anything sensitive in a
+commit message, and if the mere fact that certain files exist (independent of their name) is
+itself sensitive, this tool's model doesn't hide the count or approximate size of files from your
+Git host or from anyone else who can read the repository.

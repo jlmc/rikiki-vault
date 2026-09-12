@@ -1,6 +1,5 @@
 package io.github.jlmc.rikikivault.core.application.usecase;
 
-import io.github.jlmc.rikikivault.core.adapters.hashing.Sha256HashAdapter;
 import io.github.jlmc.rikikivault.core.domain.model.FileHash;
 import io.github.jlmc.rikikivault.core.domain.model.ManifestEntry;
 import io.github.jlmc.rikikivault.core.domain.model.VaultChange;
@@ -16,16 +15,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ScanChangesServiceTest {
 
-    private final Sha256HashAdapter hashPort = new Sha256HashAdapter();
+    private static final byte[] HMAC_KEY = VaultManifest.generateHmacKey();
 
     private FileHash hashOf(String content) {
-        return hashPort.hash(content.getBytes(StandardCharsets.UTF_8));
+        return FileHash.hmac(HMAC_KEY, content.getBytes(StandardCharsets.UTF_8));
     }
 
     @Test
     void fileWithNoManifestEntryIsReportedAsAdded() {
         FakeFileStoragePort storage = new FakeFileStoragePort().withFile("cv/CV.pdf", "cv content");
-        ScanChangesService service = new ScanChangesService(storage, hashPort, new FakeManifestPort());
+        ScanChangesService service = new ScanChangesService(storage, new FakeManifestPort());
 
         List<VaultChange> changes = service.scan();
 
@@ -35,10 +34,10 @@ class ScanChangesServiceTest {
     @Test
     void fileWithDifferentHashThanManifestIsReportedAsModified() {
         FakeFileStoragePort storage = new FakeFileStoragePort().withFile("notes.md", "new content");
-        ManifestEntry entry = new ManifestEntry("notes.md.enc", "notes.md", hashOf("old content"), "RV01");
-        FakeManifestPort manifestPort = new FakeManifestPort(new VaultManifest(1, List.of(entry)));
+        ManifestEntry entry = new ManifestEntry("id-notes", "notes.md", hashOf("old content"), "RV02");
+        FakeManifestPort manifestPort = new FakeManifestPort(new VaultManifest(1, HMAC_KEY, List.of(entry)));
 
-        List<VaultChange> changes = new ScanChangesService(storage, hashPort, manifestPort).scan();
+        List<VaultChange> changes = new ScanChangesService(storage, manifestPort).scan();
 
         assertEquals(List.of(new VaultChange(ChangeType.MODIFIED, "notes.md")), changes);
     }
@@ -46,10 +45,10 @@ class ScanChangesServiceTest {
     @Test
     void manifestEntryWithNoLocalFileIsReportedAsDeleted() {
         FakeFileStoragePort storage = new FakeFileStoragePort();
-        ManifestEntry entry = new ManifestEntry("old.pdf.enc", "old.pdf", hashOf("gone"), "RV01");
-        FakeManifestPort manifestPort = new FakeManifestPort(new VaultManifest(1, List.of(entry)));
+        ManifestEntry entry = new ManifestEntry("id-old", "old.pdf", hashOf("gone"), "RV02");
+        FakeManifestPort manifestPort = new FakeManifestPort(new VaultManifest(1, HMAC_KEY, List.of(entry)));
 
-        List<VaultChange> changes = new ScanChangesService(storage, hashPort, manifestPort).scan();
+        List<VaultChange> changes = new ScanChangesService(storage, manifestPort).scan();
 
         assertEquals(List.of(new VaultChange(ChangeType.DELETED, "old.pdf")), changes);
     }
@@ -57,10 +56,10 @@ class ScanChangesServiceTest {
     @Test
     void fileWithMatchingHashIsNotReported() {
         FakeFileStoragePort storage = new FakeFileStoragePort().withFile("notes.md", "same content");
-        ManifestEntry entry = new ManifestEntry("notes.md.enc", "notes.md", hashOf("same content"), "RV01");
-        FakeManifestPort manifestPort = new FakeManifestPort(new VaultManifest(1, List.of(entry)));
+        ManifestEntry entry = new ManifestEntry("id-notes", "notes.md", hashOf("same content"), "RV02");
+        FakeManifestPort manifestPort = new FakeManifestPort(new VaultManifest(1, HMAC_KEY, List.of(entry)));
 
-        List<VaultChange> changes = new ScanChangesService(storage, hashPort, manifestPort).scan();
+        List<VaultChange> changes = new ScanChangesService(storage, manifestPort).scan();
 
         assertTrue(changes.isEmpty());
     }
@@ -72,13 +71,13 @@ class ScanChangesServiceTest {
                 .withFile("modified.txt", "new bytes")
                 .withFile("unchanged.txt", "same bytes");
 
-        ManifestEntry modifiedEntry = new ManifestEntry("modified.txt.enc", "modified.txt", hashOf("old bytes"), "RV01");
-        ManifestEntry unchangedEntry = new ManifestEntry("unchanged.txt.enc", "unchanged.txt", hashOf("same bytes"), "RV01");
-        ManifestEntry deletedEntry = new ManifestEntry("deleted.txt.enc", "deleted.txt", hashOf("gone"), "RV01");
+        ManifestEntry modifiedEntry = new ManifestEntry("id-modified", "modified.txt", hashOf("old bytes"), "RV02");
+        ManifestEntry unchangedEntry = new ManifestEntry("id-unchanged", "unchanged.txt", hashOf("same bytes"), "RV02");
+        ManifestEntry deletedEntry = new ManifestEntry("id-deleted", "deleted.txt", hashOf("gone"), "RV02");
         FakeManifestPort manifestPort = new FakeManifestPort(
-                new VaultManifest(1, List.of(modifiedEntry, unchangedEntry, deletedEntry)));
+                new VaultManifest(1, HMAC_KEY, List.of(modifiedEntry, unchangedEntry, deletedEntry)));
 
-        List<VaultChange> changes = new ScanChangesService(storage, hashPort, manifestPort).scan();
+        List<VaultChange> changes = new ScanChangesService(storage, manifestPort).scan();
 
         assertEquals(3, changes.size());
         assertTrue(changes.contains(new VaultChange(ChangeType.ADDED, "added.txt")));

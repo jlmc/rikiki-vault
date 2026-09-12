@@ -6,12 +6,11 @@ import io.github.jlmc.rikikivault.core.adapters.encryption.JceHybridEncryptionAd
 import io.github.jlmc.rikikivault.core.adapters.encryption.X25519KeyPairGeneratorAdapter;
 import io.github.jlmc.rikikivault.core.adapters.filesystem.LocalFileSystemAdapter;
 import io.github.jlmc.rikikivault.core.adapters.git.JGitRepositoryAdapter;
-import io.github.jlmc.rikikivault.core.adapters.hashing.Sha256HashAdapter;
 import io.github.jlmc.rikikivault.core.adapters.encryption.format.PrivateKeyEnvelopeCodec;
 import io.github.jlmc.rikikivault.core.adapters.keystore.LocalKeyStoreAdapter;
 import io.github.jlmc.rikikivault.core.adapters.keystore.PassphraseCachingKeyStorePort;
 import io.github.jlmc.rikikivault.core.adapters.keystore.PrivateKeyEnvelopeCrypto;
-import io.github.jlmc.rikikivault.core.adapters.manifest.JsonManifestFileAdapter;
+import io.github.jlmc.rikikivault.core.adapters.manifest.EncryptedManifestFileAdapter;
 import io.github.jlmc.rikikivault.core.adapters.recipients.JsonRecipientRegistryFileAdapter;
 import io.github.jlmc.rikikivault.core.application.usecase.AuthorizeMachineService;
 import io.github.jlmc.rikikivault.core.application.usecase.ClearLocalFilesService;
@@ -20,6 +19,7 @@ import io.github.jlmc.rikikivault.core.application.usecase.DecryptFileService;
 import io.github.jlmc.rikikivault.core.application.usecase.InitializeMachineIdentityService;
 import io.github.jlmc.rikikivault.core.application.usecase.InitializeVaultService;
 import io.github.jlmc.rikikivault.core.application.usecase.LoadMachineIdentityService;
+import io.github.jlmc.rikikivault.core.application.usecase.MigrateVaultFormatService;
 import io.github.jlmc.rikikivault.core.application.usecase.PublishVaultService;
 import io.github.jlmc.rikikivault.core.application.usecase.PullVaultService;
 import io.github.jlmc.rikikivault.core.application.usecase.RestoreLocalFilesService;
@@ -35,6 +35,7 @@ import io.github.jlmc.rikikivault.core.domain.exception.RikikiVaultException;
 import io.github.jlmc.rikikivault.core.domain.model.ClearLocalFilesResult;
 import io.github.jlmc.rikikivault.core.domain.model.KeyFingerprint;
 import io.github.jlmc.rikikivault.core.domain.model.MachineIdentity;
+import io.github.jlmc.rikikivault.core.domain.model.MigrateVaultFormatResult;
 import io.github.jlmc.rikikivault.core.domain.model.PullResult;
 import io.github.jlmc.rikikivault.core.domain.model.Recipient;
 import io.github.jlmc.rikikivault.core.domain.model.RemoteSyncStatus;
@@ -45,10 +46,12 @@ import io.github.jlmc.rikikivault.core.ports.in.AuthorizeMachineCommand;
 import io.github.jlmc.rikikivault.core.ports.in.ClearLocalFilesCommand;
 import io.github.jlmc.rikikivault.core.ports.in.CloneVaultCommand;
 import io.github.jlmc.rikikivault.core.ports.in.InitializeVaultCommand;
+import io.github.jlmc.rikikivault.core.ports.in.MigrateVaultFormatCommand;
 import io.github.jlmc.rikikivault.core.ports.in.PublishVaultCommand;
 import io.github.jlmc.rikikivault.core.ports.in.RestoreLocalFilesCommand;
 import io.github.jlmc.rikikivault.core.ports.in.RevokeMachineCommand;
 import io.github.jlmc.rikikivault.core.ports.out.KeyStorePort;
+import io.github.jlmc.rikikivault.core.ports.out.ManifestPort;
 
 import java.io.BufferedReader;
 import java.io.Console;
@@ -147,6 +150,7 @@ public final class Main {
             case "set-passphrase" -> runSetPassphrase(ctx);
             case "remove-passphrase" -> runRemovePassphrase(ctx);
             case "unwrap-key" -> runUnwrapKey(rest);
+            case "migrate-format" -> runMigrateFormat(ctx, rest);
             default -> {
                 System.err.println(CliMessages.get("run.unknownCommand", command));
                 printUsage();
@@ -161,7 +165,7 @@ public final class Main {
      * which don't need it.
      */
     private static final Set<String> COMMANDS_NEEDING_IDENTITY = Set.of(
-            "init", "whoami", "export-key", "clone", "pull", "restore");
+            "init", "whoami", "export-key", "clone", "pull", "restore", "migrate-format");
 
     /**
      * If the stored identity is passphrase-protected, prompts once (with retries) and returns a
@@ -257,7 +261,7 @@ public final class Main {
     }
 
     private static void runStatus(VaultContext ctx) {
-        ScanChangesService scanChangesService = new ScanChangesService(ctx.localFiles(), ctx.hashPort(), ctx.manifestPort());
+        ScanChangesService scanChangesService = new ScanChangesService(ctx.localFiles(), ctx.manifestPort());
         List<VaultChange> changes = scanChangesService.scan();
         if (changes.isEmpty()) {
             IO.println(CliMessages.get("status.nothing"));
@@ -310,7 +314,7 @@ public final class Main {
             return;
         }
 
-        ScanChangesService scanChangesService = new ScanChangesService(ctx.localFiles(), ctx.hashPort(), ctx.manifestPort());
+        ScanChangesService scanChangesService = new ScanChangesService(ctx.localFiles(), ctx.manifestPort());
         List<VaultChange> changes = scanChangesService.scan();
         if (changes.isEmpty()) {
             reportNothingToCommit(ctx);
@@ -321,7 +325,7 @@ public final class Main {
         // own before anything remote is attempted, so a broken remote never hides a successful
         // local commit behind a fatal "Erro:" exit.
         PublishVaultService service = new PublishVaultService(
-                ctx.localFiles(), ctx.documentsFiles(), ctx.encryptionPort(), ctx.hashPort(),
+                ctx.localFiles(), ctx.documentsFiles(), ctx.encryptionPort(),
                 ctx.manifestPort(), ctx.recipientRegistryPort(), ctx.gitRepositoryPort());
         service.publishLocally(new PublishVaultCommand(changes, message));
         IO.println(CliMessages.get("publish.published", changes.size()));
@@ -377,8 +381,8 @@ public final class Main {
         PullVaultService service = new PullVaultService(
                 new LoadMachineIdentityService(ctx.keyStorePort()),
                 new DecryptFileService(ctx.encryptionPort()),
-                new ScanChangesService(ctx.localFiles(), ctx.hashPort(), ctx.manifestPort()),
-                ctx.localFiles(), ctx.documentsFiles(), ctx.manifestPort(), ctx.gitRepositoryPort(), ctx.hashPort(),
+                new ScanChangesService(ctx.localFiles(), ctx.manifestPort()),
+                ctx.localFiles(), ctx.documentsFiles(), ctx.manifestPort(), ctx.gitRepositoryPort(),
                 ctx.recipientRegistryPort());
 
         PullResult result = service.pull();
@@ -459,7 +463,7 @@ public final class Main {
         }
 
         ClearLocalFilesService service = new ClearLocalFilesService(
-                new ScanChangesService(ctx.localFiles(), ctx.hashPort(), ctx.manifestPort()), ctx.localFiles());
+                new ScanChangesService(ctx.localFiles(), ctx.manifestPort()), ctx.localFiles());
 
         ClearLocalFilesResult result = service.clear(new ClearLocalFilesCommand(includeUnpublished));
 
@@ -513,6 +517,45 @@ public final class Main {
         IO.println(CliMessages.get("revoke.done", fingerprint));
         if (!pushed) {
             IO.println(CliMessages.get("revoke.noRemote"));
+        }
+    }
+
+    private static void runMigrateFormat(VaultContext ctx, String[] rest) {
+        boolean dryRun = false;
+        boolean confirmed = false;
+        for (String arg : rest) {
+            if (arg.equals("--dry-run")) {
+                dryRun = true;
+            } else if (arg.equals("--yes") || arg.equals("-y")) {
+                confirmed = true;
+            }
+        }
+        if (!dryRun && !confirmed) {
+            IO.println(CliMessages.get("migrateFormat.confirmWarning"));
+            System.exit(1);
+            return;
+        }
+
+        MigrateVaultFormatService service = new MigrateVaultFormatService(
+                ctx.vaultRoot().resolve("vault").resolve("manifest.json"),
+                ctx.manifestPort(), ctx.documentsFiles(), ctx.encryptionPort(),
+                new LoadMachineIdentityService(ctx.keyStorePort()), ctx.recipientRegistryPort(), ctx.gitRepositoryPort());
+
+        MigrateVaultFormatResult result = service.migrate(new MigrateVaultFormatCommand(dryRun));
+
+        if (result.alreadyMigrated()) {
+            IO.println(CliMessages.get("migrateFormat.alreadyMigrated"));
+            return;
+        }
+        IO.println(CliMessages.get(dryRun ? "migrateFormat.dryRunSummary" : "migrateFormat.done", result.filesMigrated()));
+        if (!result.failedPaths().isEmpty()) {
+            IO.println(CliMessages.get("migrateFormat.failedSummary", result.failedPaths().size()));
+            for (String path : result.failedPaths()) {
+                IO.println("  " + path);
+            }
+        }
+        if (!dryRun && !result.pushed()) {
+            IO.println(CliMessages.get("migrateFormat.noRemote"));
         }
     }
 
@@ -932,12 +975,10 @@ public final class Main {
             Path vaultRoot,
             LocalFileSystemAdapter localFiles,
             LocalFileSystemAdapter documentsFiles,
-            JsonManifestFileAdapter manifestPort,
             JsonRecipientRegistryFileAdapter recipientRegistryPort,
             JGitRepositoryAdapter gitRepositoryPort,
             KeyStorePort keyStorePort,
             JceHybridEncryptionAdapter encryptionPort,
-            Sha256HashAdapter hashPort,
             LocalGitAuthSettingsAdapter gitAuthSettingsPort) {
 
         static VaultContext at(Path vaultRoot) {
@@ -947,18 +988,30 @@ public final class Main {
                     vaultRoot,
                     new LocalFileSystemAdapter(vaultRoot.resolve("local")),
                     new LocalFileSystemAdapter(vaultRoot.resolve("documents")),
-                    new JsonManifestFileAdapter(vaultRoot.resolve("vault").resolve("manifest.json")),
                     new JsonRecipientRegistryFileAdapter(vaultRoot.resolve("vault").resolve("recipients.json")),
                     new JGitRepositoryAdapter(vaultRoot, gitAuthSettingsPort),
                     new LocalKeyStoreAdapter(config.identityDirectory()),
                     new JceHybridEncryptionAdapter(config.encryptionSettings()),
-                    new Sha256HashAdapter(),
                     gitAuthSettingsPort);
         }
 
+        /**
+         * Computed, not a stored component: must always resolve the *current* {@link #keyStorePort()}
+         * (swapped by {@link #withKeyStorePort} once a passphrase is unlocked) and the *current*
+         * {@link #recipientRegistryPort()} contents (changed by every authorize/revoke) - baking
+         * either into a long-lived field would risk decrypting/encrypting against stale state.
+         */
+        ManifestPort manifestPort() {
+            return new EncryptedManifestFileAdapter(
+                    vaultRoot.resolve("vault").resolve("manifest.json"),
+                    encryptionPort,
+                    () -> keyStorePort.load().privateKey(),
+                    () -> recipientRegistryPort.load().recipients().stream().map(Recipient::publicKey).toList());
+        }
+
         VaultContext withKeyStorePort(KeyStorePort newKeyStorePort) {
-            return new VaultContext(vaultRoot, localFiles, documentsFiles, manifestPort, recipientRegistryPort,
-                    gitRepositoryPort, newKeyStorePort, encryptionPort, hashPort, gitAuthSettingsPort);
+            return new VaultContext(vaultRoot, localFiles, documentsFiles, recipientRegistryPort,
+                    gitRepositoryPort, newKeyStorePort, encryptionPort, gitAuthSettingsPort);
         }
     }
 }
