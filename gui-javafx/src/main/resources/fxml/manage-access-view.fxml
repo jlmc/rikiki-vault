@@ -45,6 +45,5 @@
     </HBox>
     <HBox spacing="8" alignment="CENTER_LEFT">
         <ProgressIndicator fx:id="progress" maxWidth="24" maxHeight="24" visible="false"/>
-        <Label fx:id="statusLabel" styleClass="status-label"/>
     </HBox>
 </VBox>

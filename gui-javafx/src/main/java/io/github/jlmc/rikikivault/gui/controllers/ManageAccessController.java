@@ -15,7 +15,6 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
-import javafx.scene.control.Label;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.TextField;
 import javafx.stage.FileChooser;
@@ -41,7 +40,6 @@ public final class ManageAccessController {
     @FXML private TextField fingerprintField;
     @FXML private Button revokeButton;
     @FXML private ProgressIndicator progress;
-    @FXML private Label statusLabel;
 
     private VaultContext ctx;
     private Runnable onChanged;
@@ -81,23 +79,23 @@ public final class ManageAccessController {
     private void onAuthorize() {
         String label = labelField.getText();
         if (label == null || label.isBlank()) {
-            statusLabel.setText(Messages.get("manageAccess.status.needLabel"));
+            Notifications.warning(Messages.get("manageAccess.status.needLabel"));
             return;
         }
         if (chosenPublicKeyFile == null) {
-            statusLabel.setText(Messages.get("manageAccess.status.needPublicKeyFile"));
+            Notifications.warning(Messages.get("manageAccess.status.needPublicKeyFile"));
             return;
         }
         PublicKey publicKey = readPublicKeyFile(chosenPublicKeyFile);
 
-        setBusy(true, Messages.get("manageAccess.busy.authorizing"));
+        setBusy(true);
         BackgroundTasks.run(
                 () -> new AuthorizeMachineService(
                         ctx.recipientRegistryPort(), ctx.localFiles(), ctx.documentsFiles(),
                         ctx.manifestPort(), ctx.encryptionPort(), ctx.gitRepositoryPort())
                         .authorize(new AuthorizeMachineCommand(label, publicKey)),
                 (Boolean pushed) -> {
-                    setBusy(false, "");
+                    setBusy(false);
                     onChanged.run();
                     if (onClose != null) {
                         onClose.run();
@@ -107,7 +105,7 @@ public final class ManageAccessController {
                             : Messages.get("common.savedLocallyNoRemote"));
                 },
                 error -> {
-                    setBusy(false, "");
+                    setBusy(false);
                     Notifications.error(error);
                 });
     }
@@ -116,28 +114,28 @@ public final class ManageAccessController {
     private void onRevoke() {
         String fingerprintHex = fingerprintField.getText();
         if (fingerprintHex == null || fingerprintHex.isBlank()) {
-            statusLabel.setText(Messages.get("manageAccess.status.needFingerprint"));
+            Notifications.warning(Messages.get("manageAccess.status.needFingerprint"));
             return;
         }
         KeyFingerprint fingerprint;
         try {
             fingerprint = new KeyFingerprint(fingerprintHex.trim());
         } catch (IllegalArgumentException e) {
-            statusLabel.setText(Messages.get("manageAccess.invalidFingerprint", e.getMessage()));
+            Notifications.warning(Messages.get("manageAccess.invalidFingerprint", e.getMessage()));
             return;
         }
         if (!Dialogs.confirm(Messages.get("manageAccess.revoke.confirmTitle"), Messages.get("manageAccess.revoke.confirmBody", fingerprint))) {
             return;
         }
 
-        setBusy(true, Messages.get("manageAccess.busy.revoking"));
+        setBusy(true);
         BackgroundTasks.run(
                 () -> new RevokeMachineService(
                         ctx.recipientRegistryPort(), ctx.localFiles(), ctx.documentsFiles(),
                         ctx.manifestPort(), ctx.encryptionPort(), ctx.gitRepositoryPort())
                         .revoke(new RevokeMachineCommand(fingerprint)),
                 (Boolean pushed) -> {
-                    setBusy(false, "");
+                    setBusy(false);
                     onChanged.run();
                     if (onClose != null) {
                         onClose.run();
@@ -147,16 +145,15 @@ public final class ManageAccessController {
                             : Messages.get("common.savedLocallyNoRemote"));
                 },
                 error -> {
-                    setBusy(false, "");
+                    setBusy(false);
                     Notifications.error(error);
                 });
     }
 
-    private void setBusy(boolean busy, String message) {
+    private void setBusy(boolean busy) {
         progress.setVisible(busy);
         authorizeButton.setDisable(busy);
         revokeButton.setDisable(busy);
-        statusLabel.setText(message);
     }
 
     private static PublicKey readPublicKeyFile(Path file) {
