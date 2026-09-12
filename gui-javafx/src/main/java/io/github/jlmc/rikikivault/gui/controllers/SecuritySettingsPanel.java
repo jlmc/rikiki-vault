@@ -7,6 +7,7 @@ import io.github.jlmc.rikikivault.core.domain.exception.RikikiVaultException;
 import io.github.jlmc.rikikivault.gui.controls.RevealablePasswordField;
 import io.github.jlmc.rikikivault.gui.support.BackgroundTasks;
 import io.github.jlmc.rikikivault.gui.support.Messages;
+import io.github.jlmc.rikikivault.gui.support.Notifications;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -88,7 +89,7 @@ public final class SecuritySettingsPanel {
                 () -> {
                     setBusy(false);
                     onPassphraseChanged.accept(newOrNull);
-                    statusLabel.setText(successMessage);
+                    Notifications.success(successMessage);
                     refreshProtectionState();
                     wipe(current);
                     wipe(newOrNull);
@@ -97,7 +98,7 @@ public final class SecuritySettingsPanel {
                     setBusy(false);
                     wipe(current);
                     wipe(newOrNull);
-                    statusLabel.setText(error instanceof RikikiVaultException rve
+                    Notifications.error(error instanceof RikikiVaultException rve
                             ? rve.getMessage() : Messages.get("errorAdvice.generic.explanation"));
                 });
     }
