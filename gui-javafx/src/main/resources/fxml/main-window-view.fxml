@@ -108,9 +108,9 @@
                     <TreeTableView fx:id="fileTable" styleClass="file-table" showRoot="false">
                         <columns>
                             <TreeTableColumn fx:id="nameColumn" text="%mainWindow.column.file" prefWidth="330"/>
-                            <TreeTableColumn fx:id="statusColumn" text="%mainWindow.column.status" prefWidth="90"
-                                             minWidth="90" maxWidth="90" resizable="false"
-                                             style="-fx-alignment: CENTER-RIGHT;"/>
+                            <TreeTableColumn fx:id="statusColumn" text="%mainWindow.column.status" prefWidth="56"
+                                             minWidth="56" maxWidth="56" resizable="false"
+                                             style="-fx-alignment: CENTER;"/>
                         </columns>
                     </TreeTableView>
                     <Label fx:id="emptyStateLabel" text="%mainWindow.emptyVault" styleClass="preview-unsupported"
