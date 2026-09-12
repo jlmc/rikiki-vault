@@ -388,6 +388,7 @@ public final class MainWindowController {
                         editorArea.setText(TextFileViewer.tryDecodeUtf8(bytes));
                     }
                     refresh(true);
+                    Notifications.success(Messages.get("mainWindow.revert.success"));
                 },
                 error -> {
                     setEditorBusy(false);
@@ -446,6 +447,7 @@ public final class MainWindowController {
                     // detached from the scene when the rail switches away from the Files view.
                     Stage owner = (Stage) vaultPathLabel.getScene().getWindow();
                     PullResultController.open(owner, result);
+                    Notifications.success(Messages.get("mainWindow.pull.success"));
                     refresh();
                     refreshRemoteSyncStatus();
                 },
@@ -722,6 +724,7 @@ public final class MainWindowController {
                 root -> {
                     if (showBusy) {
                         setToolbarBusy(false);
+                        Notifications.success(Messages.get("mainWindow.refresh.success"));
                     }
                     if (!repaintCache.rootChanged(root)) {
                         // Scan already ran, but nothing changed since the last repaint - touching
