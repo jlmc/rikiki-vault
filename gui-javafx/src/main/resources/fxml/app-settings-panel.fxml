@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Spinner?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="io.github.jlmc.rikikivault.gui.controllers.AppSettingsPanel"
+      styleClass="app-settings-panel" spacing="16">
+    <padding>
+        <Insets top="16" right="16" bottom="16" left="16"/>
+    </padding>
+    <Label text="%appSettingsPanel.subtitle" styleClass="subtitle" wrapText="true"/>
+    <CheckBox fx:id="autoDismissCheckBox" text="%appSettingsPanel.autoDismiss"/>
+    <HBox spacing="8" alignment="CENTER_LEFT">
+        <Label text="%appSettingsPanel.autoDismissSeconds"/>
+        <Spinner fx:id="autoDismissSecondsSpinner" editable="true" prefWidth="90"/>
+    </HBox>
+</VBox>

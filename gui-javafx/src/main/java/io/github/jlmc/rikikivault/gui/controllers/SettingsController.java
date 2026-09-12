@@ -3,11 +3,13 @@ package io.github.jlmc.rikikivault.gui.controllers;
 import io.github.jlmc.rikikivault.core.adapters.configuration.LocalAppPreferencesAdapter;
 import io.github.jlmc.rikikivault.core.configuration.AppLanguage;
 import io.github.jlmc.rikikivault.core.configuration.AppPreferences;
+import io.github.jlmc.rikikivault.core.configuration.NotificationSettings;
 import io.github.jlmc.rikikivault.core.configuration.VaultPaths;
 import io.github.jlmc.rikikivault.core.ports.out.AppPreferencesPort;
 import io.github.jlmc.rikikivault.gui.App;
 import io.github.jlmc.rikikivault.gui.support.Fxml;
 import io.github.jlmc.rikikivault.gui.support.Messages;
+import io.github.jlmc.rikikivault.gui.support.Notifications;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -39,6 +41,7 @@ public final class SettingsController {
 
     private final AppPreferencesPort preferencesPort = new LocalAppPreferencesAdapter(VaultPaths.defaultPreferencesDirectory());
     private GitAuthSettingsPanel gitAuthPanel;
+    private AppSettingsPanel appSettingsPanel;
     private AppLanguage lastSavedLanguage;
     private Runnable onLanguageChanged;
     private Runnable onClose;
@@ -96,6 +99,13 @@ public final class SettingsController {
         Tab securityTab = new Tab(Messages.get("settings.tab.security"), securityRoot);
         tabPane.getTabs().add(1, securityTab);
 
+        FXMLLoader appLoader = Fxml.loader("/fxml/app-settings-panel.fxml");
+        Parent appRoot = appLoader.getRoot();
+        appSettingsPanel = appLoader.getController();
+        appSettingsPanel.init(preferences.notifications());
+        Tab appTab = new Tab(Messages.get("settings.tab.app"), appRoot);
+        tabPane.getTabs().add(2, appTab);
+
         tabPane.getSelectionModel().select(gitTab);
 
         (preferences.language() == AppLanguage.EN ? enRadio : ptRadio).setSelected(true);
@@ -104,7 +114,9 @@ public final class SettingsController {
     @FXML
     private void onSave() {
         AppLanguage language = enRadio.isSelected() ? AppLanguage.EN : AppLanguage.PT;
-        preferencesPort.save(new AppPreferences(gitAuthPanel.buildSettings(), language));
+        NotificationSettings notificationSettings = appSettingsPanel.buildSettings();
+        preferencesPort.save(new AppPreferences(gitAuthPanel.buildSettings(), language, notificationSettings));
+        Notifications.updateSettings(notificationSettings);
         statusLabel.setText(Messages.get("settings.saved"));
 
         // Real re-rendering in the new language arrives with Milestone 20's message bundles -
