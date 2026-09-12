@@ -1,6 +1,7 @@
 package io.github.jlmc.rikikivault.core.application.usecase;
 
 import io.github.jlmc.rikikivault.core.adapters.encryption.format.RvEncryptedFileFormatCodec;
+import io.github.jlmc.rikikivault.core.domain.exception.UninitializedVaultException;
 import io.github.jlmc.rikikivault.core.domain.model.KeyFingerprint;
 import io.github.jlmc.rikikivault.core.domain.model.MachineIdentity;
 import io.github.jlmc.rikikivault.core.domain.model.MigrateVaultFormatResult;
@@ -28,6 +29,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -137,6 +139,21 @@ class MigrateVaultFormatServiceTest {
 
         assertTrue(result.alreadyMigrated());
         assertEquals(0, result.filesMigrated());
+    }
+
+    @Test
+    void aMissingManifestFileIsReportedAsUninitializedNotAlreadyMigrated(@TempDir Path tempDir) throws Exception {
+        // No manifest.json written at all at this path - e.g. the caller pointed at the wrong
+        // directory (the vault/ metadata subfolder instead of the vault root). This must not be
+        // silently treated the same as "already migrated": every real vault, even a brand-new one,
+        // always has a manifest.json written at init time.
+        Path manifestFile = tempDir.resolve("manifest.json");
+
+        MigrateVaultFormatService service = new MigrateVaultFormatService(
+                manifestFile, new FakeManifestPort(), new FakeFileStoragePort(), new FakeEncryptionPort(),
+                new FakeLoadMachineIdentityUseCase(someIdentity()), new FakeRecipientRegistryPort(), new FakeGitRepositoryPort());
+
+        assertThrows(UninitializedVaultException.class, () -> service.migrate(new MigrateVaultFormatCommand(true)));
     }
 
     @Test

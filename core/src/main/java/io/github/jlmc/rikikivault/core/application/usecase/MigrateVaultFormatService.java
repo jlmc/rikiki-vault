@@ -3,6 +3,7 @@ package io.github.jlmc.rikikivault.core.application.usecase;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.jlmc.rikikivault.core.adapters.encryption.format.RvEncryptedFileFormatCodec;
+import io.github.jlmc.rikikivault.core.domain.exception.UninitializedVaultException;
 import io.github.jlmc.rikikivault.core.domain.model.EncryptedFile;
 import io.github.jlmc.rikikivault.core.domain.model.FileHash;
 import io.github.jlmc.rikikivault.core.domain.model.MachineIdentity;
@@ -138,10 +139,18 @@ public final class MigrateVaultFormatService implements MigrateVaultFormatUseCas
         return new MigrateVaultFormatResult(false, false, newEntries.size(), failedPaths, pushed);
     }
 
-    /** @return {@code null} if the vault is already on the new (encrypted, non-JSON) format. */
+    /**
+     * @return {@code null} if the vault is already on the new (encrypted, non-JSON) format.
+     * @throws UninitializedVaultException if there's no manifest.json at all at this path - almost
+     *         always a wrong path (pointing at the {@code vault/} metadata subfolder instead of the
+     *         vault root, for example) rather than a legitimate "nothing to migrate" state, since
+     *         even a brand-new vault always gets a manifest.json written at init time.
+     */
     private LegacyManifest tryReadLegacyManifest() {
         if (!Files.exists(manifestFile)) {
-            return null;
+            throw new UninitializedVaultException(
+                    "No manifest.json found at " + manifestFile + " - is this the vault root "
+                            + "(not the vault/ metadata subfolder, or some other directory)?");
         }
         byte[] bytes;
         try {
